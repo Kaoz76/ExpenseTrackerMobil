@@ -6,6 +6,7 @@ import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc }
 import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
+import { formatDateTime } from '../utils/dateFormatter';
 
 function ManualEntry() {
   const { user } = useAuth();
@@ -135,21 +136,6 @@ function ManualEntry() {
   const handleRowClick = (receipt) => {
     setSelectedReceipt(receipt);
     setShowModal(true);
-  };
-
-  const formatDateTime = (timestamp) => {
-    if (!timestamp) return '-';
-    // Firebase Timestamp objesini JS Date objesine çevir
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    
-    return date.toLocaleString('tr-TR', { // Türkçe format (Gün.Ay.Yıl Saat:Dakika:Saniye)
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
   };
 
   const isDisabled = !user || loading;

@@ -9,6 +9,9 @@ import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, 
 import ImageModal from '../components/ImageModal';
 import { Link } from 'react-router-dom';
 import Tesseract from 'tesseract.js'; 
+import { Capacitor } from '@capacitor/core';
+import { Ocr } from '@carviz/capacitor-ocr';
+import { formatDateTime } from '../utils/dateFormatter';
 
 function Receipts() {
   const { user } = useAuth();
@@ -117,19 +120,48 @@ function Receipts() {
 
     // 1. OCR İŞLEMİ
     try {
-      const result = await Tesseract.recognize(
-        file,
-        'tur+eng', 
-        { 
-          logger: m => {
-            if (m.status === 'recognizing text') {
-               setUploadProgress(parseInt(m.progress * 50)); 
-               setStatusText(`Reading text: ${parseInt(m.progress * 100)}%`);
+      if (Capacitor.isNativePlatform()) {
+          // CAPACITOR NATIVE OCR (OFFLINE ML KIT)
+          setStatusText('Using Native ML Kit OCR...');
+          
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          
+          const base64Text = await new Promise((resolve, reject) => {
+              reader.onload = async () => {
+                 try {
+                     const base64DataWithPrefix = reader.result;
+                     // Plugin expects raw base64 without data:image/png;base64,
+                     const base64Raw = base64DataWithPrefix.split(',')[1];
+                     
+                     const result = await Ocr.detectText({ base64: base64Raw });
+                     // Plugin returns { textDetections: [{ text: "...", ... }] }
+                     const fullText = result.textDetections.map(item => item.text).join('\n');
+                     resolve(fullText);
+                 } catch (e) {
+                     reject(e);
+                 }
+              };
+              reader.onerror = (error) => reject(error);
+          });
+          
+          extractedPrice = extractPriceFromText(base64Text);
+      } else {
+          // WEB FALLBACK (TESSERACT)
+          const result = await Tesseract.recognize(
+            file,
+            'tur+eng', 
+            { 
+              logger: m => {
+                if (m.status === 'recognizing text') {
+                   setUploadProgress(parseInt(m.progress * 50)); 
+                   setStatusText(`Reading text: ${parseInt(m.progress * 100)}%`);
+                }
+              } 
             }
-          } 
-        }
-      );
-      extractedPrice = extractPriceFromText(result.data.text);
+          );
+          extractedPrice = extractPriceFromText(result.data.text);
+      }
     } catch (ocrError) {
       console.error("OCR Failed:", ocrError);
       setError("Could not read text, uploading anyway...");
@@ -246,15 +278,6 @@ function Receipts() {
   const closeModal = () => {
     setIsModalShowing(false);
     setSelectedImage({ url: '', alt: '' });
-  };
-
-  const formatDateTime = (timestamp) => {
-    if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleString('tr-TR', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
