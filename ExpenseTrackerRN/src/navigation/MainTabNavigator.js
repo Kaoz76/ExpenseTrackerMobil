@@ -15,17 +15,10 @@ export default function MainTabNavigator() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-
-          if (route.name === 'Dashboard') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Receipts') {
-            iconName = focused ? 'camera' : 'camera-outline';
-          } else if (route.name === 'Add Expense') {
-            iconName = focused ? 'add-circle' : 'add-circle-outline';
-          } else if (route.name === 'Settings') {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-
+          if (route.name === 'Dashboard') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Receipts') iconName = focused ? 'camera' : 'camera-outline';
+          else if (route.name === 'Add Expense') iconName = focused ? 'add-circle' : 'add-circle-outline';
+          else if (route.name === 'Settings') iconName = focused ? 'settings' : 'settings-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#0d6efd',

@@ -4,13 +4,10 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
 export default function SettingsScreen() {
-  const handleLogout = () => signOut(auth);
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Settings</Text>
-      
-      <TouchableOpacity style={styles.button} onPress={handleLogout}>
+      <TouchableOpacity style={styles.button} onPress={() => signOut(auth)}>
         <Text style={styles.buttonText}>Logout</Text>
       </TouchableOpacity>
     </View>
