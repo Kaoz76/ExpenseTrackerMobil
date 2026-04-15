@@ -28,6 +28,7 @@ function Receipts() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyData, setVerifyData] = useState(null); // Kaydedilmeyi bekleyen veri
   const [verifiedPrice, setVerifiedPrice] = useState(''); // Kullanıcının düzenleyeceği fiyat
+  const [showItems, setShowItems] = useState(false); // Akordeon durumu
 
   // VERİ ÇEKME
   useEffect(() => {
@@ -60,25 +61,27 @@ function Receipts() {
     }
   }, [user]);
 
-  // OCR PRICE EXTRACTION ALGORITHM
-  const extractPriceFromText = (text) => {
-    if (!text) return 0;
+  // OCR PRICE EXTRACTCTION ALGORITHM
+  const extractDataFromText = (text) => {
+    if (!text) return { total: 0, items: [] };
 
     // Normalize newlines and basic spaces
     const normalizedText = text.replace(/\r/g, '\n').toLowerCase();
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-    // Look for total/sum related keywords
-    const keywordRegex = /(toplam|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k.karti|kart)/i;
-    
-    // Keywords to EXCLUDE (like KDV, VAT, Tax, Indirim, Change, Para ustu)
-    const excludeRegex = /(kdv|vat|tax|indirim|iskonto|para ustu|para üstü|change)/i;
+    // Look for total/sum related keywords (added 'topla' in case OCR misses 'm')
+    const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
+
+    // Keywords to EXCLUDE (like KDV, VAT, Tax, Indirim, Change, Para ustu, %, KG x, Bank names)
+    // DİKKAT: "%" işaretini kaldırdık çünkü birçok fişte ürün isminin yanında %1, %8 gibi KDV oranı yazar!
+    const excludeRegex = /(kdv|vat|tax|indirim|iskonto|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro)/i;
 
     // Match numbers with dots or commas as decimal separators (e.g. 776,67 or 776.67 or 1.234,56)
     // Removed space parsing to prevent breaking native matches, just standard floats
     const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
 
-    let possiblePrices = [];
+    let possibleTotals = [];
+    let extractedItems = [];
 
     const cleanAndParseNumber = (valStr) => {
       let cleanStr = valStr.replace(/[^0-9.,]/g, '');
@@ -94,51 +97,77 @@ function Receipts() {
       return (!isNaN(num) && num > 0 && num < 50000) ? num : null;
     };
 
-    // Strategy 1: Look for numbers on the same line or next line of a keyword
+    // Parse lines one by one
     for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        
-        // If line contains a keyword AND does NOT contain an excluded word (like KDV)
-        if (keywordRegex.test(line) && !excludeRegex.test(line)) {
-            // Check current line
-            let matches = line.match(priceRegex);
-            if (matches) {
-            matches.forEach(m => {
-                const parsed = cleanAndParseNumber(m);
-                if (parsed) possiblePrices.push(parsed);
-            });
-            }
+      const line = lines[i];
 
-            // Check next line just in case the total amount wrapped, but only if next line isn't also a KDV line
-            if (i + 1 < lines.length) {
-                const nextLine = lines[i + 1];
-                if (!excludeRegex.test(nextLine)) {
-                    let nextLineMatches = nextLine.match(priceRegex);
-                    if (nextLineMatches) {
-                        nextLineMatches.forEach(m => {
-                            const parsed = cleanAndParseNumber(m);
-                            if (parsed) possiblePrices.push(parsed);
-                        });
-                    }
-                }
-            }
+      // 1) Is it a Total Line?
+      if (keywordRegex.test(line) && !excludeRegex.test(line)) {
+        let matches = line.match(priceRegex);
+        if (matches) {
+          matches.forEach(m => {
+            const parsed = cleanAndParseNumber(m);
+            if (parsed) possibleTotals.push(parsed);
+          });
         }
-    }
 
-    // Return the max of keyword-associated prices
-    if (possiblePrices.length > 0) return Math.max(...possiblePrices);
+        // Check next line just in case the total amount wrapped, but only if next line isn't also a KDV line
+        if (i + 1 < lines.length) {
+          const nextLine = lines[i + 1];
+          if (!excludeRegex.test(nextLine)) {
+            let nextLineMatches = nextLine.match(priceRegex);
+            if (nextLineMatches) {
+              nextLineMatches.forEach(m => {
+                const parsed = cleanAndParseNumber(m);
+                if (parsed) possibleTotals.push(parsed);
+              });
+            }
+          }
+        }
+      }
+      // 2) Is it an Item Line?
+      else if (!keywordRegex.test(line) && !excludeRegex.test(line)) {
+        let matches = line.match(priceRegex);
+        if (matches && matches.length > 0) {
+          // Usually the price is the last number on the line
+          const lastMatch = matches[matches.length - 1];
+          const parsedPrice = cleanAndParseNumber(lastMatch);
 
-    // Strategy 2: If no keywords found, just find the absolute largest valid price format in the whole text
-    // (Receipts usually have the total at the bottom, which is often the largest number)
-    const allMatches = normalizedText.match(priceRegex);
-    if (allMatches) {
-      const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null && num < 10000);
-      if (allNumbers.length > 0) {
-        return Math.max(...allNumbers);
+          if (parsedPrice) {
+            // Find whatever text is before this price match
+            let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_]/g, '').trim();
+
+            // Sadece 2 karakterden büyükse VE içinde en az BİR HARF barındırıyorsa ürün say
+            // (Bu sayede sadece "%1 27,00" gibi harfsiz satırları süzmüş oluyoruz)
+            if (namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
+              // Capitalize words for nice display
+              let formattedName = namePart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+              extractedItems.push({
+                name: formattedName,
+                price: parsedPrice
+              });
+            }
+          }
+        }
       }
     }
 
-    return 0; // Default fallback if absolutely nothing is found
+    let finalTotal = 0;
+    // Return the max of keyword-associated prices
+    if (possibleTotals.length > 0) {
+      finalTotal = Math.max(...possibleTotals);
+    } else {
+      // Strategy 2: If no keywords found, find the absolute largest valid price format in the whole text
+      const allMatches = normalizedText.match(priceRegex);
+      if (allMatches) {
+        const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null && num < 10000);
+        if (allNumbers.length > 0) {
+          finalTotal = Math.max(...allNumbers);
+        }
+      }
+    }
+
+    return { total: finalTotal, items: extractedItems };
   };
 
   // DOSYA YÜKLEME VE OCR
@@ -156,7 +185,7 @@ function Receipts() {
     setError('');
     setStatusText('Analyzing receipt image...');
 
-    let extractedPrice = 0;
+    let extractedData = { total: 0, items: [] };
 
     // 1. OCR İŞLEMİ
     try {
@@ -173,18 +202,80 @@ function Receipts() {
               const base64DataWithPrefix = reader.result;
               // Plugin expects raw base64 without data:image/jpeg;base64,
               const base64Raw = base64DataWithPrefix.split(',')[1];
-              
+
               if (!base64Raw) {
-                 throw new Error("Could not extract raw base64 from image.");
+                throw new Error("Could not extract raw base64 from image.");
               }
 
               const result = await Ocr.detectText({ base64: base64Raw });
-              // Plugin returns { textDetections: [{ text: "...", ... }] }
+              // Plugin returns { textDetections: [{ text: "...", topLeft: [x,y], ... }] }
               if (result && result.textDetections && result.textDetections.length > 0) {
-                 const fullText = result.textDetections.map(item => item.text).join('\n');
-                 resolve(fullText);
+                const detections = result.textDetections;
+
+                // Fallback guard
+                if (!detections[0] || !detections[0].topLeft || typeof detections[0].topLeft[1] === 'undefined') {
+                  resolve(detections.map(item => item.text).join('\n'));
+                  return;
+                }
+
+                let lineGroups = [];
+
+                // Y ekseninde (yukarıdan aşağıya) sırala. DİKKAT: normalize edilmiş `y` koordinatları Android'te genellikle
+                // bottom-to-top veya top-to-bottom olabilir. Native dönüşlerinde "1.0 en üst" veya "0.0 en üst" olabiliyor.
+                // Plugin'den dönen kodda: y coord = (height - y) / height. Bu nedenle 1.0 EN ÜSTTÜR.
+                // Büyükten küçüğe sıralamak (b-a) en üstten en aşağıya (Top-to-Bottom) sıralar.
+                detections.sort((a, b) => {
+                  let aY = a.topLeft ? a.topLeft[1] : 0;
+                  let bY = b.topLeft ? b.topLeft[1] : 0;
+                  return bY - aY;
+                });
+
+                detections.forEach(item => {
+                  let top = item.topLeft ? item.topLeft[1] : 0;
+                  let bottom = (item.bottomLeft && typeof item.bottomLeft[1] !== 'undefined') ? item.bottomLeft[1] : top + 0.02;
+
+                  // Güvenlik: Terslik varsa düzelt (origin altta veya üstte olabilir)
+                  if (top > bottom) { let temp = top; top = bottom; bottom = temp; }
+                  let height = bottom - top;
+                  // DİKKAT: Plugin koordinatları [0.0, 1.0] arasında normalize ediyor!
+                  if (height < 0.001) { bottom = top + 0.02; height = 0.02; }
+
+                  let added = false;
+                  // Her bir grup için "Overlap" (Örtüşme) kontrolü yap (Zincirlemeyi engeller)
+                  for (let group of lineGroups) {
+                    let overlapTop = Math.max(group.top, top);
+                    let overlapBottom = Math.min(group.bottom, bottom);
+                    let overlapHeight = overlapBottom - overlapTop;
+
+                    // Kutuların Y eksenindeki örtüşmesi %30'dan fazlaysa AYNI SATIRDIR
+                    if (overlapHeight > Math.min(height, group.height) * 0.3) {
+                      group.items.push(item);
+                      added = true;
+                      break;
+                    }
+                  }
+
+                  if (!added) {
+                    lineGroups.push({ top: top, bottom: bottom, height: height, items: [item] });
+                  }
+                });
+
+                // Satırları tekrar güvenli şekilde yukarıdan aşağı sırala
+                lineGroups.sort((a, b) => b.top - a.top);
+
+                // Her yatay grup için, öğeleri soldan sağa sırala ve birleştir
+                const fullText = lineGroups.map(group => {
+                  group.items.sort((a, b) => a.topLeft[0] - b.topLeft[0]);
+                  return group.items.map(i => i.text).join('   ');
+                }).join('\n');
+
+                // HATA AYIKLAMA (Artık görünmesine gerek yok, ama yorum olarak kalsın)
+                // console.log("LINE GROUPS COUNT: " + lineGroups.length);
+                // alert("OCR SATIRLARI (Yeni Örtüşme Algoritması):\n\n" + fullText.substring(0, 300) + "...\n\n(Satır Sayısı: " + lineGroups.length + ")");
+
+                resolve(fullText);
               } else {
-                 resolve(""); // No text found
+                resolve(""); // No text found
               }
             } catch (e) {
               reject(e);
@@ -198,7 +289,7 @@ function Receipts() {
         console.log(base64Text);
         // alert("RAW OCR READ:\n" + base64Text);
 
-        extractedPrice = extractPriceFromText(base64Text);
+        extractedData = extractDataFromText(base64Text);
       } else {
         // WEB FALLBACK (TESSERACT)
         const result = await Tesseract.recognize(
@@ -213,12 +304,12 @@ function Receipts() {
             }
           }
         );
-        
+
         console.log("=== RAW OCR TEXT WEB ===");
         console.log(result.data.text);
         // alert("RAW OCR READ:\n" + result.data.text);
-        
-        extractedPrice = extractPriceFromText(result.data.text);
+
+        extractedData = extractDataFromText(result.data.text);
       }
     } catch (ocrError) {
       console.error("OCR Failed Details:", ocrError);
@@ -241,12 +332,14 @@ function Receipts() {
         createdAt: new Date(),
         title: file.name,
         date: new Date().toLocaleDateString(),
-        isManual: false
+        isManual: false,
+        items: extractedData.items || [] // Ekrana öğeleri koyalım
       };
 
       // State'leri güncelle ve modalı aç
+      setShowItems(false); // Yeni açılanın detayları ilk başta kapalı olsun
       setVerifyData(tempData);
-      setVerifiedPrice(extractedPrice); // OCR fiyatını kutuya koy
+      setVerifiedPrice(extractedData.total); // OCR fiyatını kutuya koy
       setShowVerifyModal(true);
 
       setIsUploading(false);
@@ -281,6 +374,7 @@ function Receipts() {
   const handleCancelSave = async () => {
     // Resim yüklenmediği için silinecek bir şey yok
     setShowVerifyModal(false);
+    setShowItems(false);
     setVerifyData(null);
     setVerifiedPrice('');
   };
@@ -455,7 +549,7 @@ function Receipts() {
                     </div>
                   </div>
 
-                  <div className="form-group">
+                  <div className="form-group mb-4">
                     <label className="form-label fw-bold">Total Price</label>
                     <div className="input-group input-group-lg">
                       <span className="input-group-text">$</span>
@@ -469,6 +563,37 @@ function Receipts() {
                     </div>
                     <div className="form-text">Detected from OCR analysis.</div>
                   </div>
+
+                  {/* Kalem Detayları - Expandable Area */}
+                  {verifyData && verifyData.items && verifyData.items.length > 0 && (
+                    <div className="border rounded mb-3 overflow-hidden">
+                      <button
+                        className="btn btn-light w-100 d-flex justify-content-between align-items-center p-3 text-secondary"
+                        onClick={() => setShowItems(!showItems)}
+                        style={{ borderRadius: 0, border: 'none', borderBottom: showItems ? '1px solid #dee2e6' : 'none' }}
+                      >
+                        <span className="fw-bold text-dark">
+                          Parsed Items <span className="badge bg-secondary ms-2">{verifyData.items.length}</span>
+                        </span>
+                        <span>{showItems ? <FaTimes size={14} className="text-secondary" /> : <FaListAlt size={14} className="text-secondary" />}</span>
+                      </button>
+
+                      {showItems && (
+                        <div className="bg-white" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                          <ul className="list-group list-group-flush">
+                            {verifyData.items.map((item, idx) => (
+                              <li key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                                <span className="text-truncate me-3 small text-secondary" style={{ maxWidth: '70%', fontWeight: '500' }}>
+                                  {item.name}
+                                </span>
+                                <span className="fw-bold small text-primary">{formatPrice(item.price)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="modal-footer bg-light">
