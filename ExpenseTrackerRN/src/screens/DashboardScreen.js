@@ -1,51 +1,102 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 
 export default function DashboardScreen() {
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [totalExpense, setTotalExpense] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    const q = query(
+      collection(db, 'receipts'),
+      where('userId', '==', auth.currentUser.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let expenses = 0;
+      const transactions = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        expenses += parseFloat(data.price || 0);
+        transactions.push({ id: doc.id, ...data });
+      });
+
+      setTotalExpense(expenses);
+
+      // Sort descending by createdAt to avoid needing a Firestore composite index
+      transactions.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis?.() || a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.toMillis?.() || b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+
+      setRecentTransactions(transactions.slice(0, 5));
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#0d6efd" />
+      </View>
+    );
+  }
+
+  // Assuming income feature isn't fully implemented yet, showing 0
+  const totalIncome = 0;
+  const currentBalance = totalIncome - totalExpense;
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Hello, User 👋</Text>
+        <Text style={styles.greeting}>Hello, {auth.currentUser?.email?.split('@')[0] || 'User'} 👋</Text>
         <Text style={styles.subtitle}>Here is your expense summary</Text>
       </View>
 
       <View style={styles.mainCard}>
         <Text style={styles.balanceLabel}>Current Balance</Text>
-        <Text style={styles.balanceAmount}>$4,821.50</Text>
+        <Text style={styles.balanceAmount}>${currentBalance.toFixed(2)}</Text>
       </View>
 
       <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: '#e8f5e9' }]}>  
+        <View style={[styles.statCard, { backgroundColor: '#e8f5e9' }]}>
           <Ionicons name="arrow-down-circle" size={24} color="#2e7d32" />
           <Text style={styles.statLabel}>Income</Text>
-          <Text style={[styles.statValue, { color: '#2e7d32' }]}>$6,500.00</Text>
+          <Text style={[styles.statValue, { color: '#2e7d32' }]}>${totalIncome.toFixed(2)}</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: '#ffebee' }]}>
           <Ionicons name="arrow-up-circle" size={24} color="#c62828" />
           <Text style={styles.statLabel}>Expense</Text>
-          <Text style={[styles.statValue, { color: '#c62828' }]}>$1,678.50</Text>
+          <Text style={[styles.statValue, { color: '#c62828' }]}>${totalExpense.toFixed(2)}</Text>
         </View>
       </View>
 
       <View style={styles.recentSection}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
-        <View style={styles.transactionItem}>
-          <View style={styles.txIcon}><Ionicons name="cart" size={20} color="#0d6efd" /></View>
-          <View style={styles.txDetails}>
-            <Text style={styles.txTitle}>Migros Supermarket</Text>
-            <Text style={styles.txDate}>Today, 14:32</Text>
-          </View>
-          <Text style={styles.txAmount}>-$125.50</Text>
-        </View>
-        <View style={styles.transactionItem}>
-          <View style={styles.txIcon}><Ionicons name="cafe" size={20} color="#fd7e14" /></View>
-          <View style={styles.txDetails}>
-            <Text style={styles.txTitle}>Starbucks Coffee</Text>
-            <Text style={styles.txDate}>Yesterday</Text>
-          </View>
-          <Text style={styles.txAmount}>-$12.00</Text>
-        </View>
+        {recentTransactions.length === 0 ? (
+          <Text style={{ color: '#6c757d', textAlign: 'center', marginTop: 20 }}>No recent expenses recorded.</Text>
+        ) : (
+          recentTransactions.map((tx) => (
+            <View key={tx.id} style={styles.transactionItem}>
+              <View style={styles.txIcon}>
+                <Ionicons name={tx.isManual ? "cash" : "receipt"} size={20} color={tx.isManual ? "#0d6efd" : "#fd7e14"} />
+              </View>
+              <View style={styles.txDetails}>
+                <Text style={styles.txTitle}>{tx.title || tx.fileName || 'Expense'}</Text>
+                <Text style={styles.txDate}>{tx.date || new Date().toLocaleDateString()}</Text>
+              </View>
+              <Text style={styles.txAmount}>-${parseFloat(tx.price || 0).toFixed(2)}</Text>
+            </View>
+          ))
+        )}
       </View>
     </ScrollView>
   );
