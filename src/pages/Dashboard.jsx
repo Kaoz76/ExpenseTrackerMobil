@@ -193,9 +193,17 @@ function Dashboard() {
           </div>
         </div>
 
+        {/* CURRENT BALANCE (Mobil RN stili mavi kart) */}
+        <div className="card border-0 mb-4 text-white shadow-sm" style={{ backgroundColor: '#0d6efd', borderRadius: '20px' }}>
+             <div className="card-body text-center p-4">
+                 <p className="mb-1" style={{ fontSize: '1rem', opacity: 0.8 }}>Total Spent</p>
+                 <h2 className="display-4 fw-bold mb-0">{formatPrice(monthlyStats.totalSpent)}</h2>
+             </div>
+        </div>
+
         {/* RECENT SCANS */}
         <h3 className="h5 mb-3">Recent Scans</h3>
-        <div className="row mb-4">
+        <div className="row mb-4 flex-nowrap overflow-auto hide-scroll pb-2">
           {loadingScans && (
             <div className="col-12 text-center p-5">
               <div className="spinner-border" role="status"></div>

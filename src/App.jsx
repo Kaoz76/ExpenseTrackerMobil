@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 
 import Navbar from './components/Navbar';
+import BottomNav from './components/BottomNav';
 import ScrollToHash from './components/ScrollToHash';
 import DynamicFavicon from './components/DynamicFavicon';
 import NotificationManager from './components/NotificationManager';
@@ -21,8 +22,15 @@ import AnalyzeExpenses from './pages/AnalyzeExpenses';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 
-
 function App() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div>
       <ScrollToHash />
@@ -31,7 +39,7 @@ function App() {
       <ScrollToTopButton />
       
       <Navbar />
-      <main>
+      <main style={{ paddingBottom: isMobile ? '70px' : '0' }}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
@@ -53,6 +61,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>
+      <BottomNav />
     </div>
   );
 }

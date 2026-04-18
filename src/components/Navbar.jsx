@@ -52,8 +52,8 @@ function Navbar() {
         {/* İçerik */}
         <div className="collapse navbar-collapse" id="mainNavbar">
 
-          {/* Sayfa Linkleri */}
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-5 gap-1">
+          {/* Sayfa Linkleri (Sadece PC'de görünür, Mobilde gizlenir) */}
+          <ul className="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-5 gap-1 d-none d-md-flex">
              <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/dashboard">Dashboard</NavLink></li>
              <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/receipts">Scans</NavLink></li>
              <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/texts">Texts</NavLink></li>
