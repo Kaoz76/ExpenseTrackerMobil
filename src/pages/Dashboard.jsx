@@ -181,29 +181,37 @@ function Dashboard() {
       <div className={`dashboard-content-wrapper ${isImageModalShowing || showDetailModal ? 'content-blurred' : ''}`} style={{ transition: 'filter 0.3s ease-in-out' }}>
         
         {/* BAŞLIK */}
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h1 className="display-6 fw-bold">Dashboard</h1>
-          <div className="d-flex flex-column flex-sm-row gap-2">
-             <Link to="/receipts" className="btn btn-pulse btn-pulse-primary px-4 py-2">
-                <FaPlus className="me-2" /> New Scan
-             </Link>
-             <Link to="/texts" className="btn btn-pulse btn-pulse-secondary px-4 py-2">
-                <FaEdit className="me-2" /> New Text
-             </Link>
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+          <div className="mb-3 mb-md-0">
+            <h1 className="display-6 fw-bold mb-1">Dashboard</h1>
+            {user && <p className="text-muted mb-0">Hello, {user.email ? user.email.split('@')[0] : 'User'} 👋</p>}
           </div>
+          
+          {user && (
+            <div className="d-flex flex-row gap-2 w-100 w-md-auto justify-content-start justify-content-md-end">
+               <Link to="/receipts" className="btn btn-pulse btn-pulse-primary flex-fill flex-md-grow-0 px-4 py-2">
+                  <FaPlus className="me-2" /> New Scan
+               </Link>
+               <Link to="/texts" className="btn btn-pulse btn-pulse-secondary flex-fill flex-md-grow-0 px-4 py-2">
+                  <FaEdit className="me-2" /> New Text
+               </Link>
+            </div>
+          )}
         </div>
 
-        {/* CURRENT BALANCE (Mobil RN stili mavi kart) */}
-        <div className="card border-0 mb-4 text-white shadow-sm" style={{ backgroundColor: '#0d6efd', borderRadius: '20px' }}>
-             <div className="card-body text-center p-4">
-                 <p className="mb-1" style={{ fontSize: '1rem', opacity: 0.8 }}>Total Spent</p>
-                 <h2 className="display-4 fw-bold mb-0">{formatPrice(monthlyStats.totalSpent)}</h2>
-             </div>
-        </div>
+        {/* CURRENT BALANCE (Mobil RN stili mavi kart - SADECE MOBİLDE VE GİRİŞ YAPILDIYSA) */}
+        {user && (
+          <div className="card border-0 mb-4 text-white shadow-sm d-md-none" style={{ backgroundColor: '#0d6efd', borderRadius: '20px' }}>
+               <div className="card-body text-center p-4">
+                   <p className="mb-1" style={{ fontSize: '1rem', opacity: 0.8 }}>Current Balance</p>
+                   <h2 className="display-4 fw-bold mb-0">{formatPrice(monthlyStats.totalSpent)}</h2>
+               </div>
+          </div>
+        )}
 
         {/* RECENT SCANS */}
         <h3 className="h5 mb-3">Recent Scans</h3>
-        <div className="row mb-4 flex-nowrap overflow-auto hide-scroll pb-2">
+        <div className="row mb-4 flex-nowrap flex-md-wrap overflow-auto hide-scroll pb-2">
           {loadingScans && (
             <div className="col-12 text-center p-5">
               <div className="spinner-border" role="status"></div>
