@@ -183,7 +183,7 @@ function Dashboard() {
         {/* BAŞLIK */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
           <div className="mb-3 mb-md-0">
-            <h1 className="display-6 fw-bold mb-1">Dashboard</h1>
+            <h1 className="display-6 fw-bold mb-1 text-gradient" style={{ paddingBottom: '0.2rem' }}>Dashboard</h1>
             {user && <p className="text-muted mb-0">Hello, {user.email ? user.email.split('@')[0] : 'User'} 👋</p>}
           </div>
           
@@ -335,28 +335,28 @@ function Dashboard() {
         )}
 
         {/* MONTHLY SPENDING */}
-        <h3 className="h5 mb-3">Monthly Spending</h3>
+        <h3 className="h5 mb-3 fw-bold text-secondary">Monthly Spending</h3>
         <div className="row mb-4">
           <div className="col-lg-4 col-md-6 mb-4">
-            <div className="card border-0 shadow-sm h-100">
+            <div className="card stat-card border-0 shadow-sm h-100">
               <div className="card-body">
-                <h6 className="text-muted">Total Spent</h6>
-                <h2 className="display-6 fw-bold text-primary">{formatPrice(monthlyStats.totalSpent)}</h2>
+                <h6 className="text-muted text-uppercase small fw-bold mb-2">Total Spent</h6>
+                <h2 className="display-6 fw-bold text-gradient">{formatPrice(monthlyStats.totalSpent)}</h2>
               </div>
             </div>
           </div>
           <div className="col-lg-4 col-md-6 mb-4">
-            <div className="card border-0 shadow-sm h-100">
+            <div className="card stat-card border-0 shadow-sm h-100">
               <div className="card-body">
-                <h6 className="text-muted">Average Spend per Receipt</h6>
+                <h6 className="text-muted text-uppercase small fw-bold mb-2">Avg Spend / Receipt</h6>
                 <h2 className="display-6 fw-bold">{formatPrice(monthlyStats.averageSpend)}</h2>
               </div>
             </div>
           </div>
           <div className="col-lg-4 col-md-6 mb-4">
-            <div className="card border-0 shadow-sm h-100">
+            <div className="card stat-card border-0 shadow-sm h-100">
               <div className="card-body">
-                <h6 className="text-muted">Number of Receipts</h6>
+                <h6 className="text-muted text-uppercase small fw-bold mb-2">Number of Receipts</h6>
                 <h2 className="display-6 fw-bold">{monthlyStats.receiptCount}</h2>
               </div>
             </div>
@@ -364,10 +364,10 @@ function Dashboard() {
         </div>
 
         {/* ABONELİKLER */}
-        <h3 className="h5 mb-3">Subscription Expenses</h3>
+        <h3 className="h5 mb-3 fw-bold text-secondary">Subscription Expenses</h3>
         <div className="row">
            <div className="col-12">
-              <div className="card border-0 shadow-sm">
+              <div className="card stat-card border-0 shadow-sm">
                  <div className="card-body d-flex align-items-center p-4">
                     <div className="bg-warning-subtle text-warning-emphasis p-3 rounded-circle me-4">
                        <FaCalendarCheck className="fs-2" />

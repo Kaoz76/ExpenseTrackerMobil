@@ -31,7 +31,7 @@ function Navbar() {
       className={`navbar navbar-expand-lg border-bottom ${theme === 'dark' ? 'navbar-dark' : 'navbar-light'}`}
       style={{ backgroundColor: 'var(--bs-tertiary-bg)' }}
     >
-      <div className="container-fluid px-4">
+      <div className="container-fluid px-4 px-md-5">
         
         {/* Marka (Logo) */}
         <Link className="navbar-brand fw-bold" to="/">Expense Tracker</Link>

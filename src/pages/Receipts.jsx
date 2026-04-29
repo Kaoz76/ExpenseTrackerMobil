@@ -44,7 +44,9 @@ function Receipts() {
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const receiptsData = [];
         querySnapshot.forEach((doc) => {
-          if (doc.data().imageUrl) {
+          // Changed: We no longer require imageUrl since we disabled cloud storage uploads.
+          // We only filter out manual text entries if they have isManual === true.
+          if (!doc.data().isManual) {
             receiptsData.push({ id: doc.id, ...doc.data() });
           }
         });
@@ -66,8 +68,8 @@ function Receipts() {
   const extractDataFromText = (text) => {
     if (!text) return { total: 0, items: [] };
 
-    // Normalize newlines and basic spaces
-    const normalizedText = text.replace(/\r/g, '\n').toLowerCase();
+    // Normalize newlines and basic spaces (Handle Turkish chars better)
+    const normalizedText = text.replace(/\r/g, '\n').toLocaleLowerCase('tr-TR');
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
     // Look for total/sum related keywords (added 'topla' in case OCR misses 'm')
@@ -75,7 +77,7 @@ function Receipts() {
 
     // Keywords to EXCLUDE (like KDV, VAT, Tax, Indirim, Change, Para ustu, %, KG x, Bank names)
     // DİKKAT: "%" işaretini kaldırdık çünkü birçok fişte ürün isminin yanında %1, %8 gibi KDV oranı yazar!
-    const excludeRegex = /(kdv|vat|tax|indirim|iskonto|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro)/i;
+    const excludeRegex = /(kdv|vat|tax|indirim|ndirim|iskonto|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro)/i;
 
     // Match numbers with dots or commas as decimal separators (e.g. 776,67 or 776.67 or 1.234,56)
     // Removed space parsing to prevent breaking native matches, just standard floats
@@ -170,6 +172,8 @@ function Receipts() {
 
     return { total: finalTotal, items: extractedItems };
   };
+
+
 
   // DOSYA YÜKLEME VE OCR
   const onDrop = useCallback(async (acceptedFiles) => {
