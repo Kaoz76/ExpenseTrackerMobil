@@ -737,20 +737,6 @@
   transform: rotate(45deg);
 }
 
-/* MOBİL BİLDİRİM MENÜSÜ DÜZELTMESİ */
-@media (max-width: 991px) {
-  .notification-dropdown {
-    right: auto;  /* Sağa yaslamayı iptal et */
-    left: -10px;  /* Sola yasla */
-    transform: none;
-  }
-
-  /* Menü üzerindeki küçük ok işaretini de sola taşı */
-  .notification-dropdown::before {
-    right: auto;  /* Sağdan al */
-    left: 18px;   /* Sola, zilin altına denk gelecek şekilde koy */
-  }
-}
 
 /* Animated Search Bar */
 .search-form {
@@ -1007,7 +993,40 @@
 }
 /* Scroll To Top Button Finished */
 /* Bottom Navigation Styles */  
-.bottom-nav-container { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--bs-body-bg); border-top: 1px solid var(--bs-border-color); display: flex; justify-content: space-around; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); z-index: 1050; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }  
+/* Modern Card Styles */
+.card {
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+  border: 1px solid var(--bs-border-color);
+  background-color: rgba(var(--bs-tertiary-bg-rgb), 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+}
+
+/* Bottom Navigation Styles - Modern Floating */  
+.bottom-nav-container { 
+  position: fixed; 
+  bottom: 15px; 
+  left: 15px; 
+  right: 15px; 
+  width: calc(100% - 30px);
+  background-color: rgba(var(--bs-tertiary-bg-rgb), 0.85); 
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 24px;
+  display: flex; 
+  justify-content: space-around; 
+  padding: 12px 10px calc(12px + env(safe-area-inset-bottom)); 
+  z-index: 1050; 
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+}  
 .bottom-nav-item { display: flex; flex-direction: column; align-items: center; color: var(--bs-secondary-color); text-decoration: none; font-size: 0.75rem; transition: color 0.2s ease-in-out; }  
 .bottom-nav-item.active { color: var(--bs-primary); font-weight: bold; }  
 .bottom-nav-item svg { font-size: 1.5rem; margin-bottom: 2px; } 

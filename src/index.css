@@ -1,5 +1,5 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -11,6 +11,31 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Modern Expense Tracker CSS Variables */
+  --modern-primary: #6366f1; /* Indigo */
+  --modern-primary-hover: #4f46e5;
+  --modern-secondary: #0ea5e9;
+  --bs-primary: var(--modern-primary);
+  --bs-primary-rgb: 99, 102, 241;
+}
+
+[data-bs-theme="dark"] {
+  --bs-body-bg: #0f172a; /* Deep modern dark blue */
+  --bs-tertiary-bg: #1e293b;
+  --bs-tertiary-bg-rgb: 30, 41, 59;
+  --bs-border-color: rgba(255, 255, 255, 0.05);
+  --bs-primary-bg-subtle: rgba(99, 102, 241, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-bs-theme="light"] {
+  --bs-body-bg: #f8fafc; /* Cool modern light gray */
+  --bs-tertiary-bg: #ffffff;
+  --bs-tertiary-bg-rgb: 255, 255, 255;
+  --bs-border-color: rgba(0, 0, 0, 0.05);
+  --bs-primary-bg-subtle: rgba(99, 102, 241, 0.08);
+  color: #334155;
 }
 
 a {

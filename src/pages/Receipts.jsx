@@ -25,6 +25,7 @@ function Receipts() {
   const [loadingReceipts, setLoadingReceipts] = useState(true);
 
   // DOĞRULAMA MODALI STATE'LERİ
+  const [processedScans, setProcessedScans] = useState([]); // Yeni: Sıradaki taranan fişler
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyData, setVerifyData] = useState(null); // Kaydedilmeyi bekleyen veri
   const [verifiedPrice, setVerifiedPrice] = useState(''); // Kullanıcının düzenleyeceği fiyat
@@ -172,182 +173,172 @@ function Receipts() {
 
   // DOSYA YÜKLEME VE OCR
   const onDrop = useCallback(async (acceptedFiles) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
+    if (!acceptedFiles || acceptedFiles.length === 0) return;
 
     if (!user) {
       setError("You must be logged in to upload a receipt.");
       return;
     }
 
+    const filesToProcess = acceptedFiles.slice(0, 10);
+
     setIsUploading(true);
-    setUploadProgress(0);
     setError('');
-    setStatusText('Analyzing receipt image...');
+    
+    let results = [];
 
-    let extractedData = { total: 0, items: [] };
+    for (let i = 0; i < filesToProcess.length; i++) {
+      const file = filesToProcess[i];
+      setUploadProgress(0);
+      setStatusText(`Analyzing receipt ${i + 1} of ${filesToProcess.length}...`);
 
-    // 1. OCR İŞLEMİ
-    try {
-      if (Capacitor.isNativePlatform()) {
-        // CAPACITOR NATIVE OCR (OFFLINE ML KIT)
-        setStatusText('Using Native ML Kit OCR...');
+      let extractedData = { total: 0, items: [] };
 
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
+      // 1. OCR İŞLEMİ
+      try {
+        if (Capacitor.isNativePlatform()) {
+          // CAPACITOR NATIVE OCR (OFFLINE ML KIT)
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
 
-        const base64Text = await new Promise((resolve, reject) => {
-          reader.onload = async () => {
-            try {
-              const base64DataWithPrefix = reader.result;
-              // Plugin expects raw base64 without data:image/jpeg;base64,
-              const base64Raw = base64DataWithPrefix.split(',')[1];
+          const base64Text = await new Promise((resolve, reject) => {
+            reader.onload = async () => {
+              try {
+                const base64DataWithPrefix = reader.result;
+                const base64Raw = base64DataWithPrefix.split(',')[1];
 
-              if (!base64Raw) {
-                throw new Error("Could not extract raw base64 from image.");
-              }
+                if (!base64Raw) throw new Error("Could not extract raw base64 from image.");
 
-              const result = await Ocr.detectText({ base64: base64Raw });
-              // Plugin returns { textDetections: [{ text: "...", topLeft: [x,y], ... }] }
-              if (result && result.textDetections && result.textDetections.length > 0) {
-                const detections = result.textDetections;
+                const result = await Ocr.detectText({ base64: base64Raw });
+                if (result && result.textDetections && result.textDetections.length > 0) {
+                  const detections = result.textDetections;
 
-                // Fallback guard
-                if (!detections[0] || !detections[0].topLeft || typeof detections[0].topLeft[1] === 'undefined') {
-                  resolve(detections.map(item => item.text).join('\n'));
-                  return;
-                }
+                  if (!detections[0] || !detections[0].topLeft || typeof detections[0].topLeft[1] === 'undefined') {
+                    resolve(detections.map(item => item.text).join('\n'));
+                    return;
+                  }
 
-                let lineGroups = [];
+                  let lineGroups = [];
+                  detections.sort((a, b) => {
+                    let aY = a.topLeft ? a.topLeft[1] : 0;
+                    let bY = b.topLeft ? b.topLeft[1] : 0;
+                    return bY - aY;
+                  });
 
-                // Y ekseninde (yukarıdan aşağıya) sırala. DİKKAT: normalize edilmiş `y` koordinatları Android'te genellikle
-                // bottom-to-top veya top-to-bottom olabilir. Native dönüşlerinde "1.0 en üst" veya "0.0 en üst" olabiliyor.
-                // Plugin'den dönen kodda: y coord = (height - y) / height. Bu nedenle 1.0 EN ÜSTTÜR.
-                // Büyükten küçüğe sıralamak (b-a) en üstten en aşağıya (Top-to-Bottom) sıralar.
-                detections.sort((a, b) => {
-                  let aY = a.topLeft ? a.topLeft[1] : 0;
-                  let bY = b.topLeft ? b.topLeft[1] : 0;
-                  return bY - aY;
-                });
+                  detections.forEach(item => {
+                    let top = item.topLeft ? item.topLeft[1] : 0;
+                    let bottom = (item.bottomLeft && typeof item.bottomLeft[1] !== 'undefined') ? item.bottomLeft[1] : top + 0.02;
 
-                detections.forEach(item => {
-                  let top = item.topLeft ? item.topLeft[1] : 0;
-                  let bottom = (item.bottomLeft && typeof item.bottomLeft[1] !== 'undefined') ? item.bottomLeft[1] : top + 0.02;
+                    if (top > bottom) { let temp = top; top = bottom; bottom = temp; }
+                    let height = bottom - top;
+                    if (height < 0.001) { bottom = top + 0.02; height = 0.02; }
 
-                  // Güvenlik: Terslik varsa düzelt (origin altta veya üstte olabilir)
-                  if (top > bottom) { let temp = top; top = bottom; bottom = temp; }
-                  let height = bottom - top;
-                  // DİKKAT: Plugin koordinatları [0.0, 1.0] arasında normalize ediyor!
-                  if (height < 0.001) { bottom = top + 0.02; height = 0.02; }
+                    let added = false;
+                    for (let group of lineGroups) {
+                      let overlapTop = Math.max(group.top, top);
+                      let overlapBottom = Math.min(group.bottom, bottom);
+                      let overlapHeight = overlapBottom - overlapTop;
 
-                  let added = false;
-                  // Her bir grup için "Overlap" (Örtüşme) kontrolü yap (Zincirlemeyi engeller)
-                  for (let group of lineGroups) {
-                    let overlapTop = Math.max(group.top, top);
-                    let overlapBottom = Math.min(group.bottom, bottom);
-                    let overlapHeight = overlapBottom - overlapTop;
-
-                    // Kutuların Y eksenindeki örtüşmesi %30'dan fazlaysa AYNI SATIRDIR
-                    if (overlapHeight > Math.min(height, group.height) * 0.3) {
-                      group.items.push(item);
-                      added = true;
-                      break;
+                      if (overlapHeight > Math.min(height, group.height) * 0.3) {
+                        group.items.push(item);
+                        added = true;
+                        break;
+                      }
                     }
-                  }
 
-                  if (!added) {
-                    lineGroups.push({ top: top, bottom: bottom, height: height, items: [item] });
-                  }
-                });
+                    if (!added) {
+                      lineGroups.push({ top: top, bottom: bottom, height: height, items: [item] });
+                    }
+                  });
 
-                // Satırları tekrar güvenli şekilde yukarıdan aşağı sırala
-                lineGroups.sort((a, b) => b.top - a.top);
+                  lineGroups.sort((a, b) => b.top - a.top);
+                  const fullText = lineGroups.map(group => {
+                    group.items.sort((a, b) => a.topLeft[0] - b.topLeft[0]);
+                    return group.items.map(i => i.text).join('   ');
+                  }).join('\n');
 
-                // Her yatay grup için, öğeleri soldan sağa sırala ve birleştir
-                const fullText = lineGroups.map(group => {
-                  group.items.sort((a, b) => a.topLeft[0] - b.topLeft[0]);
-                  return group.items.map(i => i.text).join('   ');
-                }).join('\n');
-
-                // HATA AYIKLAMA (Artık görünmesine gerek yok, ama yorum olarak kalsın)
-                // console.log("LINE GROUPS COUNT: " + lineGroups.length);
-                // alert("OCR SATIRLARI (Yeni Örtüşme Algoritması):\n\n" + fullText.substring(0, 300) + "...\n\n(Satır Sayısı: " + lineGroups.length + ")");
-
-                resolve(fullText);
-              } else {
-                resolve(""); // No text found
+                  resolve(fullText);
+                } else {
+                  resolve("");
+                }
+              } catch (e) {
+                reject(e);
               }
-            } catch (e) {
-              reject(e);
-            }
-          };
-          reader.onerror = (error) => reject(error);
-        });
+            };
+            reader.onerror = (error) => reject(error);
+          });
 
-        // HATA AYIKLAMA İÇİN EKRANA YAZDIR
-        console.log("=== RAW OCR TEXT NATIVE ===");
-        console.log(base64Text);
-        // alert("RAW OCR READ:\n" + base64Text);
-
-        extractedData = extractDataFromText(base64Text);
-      } else {
-        // WEB FALLBACK (TESSERACT)
-        const result = await Tesseract.recognize(
-          file,
-          'tur+eng',
-          {
-            logger: m => {
-              if (m.status === 'recognizing text') {
-                setUploadProgress(parseInt(m.progress * 50));
-                setStatusText(`Reading text: ${parseInt(m.progress * 100)}%`);
+          extractedData = extractDataFromText(base64Text);
+        } else {
+          // WEB FALLBACK (TESSERACT)
+          const result = await Tesseract.recognize(
+            file,
+            'tur+eng',
+            {
+              logger: m => {
+                if (m.status === 'recognizing text') {
+                  setUploadProgress(parseInt(m.progress * 50));
+                }
               }
             }
-          }
-        );
-
-        console.log("=== RAW OCR TEXT WEB ===");
-        console.log(result.data.text);
-        // alert("RAW OCR READ:\n" + result.data.text);
-
-        extractedData = extractDataFromText(result.data.text);
+          );
+          extractedData = extractDataFromText(result.data.text);
+        }
+      } catch (ocrError) {
+        console.error("OCR Failed Details:", ocrError);
+        setError("Could not read text for some files, uploading anyway...");
       }
-    } catch (ocrError) {
-      console.error("OCR Failed Details:", ocrError);
-      alert("OCR PLUGIN ERROR: " + (ocrError.message || JSON.stringify(ocrError)));
-      setError("Could not read text, uploading anyway...");
-    }
 
-    // 2. FIREBASE STORAGE YÜKLEME (İPTAL EDİLDİ - SADECE YEREL OCR KULLANILIYOR)
-    setStatusText('Preparing data...');
+      const baseNumber = receipts.length;
 
-    // Yükleme barını hızlıca doldur ve bitir
-    setUploadProgress(100);
-
-    setTimeout(() => {
-      // Geçici veriyi hazırla (Resim URL'si yok, sadece bir ikon göstereceğiz)
-      const tempData = {
+      results.push({
         userId: user.uid,
-        imageUrl: null, // Sunucuya resim yüklenmiyor
-        fileName: file.name,
+        imageUrl: null, 
+        fileName: `Receipt ${baseNumber + i + 1}`,
+        originalFileName: file.name,
         createdAt: new Date(),
-        title: file.name,
+        title: `Receipt ${baseNumber + i + 1}`,
         date: new Date().toLocaleDateString(),
         isManual: false,
-        items: extractedData.items || [] // Ekrana öğeleri koyalım
-      };
+        items: extractedData.items || [],
+        totalPrice: extractedData.total || 0
+      });
+    }
 
-      // State'leri güncelle ve modalı aç
-      setShowItems(false); // Yeni açılanın detayları ilk başta kapalı olsun
-      setVerifyData(tempData);
-      setVerifiedPrice(extractedData.total); // OCR fiyatını kutuya koy
-      setShowVerifyModal(true);
+    setUploadProgress(100);
+    setStatusText('Preparing verification queue...');
 
+    setTimeout(() => {
+      setProcessedScans(results);
+      if (results.length > 0) {
+        setShowItems(false);
+        setVerifyData(results[0]);
+        setVerifiedPrice(results[0].totalPrice);
+        setShowVerifyModal(true);
+      }
       setIsUploading(false);
       setUploadProgress(0);
       setStatusText('');
-    }, 500); // Yarım saniye bekleme efekti
+    }, 500);
 
   }, [user]);
+
+  const moveToNextOrClose = (currentQueue) => {
+    const updatedQueue = [...currentQueue];
+    updatedQueue.shift(); // İlk sıradakini kaldır
+    
+    setProcessedScans(updatedQueue);
+    
+    if (updatedQueue.length > 0) {
+      setVerifyData(updatedQueue[0]);
+      setVerifiedPrice(updatedQueue[0].totalPrice);
+      setShowItems(false);
+    } else {
+      setShowVerifyModal(false);
+      setVerifyData(null);
+      setVerifiedPrice('');
+    }
+  };
 
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
@@ -355,14 +346,18 @@ function Receipts() {
 
     try {
       await addDoc(collection(db, "receipts"), {
-        ...verifyData,
+        userId: verifyData.userId,
+        imageUrl: verifyData.imageUrl,
+        fileName: verifyData.fileName,
+        createdAt: verifyData.createdAt,
+        title: verifyData.title,
+        date: verifyData.date,
+        isManual: verifyData.isManual,
+        items: verifyData.items,
         price: parseFloat(verifiedPrice) || 0 // Kullanıcının girdiği fiyatı al
       });
 
-      // Temizlik
-      setShowVerifyModal(false);
-      setVerifyData(null);
-      setVerifiedPrice('');
+      moveToNextOrClose(processedScans);
 
     } catch (e) {
       console.error("Error saving document: ", e);
@@ -370,11 +365,15 @@ function Receipts() {
     }
   };
 
-  // İPTAL ET
-  const handleCancelSave = async () => {
-    // Resim yüklenmediği için silinecek bir şey yok
+  // İPTAL ET (SADECE O ANKİ FİŞİ ATLA)
+  const handleCancelSave = () => {
+    moveToNextOrClose(processedScans);
+  };
+
+  // MODALI TAMAMEN KAPAT (TÜM SIRAYI İPTAL ET)
+  const handleCloseAll = () => {
+    setProcessedScans([]);
     setShowVerifyModal(false);
-    setShowItems(false);
     setVerifyData(null);
     setVerifiedPrice('');
   };
@@ -437,7 +436,7 @@ function Receipts() {
               <p className="mb-1">
                 <span className="dropzone-link-text">Click to upload</span> or drag and drop
               </p>
-              <p className="text-muted small">PNG, JPG or PDF (MAX. 10MB)</p>
+              <p className="text-muted small">PNG, JPG or PDF (MAX. 10MB) - Up to 10 files</p>
             </div>
           </div>
 
@@ -531,8 +530,10 @@ function Receipts() {
               <div className="modal-content shadow-lg border-0">
 
                 <div className="modal-header bg-primary text-white">
-                  <h5 className="modal-title fw-bold">Verify Receipt Details</h5>
-                  <button type="button" className="btn-close btn-close-white" onClick={handleCancelSave}></button>
+                  <h5 className="modal-title fw-bold">
+                    Verify Receipt ({processedScans.length} remaining)
+                  </h5>
+                  <button type="button" className="btn-close btn-close-white" onClick={handleCloseAll} title="Cancel All"></button>
                 </div>
 
                 <div className="modal-body p-4">
@@ -541,11 +542,15 @@ function Receipts() {
                   </p>
 
                   <div className="text-center mb-4">
-                    {/* Önizleme Resmi (Kaldırıldı veya İkon Gösterilecek) */}
-                    <div className="p-4 bg-light rounded border shadow-sm mx-auto" style={{ maxWidth: '200px' }}>
+                    <div className="p-4 bg-light rounded border shadow-sm mx-auto" style={{ maxWidth: '250px' }}>
                       <FaCheck className="text-success mb-2" size={40} />
-                      <p className="mb-0 fw-bold">Cloud Image Upload Disabled</p>
-                      <small className="text-muted">OCR completed successfully</small>
+                      <input
+                        type="text"
+                        className="form-control text-center fw-bold mt-2"
+                        value={verifyData?.fileName || ''}
+                        onChange={(e) => setVerifyData({...verifyData, fileName: e.target.value})}
+                      />
+                      <small className="text-muted mt-1 d-block">Tap to rename receipt</small>
                     </div>
                   </div>
 
@@ -598,10 +603,10 @@ function Receipts() {
 
                 <div className="modal-footer bg-light">
                   <button type="button" className="btn btn-outline-secondary" onClick={handleCancelSave}>
-                    <FaTimes className="me-2" /> Cancel
+                    <FaTimes className="me-2" /> Discard & Next
                   </button>
                   <button type="button" className="btn btn-success px-4" onClick={handleConfirmSave}>
-                    <FaCheck className="me-2" /> Confirm & Save
+                    <FaCheck className="me-2" /> Save & Next
                   </button>
                 </div>
 
