@@ -39,7 +39,7 @@ function App() {
       <ScrollToTopButton />
       
       <Navbar />
-      <main style={{ paddingBottom: isMobile ? '70px' : '0' }}>
+      <main style={{ paddingBottom: isMobile ? 'calc(70px + env(safe-area-inset-bottom))' : '0' }}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />

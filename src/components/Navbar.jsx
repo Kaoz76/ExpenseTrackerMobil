@@ -28,7 +28,7 @@ function Navbar() {
 
   return (
     <nav 
-      className={`navbar navbar-expand-lg border-bottom ${theme === 'dark' ? 'navbar-dark' : 'navbar-light'}`}
+      className={`navbar navbar-expand-lg border-bottom d-none d-md-flex ${theme === 'dark' ? 'navbar-dark' : 'navbar-light'}`}
       style={{ backgroundColor: 'var(--bs-tertiary-bg)' }}
     >
       <div className="container-fluid px-4">

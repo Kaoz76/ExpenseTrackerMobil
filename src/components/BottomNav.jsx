@@ -7,7 +7,7 @@ function BottomNav() {
   const { theme } = useTheme();
 
   return (
-    <div className={`bottom-nav-container d-md-none ${theme === 'dark' ? 'bg-dark border-secondary' : 'bg-white'}`}>
+    <div className="bottom-nav-container d-md-none">
       <NavLink to="/dashboard" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
         <FaHome />
         <span>Home</span>

@@ -9,7 +9,7 @@ import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExcl
 function Settings() {
   const { theme, toggleTheme } = useTheme();
   const { currency, updateCurrency } = useCurrency(); 
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   // Bütçe State'i
   const [budgetInput, setBudgetInput] = useState('');
@@ -324,6 +324,9 @@ function Settings() {
                         <div className="mb-4">
                             <p className="text-muted mb-1 small fw-bold">LOGGED IN AS</p>
                             <p className="fw-medium fs-5">{user?.email}</p>
+                            <button className="btn btn-outline-danger btn-sm mt-2" onClick={logout}>
+                                Logout
+                            </button>
                         </div>
 
                         <hr className="my-4"/>
