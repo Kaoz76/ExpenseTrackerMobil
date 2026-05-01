@@ -498,11 +498,11 @@ function Receipts() {
                     style={{ cursor: 'pointer' }}
                     onClick={() => openModal(receipt.imageUrl, receipt.fileName)}
                   >
-                    <div style={{ flex: 2 }} className="d-flex align-items-center">
+                    <div style={{ flex: 2, minWidth: 0 }} className="d-flex align-items-center pe-2">
                       <img
                         src={receipt.imageUrl || 'https://placehold.co/60x60?text=Receipt'}
                         alt={receipt.fileName}
-                        className="receipt-list-thumbnail me-3"
+                        className="receipt-list-thumbnail me-3 flex-shrink-0"
                         onError={(e) => { e.target.src = 'https://placehold.co/60x60?text=Error'; }}
                         style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
                       />

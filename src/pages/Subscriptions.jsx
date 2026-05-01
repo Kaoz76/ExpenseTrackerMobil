@@ -220,7 +220,7 @@ function Subscriptions() {
                                     <span className="fw-bold fs-5 lh-1 text-body">{sub.dayOfMonth}</span>
                                 </div>
 
-                                <div style={{ flex: 1 }} className="fw-bold fs-5 text-body">
+                                <div style={{ flex: 1, minWidth: 0 }} className="fw-bold fs-5 text-body text-truncate pe-2">
                                     {sub.name}
                                 </div>
 

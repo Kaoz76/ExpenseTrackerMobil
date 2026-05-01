@@ -365,7 +365,7 @@ function ManualEntry() {
                             style={{ cursor: 'pointer' }}
                             onClick={() => handleRowClick(entry)}
                         >
-                            <div style={{ flex: 2 }} className="fw-bold">
+                            <div style={{ flex: 2, minWidth: 0 }} className="fw-bold text-truncate pe-2">
                                 {entry.fileName}
                             </div>
                             
