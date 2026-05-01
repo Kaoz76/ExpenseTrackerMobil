@@ -75,9 +75,10 @@ function Receipts() {
     // Look for total/sum related keywords (added 'topla' in case OCR misses 'm')
     const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
 
-    // Keywords to EXCLUDE (like KDV, VAT, Tax, Indirim, Change, Para ustu, %, KG x, Bank names)
+    // Keywords to EXCLUDE (like KDV, VAT, Tax, Change, Para ustu, %, KG x, Bank names)
     // DİKKAT: "%" işaretini kaldırdık çünkü birçok fişte ürün isminin yanında %1, %8 gibi KDV oranı yazar!
-    const excludeRegex = /(kdv|vat|tax|indirim|ndirim|iskonto|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro)/i;
+    // Indirim/Iskonto artik haric tutulmuyor, asagi tarafta negatif deger olarak parse edilecek.
+    const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro)/i;
 
     // Match numbers with dots or commas as decimal separators (e.g. 776,67 or 776.67 or 1.234,56)
     // Removed space parsing to prevent breaking native matches, just standard floats
@@ -134,17 +135,24 @@ function Receipts() {
         if (matches && matches.length > 0) {
           // Usually the price is the last number on the line
           const lastMatch = matches[matches.length - 1];
-          const parsedPrice = cleanAndParseNumber(lastMatch);
+          let parsedPrice = cleanAndParseNumber(lastMatch);
 
           if (parsedPrice) {
             // Find whatever text is before this price match
-            let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_]/g, '').trim();
+            // Eksi isaretini ve diger gereksiz karakterleri temizle
+            let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_-]/g, '').trim();
 
             // Sadece 2 karakterden büyükse VE içinde en az BİR HARF barındırıyorsa ürün say
             // (Bu sayede sadece "%1 27,00" gibi harfsiz satırları süzmüş oluyoruz)
             if (namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
               // Capitalize words for nice display
               let formattedName = namePart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+              
+              // Eger satir indirim veya iskonto iceriyorsa, fiyati negatif yap
+              if (/(indirim|ndirim|iskonto)/i.test(line)) {
+                parsedPrice = -Math.abs(parsedPrice);
+              }
+
               extractedItems.push({
                 name: formattedName,
                 price: parsedPrice
