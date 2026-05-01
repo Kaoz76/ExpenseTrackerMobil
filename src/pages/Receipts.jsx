@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus } from 'react-icons/fa';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -351,6 +351,21 @@ function Receipts() {
     setVerifyData({ ...verifyData, items: updatedItems });
   };
 
+  const handleRemoveItem = (index) => {
+    if (!verifyData) return;
+    const updatedItems = verifyData.items.filter((_, i) => i !== index);
+    setVerifyData({ ...verifyData, items: updatedItems });
+  };
+
+  const handleAddItem = () => {
+    if (!verifyData) return;
+    const newItem = { name: '', price: 0, type: '', brand: '', size: '' };
+    const updatedItems = [...(verifyData.items || []), newItem];
+    setVerifyData({ ...verifyData, items: updatedItems });
+    if (!showItems) setShowItems(true); // Open accordion if closed
+  };
+
+
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
     if (!verifyData) return;
@@ -586,7 +601,7 @@ function Receipts() {
                   </div>
 
                   {/* Kalem Detayları - Expandable Area */}
-                  {verifyData && verifyData.items && verifyData.items.length > 0 && (
+                  {verifyData && (
                     <div className="border rounded mb-3 overflow-hidden">
                       <button
                         className="btn btn-light w-100 d-flex justify-content-between align-items-center p-3 text-secondary"
@@ -594,16 +609,23 @@ function Receipts() {
                         style={{ borderRadius: 0, border: 'none', borderBottom: showItems ? '1px solid #dee2e6' : 'none' }}
                       >
                         <span className="fw-bold text-dark">
-                          Parsed Items <span className="badge bg-secondary ms-2">{verifyData.items.length}</span>
+                          Parsed Items <span className="badge bg-secondary ms-2">{(verifyData.items || []).length}</span>
                         </span>
                         <span>{showItems ? <FaTimes size={14} className="text-secondary" /> : <FaListAlt size={14} className="text-secondary" />}</span>
                       </button>
 
                       {showItems && (
-                        <div className="bg-white" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                        <div className="bg-white" style={{ maxHeight: '250px', overflowY: 'auto' }}>
                           <ul className="list-group list-group-flush">
-                            {verifyData.items.map((item, idx) => (
+                            {(verifyData.items || []).map((item, idx) => (
                               <li key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                                <button 
+                                  className="btn btn-sm btn-outline-danger me-2 border-0" 
+                                  onClick={() => handleRemoveItem(idx)}
+                                  title="Remove Item"
+                                >
+                                  <FaTrash size={12} />
+                                </button>
                                 <input 
                                   type="text" 
                                   className="form-control form-control-sm me-2 text-secondary" 
@@ -626,6 +648,14 @@ function Receipts() {
                               </li>
                             ))}
                           </ul>
+                          <div className="p-2 border-top bg-light">
+                            <button 
+                              className="btn btn-sm btn-outline-primary w-100 d-flex justify-content-center align-items-center"
+                              onClick={handleAddItem}
+                            >
+                              <FaPlus className="me-2" /> Add Item
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
