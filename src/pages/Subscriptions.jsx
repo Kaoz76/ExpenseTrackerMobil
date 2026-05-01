@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { FaPlus, FaTrash, FaCalendarCheck, FaExclamationTriangle, FaSync } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
@@ -61,7 +61,7 @@ function Subscriptions() {
         name: name,
         price: parseFloat(price),
         dayOfMonth: parseInt(dayOfMonth),
-        createdAt: new Date()
+        createdAt: Timestamp.now()
       });
       
       setName('');

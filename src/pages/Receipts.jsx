@@ -5,7 +5,7 @@ import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, getDoc, Timestamp } from "firebase/firestore";
 import ImageModal from '../components/ImageModal';
 import { Link } from 'react-router-dom';
 import Tesseract from 'tesseract.js';
@@ -300,7 +300,7 @@ function Receipts() {
         imageUrl: null, 
         fileName: `Receipt ${baseNumber + i + 1}`,
         originalFileName: file.name,
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
         title: `Receipt ${baseNumber + i + 1}`,
         date: new Date().toLocaleDateString(),
         isManual: false,
@@ -376,7 +376,7 @@ function Receipts() {
         price: parseFloat(item.price) || 0
       }));
 
-      await addDoc(collection(db, "receipts"), {
+      const newReceiptData = {
         userId: verifyData.userId,
         imageUrl: verifyData.imageUrl,
         fileName: verifyData.fileName,
@@ -385,8 +385,11 @@ function Receipts() {
         date: verifyData.date,
         isManual: verifyData.isManual,
         items: itemsToSave,
-        price: parseFloat(verifiedPrice) || 0 // Kullanıcının girdiği fiyatı al
-      });
+        price: parseFloat(verifiedPrice) || 0
+      };
+
+      const docRef = await addDoc(collection(db, "receipts"), newReceiptData);
+      setReceipts(prev => [{ id: docRef.id, ...newReceiptData }, ...prev]);
 
       moveToNextOrClose(processedScans);
 
@@ -418,6 +421,7 @@ function Receipts() {
     try {
       const docRef = doc(db, "receipts", receiptId);
       await deleteDoc(docRef); // Sadece veritabanı kaydını sil
+      setReceipts(prev => prev.filter(receipt => receipt.id !== receiptId));
     } catch (err) {
       console.error("Error deleting document: ", err);
       alert("Failed to delete receipt.");
