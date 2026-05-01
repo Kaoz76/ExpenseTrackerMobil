@@ -4,7 +4,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
 import { formatDateTime } from '../utils/dateFormatter';
 
@@ -20,6 +20,30 @@ function ManualEntry() {
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (location.state && location.state.scannedData) {
+      const { items, fileName } = location.state.scannedData;
+      if (fileName) {
+        setMarketName(fileName);
+      }
+      if (items && items.length > 0) {
+        const mappedProducts = items.map((item, index) => ({
+          id: Date.now() + index,
+          type: '',
+          brand: '',
+          name: item.name || '',
+          size: '',
+          price: item.price || ''
+        }));
+        setProducts(mappedProducts);
+      }
+      // Clear state so it doesn't repopulate on refresh
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (user) {
