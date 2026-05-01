@@ -15,7 +15,7 @@ import { formatDateTime } from '../utils/dateFormatter';
 
 function Receipts() {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [statusText, setStatusText] = useState('');
@@ -344,11 +344,23 @@ function Receipts() {
     }
   };
 
+  const handleItemChange = (index, field, value) => {
+    if (!verifyData) return;
+    const updatedItems = [...verifyData.items];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    setVerifyData({ ...verifyData, items: updatedItems });
+  };
+
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
     if (!verifyData) return;
 
     try {
+      const itemsToSave = (verifyData.items || []).map(item => ({
+        ...item,
+        price: parseFloat(item.price) || 0
+      }));
+
       await addDoc(collection(db, "receipts"), {
         userId: verifyData.userId,
         imageUrl: verifyData.imageUrl,
@@ -357,7 +369,7 @@ function Receipts() {
         title: verifyData.title,
         date: verifyData.date,
         isManual: verifyData.isManual,
-        items: verifyData.items,
+        items: itemsToSave,
         price: parseFloat(verifiedPrice) || 0 // Kullanıcının girdiği fiyatı al
       });
 
@@ -561,7 +573,7 @@ function Receipts() {
                   <div className="form-group mb-4">
                     <label className="form-label fw-bold">Total Price</label>
                     <div className="input-group input-group-lg">
-                      <span className="input-group-text">$</span>
+                      <span className="input-group-text">{currency?.symbol || '$'}</span>
                       <input
                         type="number"
                         className="form-control"
@@ -592,10 +604,25 @@ function Receipts() {
                           <ul className="list-group list-group-flush">
                             {verifyData.items.map((item, idx) => (
                               <li key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-                                <span className="text-truncate me-3 small text-secondary" style={{ maxWidth: '70%', fontWeight: '500' }}>
-                                  {item.name}
-                                </span>
-                                <span className="fw-bold small text-primary">{formatPrice(item.price)}</span>
+                                <input 
+                                  type="text" 
+                                  className="form-control form-control-sm me-2 text-secondary" 
+                                  style={{ fontWeight: '500' }}
+                                  value={item.name} 
+                                  onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
+                                  placeholder="Item Name"
+                                />
+                                <div className="input-group input-group-sm" style={{ width: '120px' }}>
+                                  <span className="input-group-text bg-light text-primary fw-bold border-end-0">{currency?.symbol || '$'}</span>
+                                  <input 
+                                    type="number" 
+                                    step="0.01"
+                                    className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0" 
+                                    value={item.price} 
+                                    onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
+                                    placeholder="Price"
+                                  />
+                                </div>
                               </li>
                             ))}
                           </ul>
