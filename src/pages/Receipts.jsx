@@ -275,8 +275,9 @@ function Receipts() {
           extractedData = extractDataFromText(base64Text);
         } else {
           // WEB FALLBACK (TESSERACT)
+          const fileUrl = URL.createObjectURL(file);
           const result = await Tesseract.recognize(
-            file,
+            fileUrl,
             'tur+eng',
             {
               logger: m => {
@@ -287,6 +288,7 @@ function Receipts() {
             }
           );
           extractedData = extractDataFromText(result.data.text);
+          URL.revokeObjectURL(fileUrl);
         }
       } catch (ocrError) {
         console.error("OCR Failed Details:", ocrError);
@@ -378,7 +380,7 @@ function Receipts() {
 
       const newReceiptData = {
         userId: verifyData.userId,
-        imageUrl: verifyData.imageUrl,
+        imageUrl: null,
         fileName: verifyData.fileName,
         createdAt: verifyData.createdAt,
         title: verifyData.title,
