@@ -14,6 +14,7 @@
     "@capacitor/app": "^8.0.1",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
+    "@capacitor/local-notifications": "^8.0.2",
     "@carviz/capacitor-ocr": "^8.0.1",
     "@popperjs/core": "^2.11.8",
     "axios": "^1.12.2",
