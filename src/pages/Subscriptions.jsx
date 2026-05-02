@@ -26,8 +26,7 @@ function Subscriptions() {
     if (user) {
       const q = query(
         collection(db, "subscriptions"),
-        where("userId", "==", user.uid),
-        orderBy("dayOfMonth", "asc") 
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -35,6 +34,14 @@ function Subscriptions() {
           id: doc.id,
           ...doc.data()
         }));
+
+        // Sort locally to avoid Firebase Composite Index requirement
+        subsData.sort((a, b) => {
+          const dayA = Number(a.dayOfMonth) || 0;
+          const dayB = Number(b.dayOfMonth) || 0;
+          return dayA - dayB;
+        });
+
         setSubscriptions(subsData);
         setLoading(false);
       }, (error) => {

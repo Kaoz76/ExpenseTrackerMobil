@@ -51,8 +51,7 @@ function ManualEntry() {
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
-        where("isManual", "==", true),
-        orderBy("createdAt", "desc")
+        where("isManual", "==", true)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -60,6 +59,14 @@ function ManualEntry() {
           id: doc.id,
           ...doc.data()
         }));
+
+        // Sort locally to bypass Firebase composite index requirement
+        entries.sort((a, b) => {
+          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return timeB - timeA;
+        });
+
         setManualEntries(entries);
         setLoadingEntries(false);
       }, (error) => {
@@ -134,7 +141,6 @@ function ManualEntry() {
       };
 
       const docRef = await addDoc(collection(db, "receipts"), newEntryData);
-      setManualEntries(prev => [{ id: docRef.id, ...newEntryData }, ...prev]);
 
       setSuccess('Data saved successfully! You can see it in the list below.');
       setMarketName('');
@@ -154,7 +160,6 @@ function ManualEntry() {
     if (!window.confirm("Are you sure you want to delete this entry?")) return;
     try {
       await deleteDoc(doc(db, "receipts", entryId));
-      setManualEntries(prev => prev.filter(entry => entry.id !== entryId));
     } catch (err) {
       console.error("Error deleting document: ", err);
       alert("Failed to delete entry.");

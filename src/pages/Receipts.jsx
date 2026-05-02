@@ -37,8 +37,7 @@ function Receipts() {
     if (user) {
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -50,6 +49,14 @@ function Receipts() {
             receiptsData.push({ id: doc.id, ...doc.data() });
           }
         });
+        
+        // Sort locally to bypass Firebase composite index requirement
+        receiptsData.sort((a, b) => {
+          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return timeB - timeA;
+        });
+
         setReceipts(receiptsData);
         setLoadingReceipts(false);
       }, (error) => {
@@ -399,7 +406,6 @@ function Receipts() {
       };
 
       const docRef = await addDoc(collection(db, "receipts"), newReceiptData);
-      setReceipts(prev => [{ id: docRef.id, ...newReceiptData }, ...prev]);
 
       moveToNextOrClose(processedScans);
 
@@ -431,7 +437,6 @@ function Receipts() {
     try {
       const docRef = doc(db, "receipts", receiptId);
       await deleteDoc(docRef); // Sadece veritabanı kaydını sil
-      setReceipts(prev => prev.filter(receipt => receipt.id !== receiptId));
     } catch (err) {
       console.error("Error deleting document: ", err);
       alert("Failed to delete receipt.");
