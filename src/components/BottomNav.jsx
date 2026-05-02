@@ -7,24 +7,34 @@ function BottomNav() {
   const { theme } = useTheme();
 
   return (
-    <div className="bottom-nav-container d-md-none">
-      <NavLink to="/dashboard" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-        <FaHome />
-        <span>Home</span>
+
+    <nav
+      className={`bottom-nav-container d-md-none ${theme === 'dark' ? 'bg-dark border-top border-secondary' : 'bg-white border-top'}`}
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom)', // Modern telefonlar için alt boşluk
+        zIndex: 1050 // Diğer elemanların altında kalmaması için
+      }}
+    >
+      <NavLink to="/dashboard" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active text-primary' : 'text-secondary'}`}>
+        <FaHome className="fs-4 mb-1" />
+        <span style={{ fontSize: '0.75rem' }}>Home</span>
       </NavLink>
-      <NavLink to="/receipts" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-        <FaCamera />
-        <span>Scan</span>
+
+      <NavLink to="/receipts" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active text-primary' : 'text-secondary'}`}>
+        <FaCamera className="fs-4 mb-1" />
+        <span style={{ fontSize: '0.75rem' }}>Scan</span>
       </NavLink>
-      <NavLink to="/texts" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-        <FaPlusCircle />
-        <span>Add</span>
+
+      <NavLink to="/texts" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active text-primary' : 'text-secondary'}`}>
+        <FaPlusCircle className="fs-4 mb-1" />
+        <span style={{ fontSize: '0.75rem' }}>Add</span>
       </NavLink>
-      <NavLink to="/settings" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}>
-        <FaCog />
-        <span>Settings</span>
+
+      <NavLink to="/settings" className={({ isActive }) => `bottom-nav-item ${isActive ? 'active text-primary' : 'text-secondary'}`}>
+        <FaCog className="fs-4 mb-1" />
+        <span style={{ fontSize: '0.75rem' }}>Settings</span>
       </NavLink>
-    </div>
+    </nav>
   );
 }
 

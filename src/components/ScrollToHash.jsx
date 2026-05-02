@@ -5,21 +5,30 @@ export default function ScrollToHash() {
   const { pathname, hash, key } = useLocation();
 
   useEffect(() => {
-    // Eğer URL'de hash (#) varsa (örn: #scanned-section)
+    let timeoutId; // Timeout'u takip etmek için değişken oluşturduk
+
     if (hash) {
-      // O ID'ye sahip elementi bul
-      const element = document.getElementById(hash.replace("#", ""));
-      if (element) {
-        // Oraya yumuşakça kaydır
-        setTimeout(() => {
+      // setTimeout içine aldık: Bekledikten SONRA elementi ara
+      timeoutId = setTimeout(() => {
+        const element = document.getElementById(hash.replace("#", ""));
+        if (element) {
           element.scrollIntoView({ behavior: "smooth" });
-        }, 100); // Sayfa yüklenmesi için çok kısa bir gecikme
-      }
+        }
+      }, 100);
+      // Not: Eğer Firebase verisi geç geliyorsa bu süreyi 300-500 yapabilirsin.
+
     } else {
-      // Hash yoksa sayfanın en tepesine çık (Normal sayfa geçişi)
       window.scrollTo(0, 0);
     }
-  }, [pathname, hash, key]); // Sayfa veya hash değiştiğinde çalış
+
+    // CLEANUP (TEMİZLİK) FONKSİYONU:
+    // URL değişirse veya bileşen kapanırsa, bekleyen kaydırma işlemini iptal et.
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [pathname, hash, key]);
 
   return null;
 }
