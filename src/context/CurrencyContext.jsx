@@ -1,17 +1,31 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const CurrencyContext = createContext();
 
+// Desteklenen para birimleri haritası (Geliştirme 3)
+const CURRENCY_MAP = {
+  TRY: { code: 'TRY', symbol: '₺', locale: 'tr-TR' },
+  EUR: { code: 'EUR', symbol: '€', locale: 'de-DE' },
+  GBP: { code: 'GBP', symbol: '£', locale: 'en-GB' },
+  JPY: { code: 'JPY', symbol: '¥', locale: 'ja-JP' },
+  USD: { code: 'USD', symbol: '$', locale: 'en-US' }
+};
+
 export const CurrencyProvider = ({ children }) => {
   const { user } = useAuth();
 
-  // Başlangıçta localStorage'a bak (Hız için), yoksa varsayılan USD
+  // Başlangıçta localStorage'a bak (Geliştirme 2: Güvenli JSON.parse)
   const [currency, setCurrency] = useState(() => {
-    const saved = localStorage.getItem('app_currency');
-    return saved ? JSON.parse(saved) : { code: 'USD', symbol: '$', locale: 'en-US' };
+    try {
+      const saved = localStorage.getItem('app_currency');
+      return saved ? JSON.parse(saved) : CURRENCY_MAP['USD'];
+    } catch (error) {
+      console.error("Local storage parse error, resetting currency", error);
+      return CURRENCY_MAP['USD'];
+    }
   });
 
   // KULLANICI GİRİŞ YAPINCA TERCİHİNİ ÇEK
@@ -23,10 +37,8 @@ export const CurrencyProvider = ({ children }) => {
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists() && docSnap.data().currency) {
-            // Veritabanında kayıtlı para birimi varsa onu kullan
             const dbCurrency = docSnap.data().currency;
             setCurrency(dbCurrency);
-            // LocalStorage'ı da eşle
             localStorage.setItem('app_currency', JSON.stringify(dbCurrency));
           }
         } catch (error) {
@@ -37,75 +49,54 @@ export const CurrencyProvider = ({ children }) => {
     }
   }, [user]);
 
-  // GÜNCELLEME VE KAYDETME FONKSİYONU
-  const updateCurrency = async (code) => {
-    let newCurrency = { code: 'USD', symbol: '$', locale: 'en-US' };
+  // GÜNCELLEME VE KAYDETME FONKSİYONU (Geliştirme 1: useCallback)
+  const updateCurrency = useCallback(async (code) => {
+    // Seçilen koda göre objeyi oluştur (Switch/Case yerine haritadan çekiyoruz)
+    const newCurrency = CURRENCY_MAP[code] || CURRENCY_MAP['USD'];
 
-    // Seçilen koda göre objeyi oluştur
-    switch (code) {
-      case 'TRY':
-        newCurrency = { code: 'TRY', symbol: '₺', locale: 'tr-TR' };
-        break;
-      case 'EUR':
-        newCurrency = { code: 'EUR', symbol: '€', locale: 'de-DE' };
-        break;
-      case 'GBP':
-        newCurrency = { code: 'GBP', symbol: '£', locale: 'en-GB' };
-        break;
-      case 'JPY':
-        newCurrency = { code: 'JPY', symbol: '¥', locale: 'ja-JP' };
-        break;
-      case 'USD':
-      default:
-        newCurrency = { code: 'USD', symbol: '$', locale: 'en-US' };
-        break;
-    }
-
-    // State'i hemen güncelle (Anlık tepki için)
     setCurrency(newCurrency);
-
-    // LocalStorage'a kaydet (Yedek)
     localStorage.setItem('app_currency', JSON.stringify(newCurrency));
 
-    // Kullanıcı giriş yapmışsa Firestore'a kaydet
     if (user) {
       try {
         await setDoc(doc(db, "users", user.uid), {
           currency: newCurrency
-        }, { merge: true }); // Diğer verileri silmeden sadece currency'i güncelle
+        }, { merge: true });
       } catch (error) {
         console.error("Error saving currency preference:", error);
       }
     }
-  };
+  }, [user]); // user bağımlılığı eklendi
 
-  // Fiyat formatlama yardımcısı (Android/Mobil Uyumlu - Kurşun Geçirmez)
-  const formatPrice = (amount) => {
+  // Fiyat formatlama yardımcısı (Geliştirme 1: useCallback)
+  const formatPrice = useCallback((amount) => {
     const validAmount = Number(amount) || 0;
-
-    // 1. Güvenlik Katmanı: currency objesi veya kodu yoksa ZORLA 'USD' yap
     const safeCurrencyCode = (currency && currency.code) ? currency.code : 'USD';
     const safeLocale = (currency && currency.locale) ? currency.locale : 'en-US';
 
     try {
-      // 2. Güvenlik Katmanı: Normal formatlamayı dene
       return new Intl.NumberFormat(safeLocale, {
         style: 'currency',
         currency: safeCurrencyCode
       }).format(validAmount);
     } catch (error) {
-      // 3. Güvenlik Katmanı: Android Emulator yine de çökerse beyaz ekran verme, manuel yazdır!
       const fallbackSymbol = (currency && currency.symbol) ? currency.symbol : '$';
       return `${fallbackSymbol}${validAmount.toFixed(2)}`;
     }
-  };
+  }, [currency]); // currency bağımlılığı eklendi
+
+  // Gereksiz render'ları önlemek için value objesini hafızaya alıyoruz (Geliştirme 1: useMemo)
+  const contextValue = useMemo(() => ({
+    currency,
+    updateCurrency,
+    formatPrice
+  }), [currency, updateCurrency, formatPrice]);
 
   return (
-    <CurrencyContext.Provider value={{ currency, updateCurrency, formatPrice }}>
+    <CurrencyContext.Provider value={contextValue}>
       {children}
     </CurrencyContext.Provider>
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useCurrency = () => useContext(CurrencyContext);
