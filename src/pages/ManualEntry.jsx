@@ -14,7 +14,7 @@ function ManualEntry() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [marketName, setMarketName] = useState('');
+  const [storeName, setStoreName] = useState('');
   const [products, setProducts] = useState([{ id: Date.now(), type: '', brand: '', name: '', size: '', price: '' }]);
   const [manualEntries, setManualEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
@@ -27,7 +27,7 @@ function ManualEntry() {
     if (location.state && location.state.scannedData) {
       const { items, fileName } = location.state.scannedData;
       if (fileName) {
-        setMarketName(fileName);
+        setStoreName(fileName);
       }
       if (items && items.length > 0) {
         const mappedProducts = items.map((item, index) => ({
@@ -110,8 +110,8 @@ function ManualEntry() {
 
     if (!user) return;
 
-    if (!marketName.trim()) {
-      setError('Please enter a Market Name.');
+    if (!storeName.trim()) {
+      setError('Please enter a Store Name.');
       return;
     }
 
@@ -130,8 +130,8 @@ function ManualEntry() {
 
       const newEntryData = {
         userId: user.uid,
-        fileName: marketName,
-        title: marketName,
+        fileName: storeName,
+        title: storeName,
         imageUrl: null,
         isManual: true,
         date: new Date().toLocaleDateString(),
@@ -143,7 +143,7 @@ function ManualEntry() {
       const docRef = await addDoc(collection(db, "receipts"), newEntryData);
 
       setSuccess('Data saved successfully! You can see it in the list below.');
-      setMarketName('');
+      setStoreName('');
       setProducts([{ id: Date.now(), type: '', brand: '', name: '', size: '', price: '' }]);
       setTimeout(() => setSuccess(''), 3000);
 
@@ -201,9 +201,9 @@ function ManualEntry() {
             <div className="col-12 mb-4">
               <div className="card border-0 shadow-sm p-4">
                 <div className="mb-4">
-                  <h5 className="fw-bold mb-3">Market Information</h5>
-                  <label className="form-label text-muted">Market Name</label>
-                  <input type="text" className="form-control" placeholder="e.g., Central Market" value={marketName} onChange={(e) => setMarketName(e.target.value)} disabled={isDisabled} />
+                  <h5 className="fw-bold mb-3">Store Information</h5>
+                  <label className="form-label text-muted">Store Name</label>
+                  <input type="text" className="form-control" placeholder="e.g., Walmart" value={storeName} onChange={(e) => setStoreName(e.target.value)} disabled={isDisabled} />
                 </div>
                 <div className="mb-4">
                   <h5 className="fw-bold mb-3">Product Details</h5>
@@ -353,7 +353,7 @@ function ManualEntry() {
             <div className="card shadow-sm border-0">
               <div className="list-group list-group-flush">
                 <div className="list-group-item bg-body-tertiary text-muted fw-bold small text-uppercase d-flex align-items-center">
-                  <div style={{ flex: 2 }}>Market Name</div>
+                  <div style={{ flex: 2 }}>Store Name</div>
                   <div style={{ flex: 1 }}>Date & Time</div>
                   <div style={{ flex: 1, textAlign: 'right' }}>Total Price</div>
                   <div style={{ width: '40px' }}></div>

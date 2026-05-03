@@ -60,7 +60,7 @@ function ProductDetails() {
                 foundItems.push({
                   id: doc.id + item.name,
                   price: Number(item.price),
-                  market: data.fileName,
+                  store: data.fileName,
                   date: data.date,
                   createdAt: data.createdAt,
                   size: item.size
@@ -157,7 +157,7 @@ function ProductDetails() {
                     </h3>
                     {minRecord && (
                         <div className="mt-1">
-                            <div className="fw-bold text-success-emphasis">{minRecord.market}</div>
+                            <div className="fw-bold text-success-emphasis">{minRecord.store}</div>
                             <div className="badge bg-success text-white mt-2 d-inline-flex align-items-center">
                                 <FaThumbsUp className="me-1" /> Öneriliyor
                             </div>
@@ -178,7 +178,7 @@ function ProductDetails() {
                     </h3>
                     {maxRecord && (
                         <div className="mt-1">
-                            <div className="fw-bold text-danger-emphasis">{maxRecord.market}</div>
+                            <div className="fw-bold text-danger-emphasis">{maxRecord.store}</div>
                             <div className="badge bg-danger text-white mt-2 d-inline-flex align-items-center">
                                 <FaThumbsDown className="me-1" /> Önerilmiyor
                             </div>
@@ -201,7 +201,7 @@ function ProductDetails() {
                   <thead className="table-secondary">
                     <tr>
                       <th className="py-3 ps-4">Date</th>
-                      <th className="py-3">Market</th>
+                      <th className="py-3">Store</th>
                       <th className="py-3">Size</th>
                       <th className="py-3 text-end pe-4">Price</th>
                     </tr>
@@ -210,7 +210,7 @@ function ProductDetails() {
                     {history.map((record, idx) => (
                       <tr key={idx}>
                         <td className="ps-4 text-body-secondary fw-medium">{record.date}</td>
-                        <td className="fw-bold">{record.market}</td>
+                        <td className="fw-bold">{record.store}</td>
                         <td>{record.size || '-'}</td>
                         <td className="text-end pe-4 fw-bold text-primary">{formatPrice(record.price)}</td>
                       </tr>

@@ -49,7 +49,7 @@ function Receipts() {
             receiptsData.push({ id: doc.id, ...doc.data() });
           }
         });
-        
+
         // Sort locally to bypass Firebase composite index requirement
         receiptsData.sort((a, b) => {
           const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
@@ -154,7 +154,7 @@ function Receipts() {
             if (namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
               // Capitalize words for nice display
               let formattedName = namePart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-              
+
               // Eger satir indirim veya iskonto iceriyorsa, fiyati negatif yap
               if (/(indirim|ndirim|iskonto)/i.test(line)) {
                 parsedPrice = -Math.abs(parsedPrice);
@@ -203,7 +203,7 @@ function Receipts() {
 
     setIsUploading(true);
     setError('');
-    
+
     let results = [];
 
     for (let i = 0; i < filesToProcess.length; i++) {
@@ -314,11 +314,11 @@ function Receipts() {
 
       results.push({
         userId: user.uid,
-        imageUrl: null, 
-        fileName: `Receipt ${baseNumber + i + 1}`,
+        imageUrl: null,
+        fileName: '',
         originalFileName: file.name,
         createdAt: Timestamp.now(),
-        title: `Receipt ${baseNumber + i + 1}`,
+        title: '',
         date: new Date().toLocaleDateString(),
         isManual: false,
         items: extractedData.items || [],
@@ -347,9 +347,9 @@ function Receipts() {
   const moveToNextOrClose = (currentQueue) => {
     const updatedQueue = [...currentQueue];
     updatedQueue.shift(); // İlk sıradakini kaldır
-    
+
     setProcessedScans(updatedQueue);
-    
+
     if (updatedQueue.length > 0) {
       setVerifyData(updatedQueue[0]);
       setVerifiedPrice(updatedQueue[0].totalPrice);
@@ -385,7 +385,10 @@ function Receipts() {
 
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
-    if (!verifyData) return;
+    if (!verifyData.fileName || !verifyData.fileName.trim()) {
+      alert("Please enter a Store Name before saving.");
+      return;
+    }
 
     try {
       const itemsToSave = (verifyData.items || []).map(item => ({
@@ -398,7 +401,7 @@ function Receipts() {
         imageUrl: null,
         fileName: verifyData.fileName,
         createdAt: verifyData.createdAt,
-        title: verifyData.title,
+        title: verifyData.fileName,
         date: verifyData.date,
         isManual: verifyData.isManual,
         items: itemsToSave,
@@ -515,7 +518,7 @@ function Receipts() {
             <div className="card shadow-sm border-0">
               <div className="list-group list-group-flush">
                 <div className="list-group-item bg-body-tertiary text-body-secondary fw-bold small text-uppercase d-flex align-items-center">
-                  <div style={{ flex: 2 }}>File Name</div>
+                  <div style={{ flex: 2 }}>Store Name</div>
                   <div style={{ flex: 1 }}>Date & Time</div>
                   <div style={{ flex: 1, textAlign: 'right' }}>Total Price (OCR)</div>
                   <div style={{ width: '40px' }}></div>
@@ -598,9 +601,10 @@ function Receipts() {
                         type="text"
                         className="form-control text-center fw-bold mt-2"
                         value={verifyData?.fileName || ''}
-                        onChange={(e) => setVerifyData({...verifyData, fileName: e.target.value})}
+                        onChange={(e) => setVerifyData({ ...verifyData, fileName: e.target.value })}
+                        placeholder="Store Name"
                       />
-                      <small className="text-muted mt-1 d-block">Tap to rename receipt</small>
+                      <small className="text-muted mt-1 d-block">Enter store name</small>
                     </div>
                   </div>
 
@@ -638,28 +642,28 @@ function Receipts() {
                           <ul className="list-group list-group-flush">
                             {(verifyData.items || []).map((item, idx) => (
                               <li key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-                                <button 
-                                  className="btn btn-sm btn-outline-danger me-2 border-0" 
+                                <button
+                                  className="btn btn-sm btn-outline-danger me-2 border-0"
                                   onClick={() => handleRemoveItem(idx)}
                                   title="Remove Item"
                                 >
                                   <FaTrash size={12} />
                                 </button>
-                                <input 
-                                  type="text" 
-                                  className="form-control form-control-sm me-2 text-secondary" 
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm me-2 text-secondary"
                                   style={{ fontWeight: '500' }}
-                                  value={item.name} 
+                                  value={item.name}
                                   onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
                                   placeholder="Item Name"
                                 />
                                 <div className="input-group input-group-sm" style={{ width: '120px' }}>
                                   <span className="input-group-text bg-light text-primary fw-bold border-end-0">{currency?.symbol || '$'}</span>
-                                  <input 
-                                    type="number" 
+                                  <input
+                                    type="number"
                                     step="0.01"
-                                    className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0" 
-                                    value={item.price} 
+                                    className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0"
+                                    value={item.price}
                                     onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
                                     placeholder="Price"
                                   />
@@ -668,7 +672,7 @@ function Receipts() {
                             ))}
                           </ul>
                           <div className="p-2 border-top bg-light">
-                            <button 
+                            <button
                               className="btn btn-sm btn-outline-primary w-100 d-flex justify-content-center align-items-center"
                               onClick={handleAddItem}
                             >
