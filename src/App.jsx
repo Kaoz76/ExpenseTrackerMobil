@@ -13,6 +13,7 @@ import ManualEntry from './pages/ManualEntry';
 import Subscriptions from './pages/Subscriptions';
 import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
+import ReceiptDetail from './pages/ReceiptDetail';
 import Stores from './pages/Stores';
 import StoreDetails from './pages/StoreDetails';
 import LoginPage from './pages/LoginPage';
@@ -44,6 +45,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/receipts" element={<Receipts />} />
+          <Route path="/receipts/:receiptId" element={<ReceiptDetail />} />
           <Route path="/texts" element={<ManualEntry />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/products" element={<Products />} />
