@@ -7,7 +7,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, getDoc, Timestamp } from "firebase/firestore";
 import ImageModal from '../components/ImageModal';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Tesseract from 'tesseract.js';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
@@ -16,6 +16,7 @@ import { formatDateTime } from '../utils/dateFormatter';
 function Receipts() {
   const { user } = useAuth();
   const { formatPrice, currency } = useCurrency();
+  const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [statusText, setStatusText] = useState('');
@@ -533,7 +534,7 @@ function Receipts() {
                     key={receipt.id}
                     className="list-group-item list-group-item-action d-flex align-items-center p-3"
                     style={{ cursor: 'pointer' }}
-                    onClick={() => openModal(receipt.imageUrl, receipt.fileName)}
+                    onClick={() => navigate(`/receipts/${receipt.id}`)}
                   >
                     <div style={{ flex: 2, minWidth: 0 }} className="d-flex align-items-center pe-2">
                       <img
