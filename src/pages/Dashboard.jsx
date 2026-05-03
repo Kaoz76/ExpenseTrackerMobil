@@ -82,9 +82,7 @@ function Dashboard() {
 
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        where("createdAt", ">=", startOfMonth),
-        where("createdAt", "<=", endOfMonth)
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -93,8 +91,12 @@ function Dashboard() {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          total += Number(data.price) || 0;
-          count++;
+          const createdAtDate = data.createdAt?.toDate ? data.createdAt.toDate() : null;
+          
+          if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
+            total += Number(data.price) || 0;
+            count++;
+          }
         });
 
         setMonthlyStats({
@@ -119,9 +121,7 @@ function Dashboard() {
     if (user) {
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc"),
-        limit(3)
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -130,7 +130,14 @@ function Dashboard() {
           scansData.push({ id: doc.id, ...doc.data() });
         });
 
-        setRecentScans(scansData);
+        // Sort locally by createdAt desc and limit to 3
+        scansData.sort((a, b) => {
+          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return timeB - timeA;
+        });
+
+        setRecentScans(scansData.slice(0, 3));
         setLoadingScans(false);
       }, (error) => {
         console.error("Error fetching recent scans: ", error);
