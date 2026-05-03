@@ -5,7 +5,6 @@ import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import ScrollToHash from './components/ScrollToHash';
 import DynamicFavicon from './components/DynamicFavicon';
-import NotificationManager from './components/NotificationManager';
 import ScrollToTopButton from './components/ScrollToTopButton';
 
 import Dashboard from './pages/Dashboard';
@@ -35,15 +34,15 @@ function App() {
     <div>
       <ScrollToHash />
       <DynamicFavicon />
-      <NotificationManager />
+      {/* NotificationManager BURADAN SİLİNDİ! 🚀 */}
       <ScrollToTopButton />
-      
+
       <Navbar />
       <main style={{ paddingBottom: isMobile ? 'calc(70px + env(safe-area-inset-bottom))' : '0' }}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          
+
           <Route path="/receipts" element={<Receipts />} />
           <Route path="/texts" element={<ManualEntry />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
@@ -51,7 +50,7 @@ function App() {
           <Route path="/products/:productId" element={<ProductDetails />} />
           <Route path="/stores" element={<Stores />} />
           <Route path="/stores/:storeId" element={<StoreDetails />} />
-          
+
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
 
