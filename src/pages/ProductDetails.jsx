@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { FaHistory, FaTag, FaChartLine, FaThumbsUp, FaThumbsDown } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -13,6 +13,7 @@ function ProductDetails() {
 
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [productType, setProductType] = useState(''); // Ürün türü için yeni state
@@ -58,7 +59,7 @@ function ProductDetails() {
                 }
 
                 foundItems.push({
-                  id: doc.id + item.name,
+                  id: doc.id,
                   price: Number(item.price),
                   store: data.fileName,
                   date: data.date,
@@ -208,7 +209,11 @@ function ProductDetails() {
                   </thead>
                   <tbody>
                     {history.map((record, idx) => (
-                      <tr key={idx}>
+                      <tr 
+                        key={idx} 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => navigate(`/receipts/${record.id}`)}
+                      >
                         <td className="ps-4 text-body-secondary fw-medium">{record.date}</td>
                         <td className="fw-bold">{record.store}</td>
                         <td>{record.size || '-'}</td>

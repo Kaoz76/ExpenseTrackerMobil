@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaHistory, FaArrowLeft, FaStore, FaChartPie, FaMoneyBillWave, FaShoppingBasket, FaReceipt, FaFileAlt } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -12,6 +12,7 @@ function StoreDetails() {
   const { storeId } = useParams();
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const navigate = useNavigate();
   
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,15 +120,7 @@ function StoreDetails() {
     }
   }, [user, targetStoreName]);
 
-  const handleRowClick = (record) => {
-    if (record.isManual) {
-      setSelectedReceipt(record);
-      setShowDetailModal(true);
-    } else if (record.imageUrl) {
-      setSelectedImage({ url: record.imageUrl, alt: record.fileName });
-      setIsImageModalShowing(true);
-    }
-  };
+  const handleRowClick = (record) => { navigate(`/receipts/${record.id}`); };
 
   const closeImageModal = () => {
     setIsImageModalShowing(false);

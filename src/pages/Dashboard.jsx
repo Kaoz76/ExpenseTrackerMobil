@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FaPlus, FaEdit, FaExclamationCircle, FaCalendarCheck } from 'react-icons/fa';
 import { dashboardData } from '../data/dashboardData';
 import ImageModal from '../components/ImageModal';
@@ -12,6 +12,7 @@ import { collection, query, where, onSnapshot, orderBy, limit, doc, getDoc } fro
 function Dashboard() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const navigate = useNavigate();
 
   const [recentScans, setRecentScans] = useState([]);
   const [loadingScans, setLoadingScans] = useState(true);
@@ -149,7 +150,7 @@ function Dashboard() {
   };
   const closeImageModal = () => { setIsImageModalShowing(false); setSelectedImage({ url: '', alt: '' }); };
   const openDetailModal = (receipt) => { setSelectedReceipt(receipt); setShowDetailModal(true); };
-  const handleCardClick = (scan) => { if (scan.isManual) { openDetailModal(scan); } else { openImageModal(scan.imageUrl, scan.fileName); } };
+  const handleCardClick = (scan) => { navigate(`/receipts/${scan.id}`); };
 
   const grandTotal = monthlyStats.totalSpent + subscriptionTotal;
 
