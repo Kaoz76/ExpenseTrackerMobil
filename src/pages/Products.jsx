@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FaBoxOpen, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
@@ -21,10 +21,10 @@ function Products() {
   useEffect(() => {
     if (user) {
       setLoading(true);
+      // 🔥 DÜZELTME 1: isManual filtresi kaldırıldı! Tüm fişlerdeki ürünler toplanacak.
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        where("isManual", "==", true)
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -34,24 +34,27 @@ function Products() {
           const data = doc.data();
           if (data.items && Array.isArray(data.items)) {
             data.items.forEach(item => {
-              const uniqueKey = `${item.brand}-${item.name}`.toLowerCase();
-              
+              // Marka veya isim yoksa undefined olmasını engelle
+              const safeBrand = item.brand || 'Unknown Brand';
+              const safeName = item.name || 'Unnamed Product';
+              const uniqueKey = `${safeBrand}-${safeName}`.toLowerCase();
+
               if (!productMap[uniqueKey]) {
                 productMap[uniqueKey] = {
                   id: uniqueKey,
-                  name: item.name || 'Unnamed Product',
-                  brand: item.brand,
-                  type: item.type,
-                  latestPrice: Number(item.price),
+                  name: safeName,
+                  brand: safeBrand,
+                  type: item.type || 'Other',
+                  latestPrice: Number(item.price) || 0,
                   latestDate: data.date,
                   createdAt: data.createdAt,
                   historyCount: 1
                 };
               } else {
                 if (data.createdAt > productMap[uniqueKey].createdAt) {
-                   productMap[uniqueKey].latestPrice = Number(item.price);
-                   productMap[uniqueKey].latestDate = data.date;
-                   productMap[uniqueKey].createdAt = data.createdAt;
+                  productMap[uniqueKey].latestPrice = Number(item.price) || 0;
+                  productMap[uniqueKey].latestDate = data.date;
+                  productMap[uniqueKey].createdAt = data.createdAt;
                 }
                 productMap[uniqueKey].historyCount += 1;
               }
@@ -70,19 +73,25 @@ function Products() {
     }
   }, [user]);
 
-  const filteredProducts = products.filter(product => {
-    const search = searchTerm.toLowerCase();
-    return (
-      product.name.toLowerCase().includes(search) ||
-      product.brand.toLowerCase().includes(search) ||
-      (product.type && product.type.toLowerCase().includes(search))
-    );
-  });
+  // 🔥 DÜZELTME 2 & 3: useMemo ile performans artışı, çökme koruması ve historyCount'a göre sıralama
+  const filteredAndSortedProducts = useMemo(() => {
+    let result = products.filter(product => {
+      const search = searchTerm.toLowerCase();
+      return (
+        (product.name?.toLowerCase().includes(search)) ||
+        (product.brand?.toLowerCase().includes(search)) ||
+        (product.type?.toLowerCase().includes(search))
+      );
+    });
+
+    // En çok satın alınan (historyCount) ürünleri en üste koy!
+    return result.sort((a, b) => b.historyCount - a.historyCount);
+  }, [products, searchTerm]);
 
   return (
     <div className="dashboard-page-wrapper p-4">
       <div className="container-fluid">
-        
+
         {/* Breadcrumb Navigasyonu */}
         <nav aria-label="breadcrumb" className="mb-3">
           <ol className="breadcrumb">
@@ -93,82 +102,93 @@ function Products() {
         {/* Başlık ve Animasyonlu Arama Çubuğu */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
           <h1 className="display-6 fw-bold mb-3 mb-md-0">Products</h1>
-          
-          {/* YENİ ANİMASYONLU ARAMA ÇUBUĞU */}
+
           <form className="search-form" onSubmit={(e) => e.preventDefault()}>
-              <button type="button"> {/* Arama ikonu */}
-                  <svg width="17" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="search">
-                      <path d="M7.667 12.667A5.333 5.333 0 107.667 2a5.333 5.333 0 000 10.667zM14.334 14l-2.9-2.9" stroke="currentColor" strokeWidth="1.333" strokeLinecap="round" strokeLinejoin="round"></path>
-                  </svg>
-              </button>
-              
-              <input 
-                className="search-input" 
-                placeholder="Search products..." 
-                type="text" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              
-              <button className="search-reset" type="button" onClick={handleReset}> {/* Temizleme butonu */}
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
-              </button>
+            <button type="button">
+              <svg width="17" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="search">
+                <path d="M7.667 12.667A5.333 5.333 0 107.667 2a5.333 5.333 0 000 10.667zM14.334 14l-2.9-2.9" stroke="currentColor" strokeWidth="1.333" strokeLinecap="round" strokeLinejoin="round"></path>
+              </svg>
+            </button>
+
+            <input
+              className="search-input"
+              placeholder="Search products..."
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
+            <button className="search-reset" type="button" onClick={handleReset}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
           </form>
         </div>
-        
-        {loading && <div className="text-center p-5"><div className="spinner-border" role="status"></div></div>}
+
+        {loading && <div className="text-center p-5"><div className="spinner-border text-primary" role="status"></div></div>}
 
         {!loading && products.length === 0 && (
-          <div className="alert alert-info text-center">
-            No product data found. Use <Link to="/texts" className="alert-link fw-bold">Texts</Link> to add products.
+          <div className="alert alert-info text-center p-4 border border-dashed">
+            <h5 className="mb-2">No products found.</h5>
+            <p className="mb-0 text-muted">
+              Use <Link to="/texts" className="alert-link fw-bold">Manual Entry</Link> or scan a receipt to add products to your inventory.
+            </p>
           </div>
         )}
 
         <div className="row">
-          {filteredProducts.map((product) => (
+          {/* 🔥 DÜZELTME: filteredProducts yerine optimize ettiğimiz filteredAndSortedProducts kullanıyoruz */}
+          {filteredAndSortedProducts.map((product) => (
             <div key={product.id} className="col-md-6 col-lg-4 col-xl-3 mb-4">
               <div className="card shadow-sm h-100 border-0 card-hover-effect">
                 <div className="card-body d-flex flex-column">
-                  
+
                   <div className="d-flex align-items-start mb-3">
                     <div className="bg-primary-subtle rounded p-3 me-3 text-primary">
                       <FaBoxOpen className="fs-3" />
                     </div>
                     <div>
-                      <h6 className="card-title fw-bold mb-1 text-truncate" style={{maxWidth: '150px'}} title={product.name}>
+                      <h6 className="card-title fw-bold mb-1 text-truncate" style={{ maxWidth: '150px' }} title={product.name}>
                         {product.name}
                       </h6>
                       <small className="text-muted d-block">{product.brand}</small>
                       <span className="badge bg-secondary mt-1">{product.type}</span>
                     </div>
                   </div>
-                  
+
                   <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-end">
                     <div>
-                      <small className="text-muted d-block" style={{fontSize: '0.75rem'}}>Last Price</small>
+                      <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Last Price</small>
                       <span className="fs-5 fw-bold text-primary">{formatPrice(product.latestPrice)}</span>
                     </div>
-                    
-                    <Link 
-                      to={`/products/${encodeURIComponent(product.name)}?brand=${encodeURIComponent(product.brand)}`} 
+
+                    {/* URL Güvenliği İçin Marka'yı da encode ederek gönderiyoruz */}
+                    <Link
+                      to={`/products/${encodeURIComponent(product.name)}?brand=${encodeURIComponent(product.brand !== 'Unknown Brand' ? product.brand : '')}`}
                       className="btn btn-sm btn-outline-primary rounded-pill px-3"
                     >
-                      Details <FaChevronRight className="ms-1" style={{fontSize: '0.7rem'}} />
+                      Details <FaChevronRight className="ms-1" style={{ fontSize: '0.7rem' }} />
                     </Link>
                   </div>
-                  
+
                   <div className="text-end mt-2">
-                     <small className="text-muted" style={{fontSize: '0.7rem'}}>
-                        {product.historyCount} purchase(s) recorded
-                     </small>
+                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>
+                      {product.historyCount} purchase(s) recorded
+                    </small>
                   </div>
 
                 </div>
               </div>
             </div>
           ))}
+
+          {/* Arama Sonucu Bulunamazsa */}
+          {!loading && products.length > 0 && filteredAndSortedProducts.length === 0 && (
+            <div className="col-12 text-center p-5">
+              <h5 className="text-muted">No products matched your search.</h5>
+            </div>
+          )}
         </div>
 
       </div>

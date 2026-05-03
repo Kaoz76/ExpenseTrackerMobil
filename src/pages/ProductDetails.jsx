@@ -10,7 +10,7 @@ function ProductDetails() {
   const { productId } = useParams(); // URL'den gelen ham ürün adı
   const [searchParams] = useSearchParams();
   const brandName = searchParams.get('brand');
-  
+
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
   const [history, setHistory] = useState([]);
@@ -30,12 +30,12 @@ function ProductDetails() {
   };
 
   const rawProductName = decodeURIComponent(productId || '');
-  const productName = cleanName(rawProductName); 
+  const productName = cleanName(rawProductName);
 
   useEffect(() => {
     if (user && productName) {
       setLoading(true);
-      
+
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
@@ -80,8 +80,8 @@ function ProductDetails() {
   }, [user, productName, brandName]);
 
   // İstatistik Hesaplama
-  const avgPrice = history.length > 0 
-    ? (history.reduce((a, b) => a + b.price, 0) / history.length) 
+  const avgPrice = history.length > 0
+    ? (history.reduce((a, b) => a + b.price, 0) / history.length)
     : 0;
 
   let minRecord = null;
@@ -99,7 +99,7 @@ function ProductDetails() {
   return (
     <div className="dashboard-page-wrapper p-4">
       <div className="container-fluid">
-        
+
         {/* BREADCRUMB */}
         <nav aria-label="breadcrumb" className="mb-4">
           <ol className="breadcrumb">
@@ -115,16 +115,16 @@ function ProductDetails() {
 
         {/* SAYFA BAŞLIĞI (H1) */}
         <div className="d-flex flex-column flex-md-row align-items-md-center mb-4 gap-3">
-             <h1 className="display-6 fw-bold mb-0">
-               {fullName}
-             </h1>
-             
-             {/* Tür Bilgisi Rozeti */}
-             {productType && (
-               <span className="badge bg-secondary fs-6 align-self-start align-self-md-center">
-                 {productType}
-               </span>
-             )}
+          <h1 className="display-6 fw-bold mb-0">
+            {fullName}
+          </h1>
+
+          {/* Tür Bilgisi Rozeti */}
+          {productType && (
+            <span className="badge bg-secondary fs-6 align-self-start align-self-md-center">
+              {productType}
+            </span>
+          )}
         </div>
 
         {loading && <div className="text-center p-5"><div className="spinner-border" role="status"></div></div>}
@@ -135,56 +135,56 @@ function ProductDetails() {
             <div className="row mb-5 g-3">
               {/* Average Price */}
               <div className="col-md-4">
-                 <div className="card border-0 shadow-sm h-100 p-3 bg-primary-subtle text-primary">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                       <h6 className="mb-0 fw-bold">Average Price</h6>
-                       <FaChartLine />
-                    </div>
-                    <h3 className="fw-bold mb-0">{formatPrice(avgPrice)}</h3>
-                    <small className="text-primary-emphasis opacity-75">Based on {history.length} purchases</small>
-                 </div>
+                <div className="card border-0 shadow-sm h-100 p-3 bg-primary-subtle text-primary">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="mb-0 fw-bold">Average Price</h6>
+                    <FaChartLine />
+                  </div>
+                  <h3 className="fw-bold mb-0">{formatPrice(avgPrice)}</h3>
+                  <small className="text-primary-emphasis opacity-75">Based on {history.length} purchases</small>
+                </div>
               </div>
 
               {/* Lowest Price */}
               <div className="col-md-4">
-                 <div className="card border-0 shadow-sm h-100 p-3 bg-success-subtle text-success">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                       <h6 className="mb-0 fw-bold">Lowest Price</h6>
-                       <FaTag />
+                <div className="card border-0 shadow-sm h-100 p-3 bg-success-subtle text-success">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="mb-0 fw-bold">Lowest Price</h6>
+                    <FaTag />
+                  </div>
+                  <h3 className="fw-bold mb-1">
+                    {minRecord ? formatPrice(minRecord.price) : formatPrice(0)}
+                  </h3>
+                  {minRecord && (
+                    <div className="mt-1">
+                      <div className="fw-bold text-success-emphasis">{minRecord.store}</div>
+                      <div className="badge bg-success text-white mt-2 d-inline-flex align-items-center">
+                        <FaThumbsUp className="me-1" /> Öneriliyor
+                      </div>
                     </div>
-                    <h3 className="fw-bold mb-1">
-                        {minRecord ? formatPrice(minRecord.price) : formatPrice(0)}
-                    </h3>
-                    {minRecord && (
-                        <div className="mt-1">
-                            <div className="fw-bold text-success-emphasis">{minRecord.store}</div>
-                            <div className="badge bg-success text-white mt-2 d-inline-flex align-items-center">
-                                <FaThumbsUp className="me-1" /> Öneriliyor
-                            </div>
-                        </div>
-                    )}
-                 </div>
+                  )}
+                </div>
               </div>
 
               {/* Highest Price */}
               <div className="col-md-4">
-                 <div className="card border-0 shadow-sm h-100 p-3 bg-danger-subtle text-danger">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                       <h6 className="mb-0 fw-bold">Highest Price</h6>
-                       <FaTag />
+                <div className="card border-0 shadow-sm h-100 p-3 bg-danger-subtle text-danger">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="mb-0 fw-bold">Highest Price</h6>
+                    <FaTag />
+                  </div>
+                  <h3 className="fw-bold mb-1">
+                    {maxRecord ? formatPrice(maxRecord.price) : formatPrice(0)}
+                  </h3>
+                  {maxRecord && (
+                    <div className="mt-1">
+                      <div className="fw-bold text-danger-emphasis">{maxRecord.store}</div>
+                      <div className="badge bg-danger text-white mt-2 d-inline-flex align-items-center">
+                        <FaThumbsDown className="me-1" /> Önerilmiyor
+                      </div>
                     </div>
-                    <h3 className="fw-bold mb-1">
-                        {maxRecord ? formatPrice(maxRecord.price) : formatPrice(0)}
-                    </h3>
-                    {maxRecord && (
-                        <div className="mt-1">
-                            <div className="fw-bold text-danger-emphasis">{maxRecord.store}</div>
-                            <div className="badge bg-danger text-white mt-2 d-inline-flex align-items-center">
-                                <FaThumbsDown className="me-1" /> Önerilmiyor
-                            </div>
-                        </div>
-                    )}
-                 </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -216,9 +216,9 @@ function ProductDetails() {
                       </tr>
                     ))}
                     {history.length === 0 && (
-                       <tr>
-                         <td colSpan="4" className="text-center py-5 text-body-secondary">No history found.</td>
-                       </tr>
+                      <tr>
+                        <td colSpan="4" className="text-center py-5 text-body-secondary">No history found.</td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
