@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useCurrency } from './CurrencyContext';
 import { db } from '../firebase';
@@ -11,7 +11,7 @@ const ReportContext = createContext(null);
 export const ReportProvider = ({ children }) => {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
-  
+
   const [hasNotification, setHasNotification] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportMonthText, setReportMonthText] = useState("");
@@ -23,10 +23,10 @@ export const ReportProvider = ({ children }) => {
         try {
           const today = new Date();
           const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-          
+
           const currentReportKey = `${prevMonthDate.getFullYear()}-${prevMonthDate.getMonth() + 1}`;
           const monthName = prevMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-          
+
           setReportMonthText(monthName);
 
           const userDocRef = doc(db, "users", user.uid);
@@ -37,11 +37,7 @@ export const ReportProvider = ({ children }) => {
             lastSeenReportKey = userDocSnap.data().lastSeenReport || "";
           }
 
-          if (lastSeenReportKey !== currentReportKey) {
-            setHasNotification(true);
-          } else {
-            setHasNotification(false);
-          }
+          setHasNotification(lastSeenReportKey !== currentReportKey);
         } catch (error) {
           console.error("Bildirim kontrolü hatası:", error);
         }
@@ -51,13 +47,13 @@ export const ReportProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Font Yükleme
+  // Font Yükleme (Bunu dışarı aktarmadığımız için useCallback içine almadım, içeride durabilir)
   const loadFile = async (url) => {
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.arrayBuffer();
-      
+
       let binary = '';
       const bytes = new Uint8Array(data);
       const len = bytes.byteLength;
@@ -71,8 +67,8 @@ export const ReportProvider = ({ children }) => {
     }
   };
 
-  // CSV DIŞA AKTARMA
-  const exportAllDataToCSV = async () => {
+  // CSV DIŞA AKTARMA (Geliştirme: useCallback eklendi)
+  const exportAllDataToCSV = useCallback(async () => {
     if (!user) return;
     setIsGenerating(true);
 
@@ -84,47 +80,44 @@ export const ReportProvider = ({ children }) => {
       );
 
       const querySnapshot = await getDocs(q);
-      
+
       if (querySnapshot.empty) {
         alert("No data found to export.");
         setIsGenerating(false);
         return;
       }
 
-      // Başlıkları ayırmak için ';' kullanıyoruz (Excel Türkiye formatı)
       let csvContent = "Date;Market/Title;Type;Price;Currency;Details\n";
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        
+      // Geliştirme: Parametre ismini firestoreDoc yaparak karışıklığı önledik
+      querySnapshot.forEach((firestoreDoc) => {
+        const data = firestoreDoc.data();
+
         let dateStr = data.date || "";
         if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-           dateStr = data.createdAt.toDate().toLocaleDateString('tr-TR'); 
+          dateStr = data.createdAt.toDate().toLocaleDateString('tr-TR');
         }
 
         const description = `"${(data.fileName || data.title || "No Title").replace(/"/g, '""')}"`;
         const type = data.isManual ? "Manual Entry" : "Scanned Receipt";
-        
+
         const rawPrice = Number(data.price) || 0;
-        // Fiyatın ondalık ayracını ',' yapıyoruz (Excel Türkiye formatı)
         const priceStr = rawPrice.toFixed(2).replace('.', ',');
-        
+
         let details = "";
         if (data.items && Array.isArray(data.items)) {
-           const itemNames = data.items.map(i => i.name).join(", ");
-           details = `"${itemNames.replace(/"/g, '""')}"`;
+          const itemNames = data.items.map(i => i.name).join(", ");
+          details = `"${itemNames.replace(/"/g, '""')}"`;
         }
 
-        // Sütunları ayırmak için ';' kullanıyoruz (Excel Türkiye formatı)
         csvContent += `${dateStr};${description};${type};${priceStr};TRY;${details}\n`;
       });
 
-      // Excel için BOM (\uFEFF) ekleyerek UTF-8 olarak tanıtıyoruz
       const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `Expense_Tracker_All_Data_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `Expense_Tracker_All_Data_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -135,10 +128,27 @@ export const ReportProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [user]);
 
-  // PDF OLUŞTURMA
-  const generateAndDownloadPDF = async () => {
+  // OKUNDU OLARAK İŞARETLEME (Geliştirme: useCallback eklendi, yukarı alındı)
+  const markAsRead = useCallback(async () => {
+    if (!user) return;
+    setHasNotification(false);
+    try {
+      const today = new Date();
+      const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const currentReportKey = `${prevMonthDate.getFullYear()}-${prevMonthDate.getMonth() + 1}`;
+
+      await setDoc(doc(db, "users", user.uid), {
+        lastSeenReport: currentReportKey
+      }, { merge: true });
+    } catch (error) {
+      console.error("Error marking report as read:", error);
+    }
+  }, [user]);
+
+  // PDF OLUŞTURMA (Geliştirme: useCallback eklendi ve pdfDoc isimlendirmesi yapıldı)
+  const generateAndDownloadPDF = useCallback(async () => {
     if (!user) return;
     setIsGenerating(true);
 
@@ -161,8 +171,9 @@ export const ReportProvider = ({ children }) => {
       const receipts = [];
       let totalSpent = 0;
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      // Geliştirme: firestoreDoc olarak isimlendirildi
+      querySnapshot.forEach((firestoreDoc) => {
+        const data = firestoreDoc.data();
         const safeData = {
           ...data,
           price: Number(data.price) || 0,
@@ -177,8 +188,9 @@ export const ReportProvider = ({ children }) => {
         return;
       }
 
-      const doc = new jsPDF();
-      let fontUsed = 'helvetica'; 
+      // Geliştirme: jsPDF nesnesi "pdfDoc" olarak adlandırıldı
+      const pdfDoc = new jsPDF();
+      let fontUsed = 'helvetica';
 
       const regularFontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf';
       const boldFontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Medium.ttf';
@@ -190,31 +202,31 @@ export const ReportProvider = ({ children }) => {
 
       if (fontBase64Regular && fontBase64Bold) {
         try {
-          doc.addFileToVFS('Roboto-Regular.ttf', fontBase64Regular);
-          doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+          pdfDoc.addFileToVFS('Roboto-Regular.ttf', fontBase64Regular);
+          pdfDoc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
 
-          doc.addFileToVFS('Roboto-Bold.ttf', fontBase64Bold);
-          doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+          pdfDoc.addFileToVFS('Roboto-Bold.ttf', fontBase64Bold);
+          pdfDoc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
 
-          doc.setFont('Roboto');
+          pdfDoc.setFont('Roboto');
           fontUsed = 'Roboto';
         } catch (e) {
           console.error("Font ekleme hatası:", e);
         }
       }
 
-      doc.setFontSize(18);
-      doc.setTextColor(40);
-      doc.setFont(fontUsed, 'bold'); 
-      doc.text("Monthly Expense Report", 14, 22);
-      
-      doc.setFont(fontUsed, 'normal');
-      doc.setFontSize(11);
-      doc.setTextColor(100);
-      doc.text(`Period: ${monthName}`, 14, 32);
-      
+      pdfDoc.setFontSize(18);
+      pdfDoc.setTextColor(40);
+      pdfDoc.setFont(fontUsed, 'bold');
+      pdfDoc.text("Monthly Expense Report", 14, 22);
+
+      pdfDoc.setFont(fontUsed, 'normal');
+      pdfDoc.setFontSize(11);
+      pdfDoc.setTextColor(100);
+      pdfDoc.text(`Period: ${monthName}`, 14, 32);
+
       const totalFormatted = formatPrice(totalSpent);
-      doc.text(`Total Spent: ${totalFormatted}`, 14, 38);
+      pdfDoc.text(`Total Spent: ${totalFormatted}`, 14, 38);
 
       const tableColumn = ["Date", "Description", "Type", "Amount"];
       const tableRows = [];
@@ -223,9 +235,9 @@ export const ReportProvider = ({ children }) => {
         let dateStr = "N/A";
         try {
           if (receipt.createdAt && typeof receipt.createdAt.toDate === 'function') {
-             dateStr = receipt.createdAt.toDate().toLocaleDateString('tr-TR');
+            dateStr = receipt.createdAt.toDate().toLocaleDateString('tr-TR');
           } else if (receipt.date) {
-             dateStr = receipt.date;
+            dateStr = receipt.date;
           }
         } catch {
           dateStr = "-";
@@ -238,7 +250,7 @@ export const ReportProvider = ({ children }) => {
         tableRows.push([dateStr, description, type, price]);
       });
 
-      autoTable(doc, {
+      autoTable(pdfDoc, {
         head: [tableColumn],
         body: tableRows,
         startY: 45,
@@ -247,10 +259,10 @@ export const ReportProvider = ({ children }) => {
         bodyStyles: { font: fontUsed, fontStyle: 'normal' },
         styles: { fontSize: 10, cellPadding: 3, font: fontUsed },
       });
-      
+
       const safeFileName = `Expense_Report_${monthName.replace(/\s/g, '_')}.pdf`;
-      doc.save(safeFileName);
-      
+      pdfDoc.save(safeFileName);
+
       markAsRead();
 
     } catch (error) {
@@ -259,26 +271,20 @@ export const ReportProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [user, formatPrice, markAsRead]); // Bağımlılıklar güncellendi
 
-  const markAsRead = async () => {
-    if (!user) return;
-    setHasNotification(false);
-    try {
-      const today = new Date();
-      const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const currentReportKey = `${prevMonthDate.getFullYear()}-${prevMonthDate.getMonth() + 1}`;
-
-      await setDoc(doc(db, "users", user.uid), {
-        lastSeenReport: currentReportKey
-      }, { merge: true });
-    } catch (error) {
-      console.error("Error marking report as read:", error);
-    }
-  };
+  // Geliştirme: Context value objesini useMemo ile sarmalayarak gereksiz renderları kestik
+  const contextValue = useMemo(() => ({
+    hasNotification,
+    reportMonthText,
+    isGenerating,
+    generateAndDownloadPDF,
+    exportAllDataToCSV,
+    markAsRead
+  }), [hasNotification, reportMonthText, isGenerating, generateAndDownloadPDF, exportAllDataToCSV, markAsRead]);
 
   return (
-    <ReportContext.Provider value={{ hasNotification, reportMonthText, isGenerating, generateAndDownloadPDF, exportAllDataToCSV, markAsRead }}>
+    <ReportContext.Provider value={contextValue}>
       {children}
     </ReportContext.Provider>
   );
