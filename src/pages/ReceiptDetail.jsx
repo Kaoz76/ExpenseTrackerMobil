@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   FaStore, FaReceipt, FaTrash, FaPlus, FaPen, FaCheck,
@@ -37,7 +37,8 @@ function ReceiptDetail() {
 
   // Fetch receipt data in real-time
   useEffect(() => {
-    if (!user || !receiptId) {
+    // 🔥 DÜZELTME 3: user.uid garantisi eklendi
+    if (!user?.uid || !receiptId) {
       setLoading(false);
       return;
     }
@@ -94,7 +95,8 @@ function ReceiptDetail() {
   // ─── ITEM CRUD ─────────────────────────────────
   const handleItemChange = (index, field, value) => {
     const updated = [...items];
-    updated[index] = { ...updated[index], [field]: field === 'price' ? value : value };
+    // 🔥 DÜZELTME 2: Gereksiz ternary operatörü temizlendi
+    updated[index] = { ...updated[index], [field]: value };
     setItems(updated);
     markChanged();
   };
@@ -129,9 +131,16 @@ function ReceiptDetail() {
         ...item,
         price: parseFloat(item.price) || 0
       }));
+
+      // 🔥 DÜZELTME 1: Ürünlerin yeni toplamını hesapla ve ana fiş tutarıyla senkronize et!
+      const newItemsTotal = cleanedItems.reduce((sum, item) => sum + item.price, 0);
+
       await updateDoc(doc(db, "receipts", receiptId), {
-        items: cleanedItems
+        items: cleanedItems,
+        price: newItemsTotal // Ana fiş tutarı otomatik güncelleniyor
       });
+
+      setTotalPrice(newItemsTotal); // Local state'i de güncelliyoruz
       setHasChanges(false);
       setEditingItemIdx(null);
     } catch (err) {
@@ -155,12 +164,17 @@ function ReceiptDetail() {
     }
   };
 
+  // 🔥 DÜZELTME 3: itemsTotal performansı useMemo ile korumaya alındı
+  const itemsTotal = useMemo(() => {
+    return items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+  }, [items]);
+
   if (loading) {
     return (
       <div className="dashboard-page-wrapper p-4">
         <div className="container-fluid">
           <div className="text-center p-5">
-            <div className="spinner-border" role="status"></div>
+            <div className="spinner-border text-primary" role="status"></div>
           </div>
         </div>
       </div>
@@ -180,8 +194,6 @@ function ReceiptDetail() {
       </div>
     );
   }
-
-  const itemsTotal = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
 
   return (
     <div className="dashboard-page-wrapper p-4">
@@ -291,7 +303,7 @@ function ReceiptDetail() {
                 </div>
               ) : (
                 <div className="d-flex align-items-center gap-2">
-                  <h3 className="fw-bold mb-0">{formatPrice(receipt.price)}</h3>
+                  <h3 className="fw-bold mb-0">{formatPrice(totalPrice)}</h3>
                   <button
                     className="btn btn-sm btn-outline-primary border-0"
                     onClick={() => setEditingTotal(true)}
@@ -585,7 +597,7 @@ function ReceiptDetail() {
             className="position-fixed bottom-0 start-0 end-0 bg-body border-top shadow-lg p-3 d-flex justify-content-center align-items-center gap-3"
             style={{ zIndex: 1030 }}
           >
-            <span className="text-warning fw-bold">
+            <span className="text-warning fw-bold d-none d-sm-inline">
               ⚠ You have unsaved item changes
             </span>
             <button
