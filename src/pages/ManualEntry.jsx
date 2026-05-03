@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
-import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt } from 'react-icons/fa';
+import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, Timestamp, limit } from 'firebase/firestore';
+import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt, FaArrowDown } from 'react-icons/fa';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
 import { formatDateTime } from '../utils/dateFormatter';
@@ -20,8 +20,17 @@ function ManualEntry() {
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
+  // 🔥 YENİ: Firebase'den kaç veri çekileceğini tutan state
+  const [entryLimit, setEntryLimit] = useState(10);
+
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (error) setError('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeName, products]);
 
   useEffect(() => {
     if (location.state && location.state.scannedData) {
@@ -40,7 +49,6 @@ function ManualEntry() {
         }));
         setProducts(mappedProducts);
       }
-      // Clear state so it doesn't repopulate on refresh
       window.history.replaceState({}, document.title)
     }
   }, [location.state]);
@@ -51,7 +59,9 @@ function ManualEntry() {
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
-        where("isManual", "==", true)
+        where("isManual", "==", true),
+        orderBy("createdAt", "desc"),
+        limit(entryLimit) // 🔥 LİMİT ARTIK DİNAMİK!
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -59,13 +69,6 @@ function ManualEntry() {
           id: doc.id,
           ...doc.data()
         }));
-
-        // Sort locally to bypass Firebase composite index requirement
-        entries.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-          return timeB - timeA;
-        });
 
         setManualEntries(entries);
         setLoadingEntries(false);
@@ -79,8 +82,7 @@ function ManualEntry() {
       setManualEntries([]);
       setLoadingEntries(false);
     }
-  }, [user]);
-
+  }, [user, entryLimit]); // 🔥 entryLimit değiştiğinde bu kod tekrar çalışır
 
   const addProductRow = () => {
     setProducts([
@@ -117,7 +119,7 @@ function ManualEntry() {
 
     for (let i = 0; i < products.length; i++) {
       const p = products[i];
-      if (!p.type.trim() || !p.brand.trim() || !p.price.toString().trim()) {
+      if (!p.type.trim() || !p.brand.trim() || !String(p.price).trim()) {
         setError(`Please fill in all required fields (Type, Brand, Price) for Row ${i + 1}.`);
         return;
       }
@@ -140,7 +142,7 @@ function ManualEntry() {
         items: products
       };
 
-      const docRef = await addDoc(collection(db, "receipts"), newEntryData);
+      await addDoc(collection(db, "receipts"), newEntryData);
 
       setSuccess('Data saved successfully! You can see it in the list below.');
       setStoreName('');
@@ -207,7 +209,7 @@ function ManualEntry() {
                 </div>
                 <div className="mb-4">
                   <h5 className="fw-bold mb-3">Product Details</h5>
-                  {products.map((product) => (
+                  {products.map((product, index) => (
                     <div key={product.id} className="card border-0 shadow-sm p-4 mb-3">
                       <div className="row g-3">
 
@@ -347,7 +349,7 @@ function ManualEntry() {
 
           <div className="mt-5 mb-5">
             <h3 id="manual-section" className="h5 mb-3 fw-bold d-flex align-items-center">
-              <FaListAlt className="me-2 text-muted" /> All Manual Entries
+              <FaListAlt className="me-2 text-muted" /> Recent Manual Entries
             </h3>
 
             <div className="card shadow-sm border-0">
@@ -397,9 +399,21 @@ function ManualEntry() {
                         </svg>
                       </button>
                     </div>
-
                   </div>
                 ))}
+
+                {/* 🔥 YENİ: DAHA FAZLA YÜKLE BUTONU */}
+                {!loadingEntries && manualEntries.length >= entryLimit && (
+                  <div className="list-group-item text-center p-3 bg-light">
+                    <button
+                      className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold d-flex align-items-center mx-auto"
+                      onClick={() => setEntryLimit(prev => prev + 10)}
+                    >
+                      <FaArrowDown className="me-2" /> Load More Entries
+                    </button>
+                  </div>
+                )}
+
               </div>
             </div>
           </div>
