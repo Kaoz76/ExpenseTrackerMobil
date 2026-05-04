@@ -1,17 +1,29 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus, FaEdit } from 'react-icons/fa';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, getDoc, Timestamp } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, Timestamp, limit } from "firebase/firestore";
 import ImageModal from '../components/ImageModal';
 import { Link, useNavigate } from 'react-router-dom';
 import Tesseract from 'tesseract.js';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
 import { formatDateTime } from '../utils/dateFormatter';
+
+// 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
+const cleanStoreName = (name) => {
+  if (!name) return "Unknown Store";
+  let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
+  cleanName = cleanName
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+  return cleanName.trim();
+};
 
 function Receipts() {
   const { user } = useAuth();
@@ -25,43 +37,37 @@ function Receipts() {
   const [receipts, setReceipts] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(true);
 
+  // 🔥 Yükleme limiti (Load More için)
+  const [displayLimit, setDisplayLimit] = useState(20);
+
   // DOĞRULAMA MODALI STATE'LERİ
-  const [processedScans, setProcessedScans] = useState([]); // Yeni: Sıradaki taranan fişler
+  const [processedScans, setProcessedScans] = useState([]);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [verifyData, setVerifyData] = useState(null); // Kaydedilmeyi bekleyen veri
-  const [verifiedPrice, setVerifiedPrice] = useState(''); // Kullanıcının düzenleyeceği fiyat
-  const [showItems, setShowItems] = useState(false); // Akordeon durumu
+  const [verifyData, setVerifyData] = useState(null);
+  const [verifiedPrice, setVerifiedPrice] = useState('');
+  const [showItems, setShowItems] = useState(false);
 
   // VERİ ÇEKME
   useEffect(() => {
-    setLoadingReceipts(true);
     if (user) {
+      setLoadingReceipts(true);
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        where("isManual", "==", false),
+        orderBy("createdAt", "desc"),
+        limit(displayLimit) // 🔥 Dinamik Limit
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const receiptsData = [];
-        querySnapshot.forEach((doc) => {
-          // Changed: We no longer require imageUrl since we disabled cloud storage uploads.
-          // We only filter out manual text entries if they have isManual === true.
-          if (!doc.data().isManual) {
-            receiptsData.push({ id: doc.id, ...doc.data() });
-          }
-        });
-
-        // Sort locally to bypass Firebase composite index requirement
-        receiptsData.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-          return timeB - timeA;
-        });
-
+        const receiptsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
         setReceipts(receiptsData);
         setLoadingReceipts(false);
-      }, (error) => {
-        console.error("Error fetching receipts: ", error);
+      }, (err) => {
+        console.error("Error fetching receipts: ", err);
         setLoadingReceipts(false);
       });
 
@@ -70,26 +76,17 @@ function Receipts() {
       setReceipts([]);
       setLoadingReceipts(false);
     }
-  }, [user]);
+  }, [user, displayLimit]);
 
   // OCR PRICE EXTRACTCTION ALGORITHM
   const extractDataFromText = (text) => {
     if (!text) return { total: 0, items: [] };
 
-    // Normalize newlines and basic spaces (Handle Turkish chars better)
     const normalizedText = text.replace(/\r/g, '\n').toLocaleLowerCase('tr-TR');
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-    // Look for total/sum related keywords (added 'topla' in case OCR misses 'm')
     const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
-
-    // Keywords to EXCLUDE (like KDV, VAT, Tax, Change, Para ustu, %, KG x, Bank names)
-    // DİKKAT: "%" işaretini kaldırdık çünkü birçok fişte ürün isminin yanında %1, %8 gibi KDV oranı yazar!
-    // Indirim/Iskonto artik haric tutulmuyor, asagi tarafta negatif deger olarak parse edilecek.
     const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro)/i;
-
-    // Match numbers with dots or commas as decimal separators (e.g. 776,67 or 776.67 or 1.234,56)
-    // Removed space parsing to prevent breaking native matches, just standard floats
     const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
 
     let possibleTotals = [];
@@ -97,23 +94,18 @@ function Receipts() {
 
     const cleanAndParseNumber = (valStr) => {
       let cleanStr = valStr.replace(/[^0-9.,]/g, '');
-      // Handle European format: 1.234,56 -> 1234.56
       if (cleanStr.includes(',') && cleanStr.includes('.')) {
         cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
-      }
-      // Handle just comma: 123,45 -> 123.45
-      else if (cleanStr.includes(',')) {
+      } else if (cleanStr.includes(',')) {
         cleanStr = cleanStr.replace(',', '.');
       }
       const num = parseFloat(cleanStr);
       return (!isNaN(num) && num > 0 && num < 50000) ? num : null;
     };
 
-    // Parse lines one by one
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // 1) Is it a Total Line?
       if (keywordRegex.test(line) && !excludeRegex.test(line)) {
         let matches = line.match(priceRegex);
         if (matches) {
@@ -123,7 +115,6 @@ function Receipts() {
           });
         }
 
-        // Check next line just in case the total amount wrapped, but only if next line isn't also a KDV line
         if (i + 1 < lines.length) {
           const nextLine = lines[i + 1];
           if (!excludeRegex.test(nextLine)) {
@@ -137,26 +128,18 @@ function Receipts() {
           }
         }
       }
-      // 2) Is it an Item Line?
       else if (!keywordRegex.test(line) && !excludeRegex.test(line)) {
         let matches = line.match(priceRegex);
         if (matches && matches.length > 0) {
-          // Usually the price is the last number on the line
           const lastMatch = matches[matches.length - 1];
           let parsedPrice = cleanAndParseNumber(lastMatch);
 
           if (parsedPrice) {
-            // Find whatever text is before this price match
-            // Eksi isaretini ve diger gereksiz karakterleri temizle
             let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_-]/g, '').trim();
 
-            // Sadece 2 karakterden büyükse VE içinde en az BİR HARF barındırıyorsa ürün say
-            // (Bu sayede sadece "%1 27,00" gibi harfsiz satırları süzmüş oluyoruz)
             if (namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
-              // Capitalize words for nice display
               let formattedName = namePart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-              // Eger satir indirim veya iskonto iceriyorsa, fiyati negatif yap
               if (/(indirim|ndirim|iskonto)/i.test(line)) {
                 parsedPrice = -Math.abs(parsedPrice);
               }
@@ -172,11 +155,9 @@ function Receipts() {
     }
 
     let finalTotal = 0;
-    // Return the max of keyword-associated prices
     if (possibleTotals.length > 0) {
       finalTotal = Math.max(...possibleTotals);
     } else {
-      // Strategy 2: If no keywords found, find the absolute largest valid price format in the whole text
       const allMatches = normalizedText.match(priceRegex);
       if (allMatches) {
         const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null && num < 10000);
@@ -188,8 +169,6 @@ function Receipts() {
 
     return { total: finalTotal, items: extractedItems };
   };
-
-
 
   // DOSYA YÜKLEME VE OCR
   const onDrop = useCallback(async (acceptedFiles) => {
@@ -214,10 +193,8 @@ function Receipts() {
 
       let extractedData = { total: 0, items: [] };
 
-      // 1. OCR İŞLEMİ
       try {
         if (Capacitor.isNativePlatform()) {
-          // CAPACITOR NATIVE OCR (OFFLINE ML KIT)
           const reader = new FileReader();
           reader.readAsDataURL(file);
 
@@ -290,7 +267,6 @@ function Receipts() {
 
           extractedData = extractDataFromText(base64Text);
         } else {
-          // WEB FALLBACK (TESSERACT)
           const fileUrl = URL.createObjectURL(file);
           const result = await Tesseract.recognize(
             fileUrl,
@@ -310,8 +286,6 @@ function Receipts() {
         console.error("OCR Failed Details:", ocrError);
         setError("Could not read text for some files, uploading anyway...");
       }
-
-      const baseNumber = receipts.length;
 
       results.push({
         userId: user.uid,
@@ -347,7 +321,7 @@ function Receipts() {
 
   const moveToNextOrClose = (currentQueue) => {
     const updatedQueue = [...currentQueue];
-    updatedQueue.shift(); // İlk sıradakini kaldır
+    updatedQueue.shift();
 
     setProcessedScans(updatedQueue);
 
@@ -360,6 +334,16 @@ function Receipts() {
       setVerifyData(null);
       setVerifiedPrice('');
     }
+  };
+
+  // 🔥 OCR Hata yaparsa Manuel Forma Aktarma
+  const handleSendToManual = () => {
+    const dataToPass = {
+      fileName: verifyData.fileName || verifyData.originalFileName.split('.')[0],
+      items: verifyData.items
+    };
+    setShowVerifyModal(false);
+    navigate('/texts', { state: { scannedData: dataToPass } });
   };
 
   const handleItemChange = (index, field, value) => {
@@ -380,9 +364,8 @@ function Receipts() {
     const newItem = { name: '', price: 0, type: '', brand: '', size: '' };
     const updatedItems = [...(verifyData.items || []), newItem];
     setVerifyData({ ...verifyData, items: updatedItems });
-    if (!showItems) setShowItems(true); // Open accordion if closed
+    if (!showItems) setShowItems(true);
   };
-
 
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
@@ -400,17 +383,17 @@ function Receipts() {
       const newReceiptData = {
         userId: verifyData.userId,
         imageUrl: null,
-        fileName: verifyData.fileName,
+        fileName: verifyData.fileName.trim(),
         createdAt: verifyData.createdAt,
-        title: verifyData.fileName,
+        title: verifyData.fileName.trim(),
         date: verifyData.date,
         isManual: verifyData.isManual,
         items: itemsToSave,
-        price: parseFloat(verifiedPrice) || 0
+        price: Number(verifiedPrice) || 0, // 🔥 Güvenlik
+        storeNameCleaned: cleanStoreName(verifyData.fileName) // 🔥 StoreDetails entegrasyonu!
       };
 
-      const docRef = await addDoc(collection(db, "receipts"), newReceiptData);
-
+      await addDoc(collection(db, "receipts"), newReceiptData);
       moveToNextOrClose(processedScans);
 
     } catch (e) {
@@ -419,12 +402,10 @@ function Receipts() {
     }
   };
 
-  // İPTAL ET (SADECE O ANKİ FİŞİ ATLA)
   const handleCancelSave = () => {
     moveToNextOrClose(processedScans);
   };
 
-  // MODALI TAMAMEN KAPAT (TÜM SIRAYI İPTAL ET)
   const handleCloseAll = () => {
     setProcessedScans([]);
     setShowVerifyModal(false);
@@ -432,15 +413,13 @@ function Receipts() {
     setVerifiedPrice('');
   };
 
-  // SİLME FONKSİYONU
   const handleDeleteReceipt = async (e, receiptId) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this receipt? This action cannot be undone.")) {
       return;
     }
     try {
-      const docRef = doc(db, "receipts", receiptId);
-      await deleteDoc(docRef); // Sadece veritabanı kaydını sil
+      await deleteDoc(doc(db, "receipts", receiptId));
     } catch (err) {
       console.error("Error deleting document: ", err);
       alert("Failed to delete receipt.");
@@ -469,7 +448,6 @@ function Receipts() {
 
   return (
     <div className="receipts-page-wrapper p-4">
-      {/* Arka plan bulanıklığı: Herhangi bir modal açıksa */}
       <div
         className={isModalShowing || showVerifyModal ? 'content-blurred' : ''}
         style={{ transition: 'filter 0.3s ease-in-out' }}
@@ -529,45 +507,60 @@ function Receipts() {
                 {!user && !loadingReceipts && <div className="p-5 text-center text-muted">Please <Link to="/login">log in</Link> to view your receipts.</div>}
                 {user && !loadingReceipts && receipts.length === 0 && <div className="p-5 text-center text-muted">You haven't uploaded any receipts yet.</div>}
 
-                {user && !loadingReceipts && receipts.map(receipt => (
-                  <div
-                    key={receipt.id}
-                    className="list-group-item list-group-item-action d-flex align-items-center p-3"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/receipts/${receipt.id}`)}
-                  >
-                    <div style={{ flex: 2, minWidth: 0 }} className="d-flex align-items-center pe-2">
-                      <img
-                        src={receipt.imageUrl || 'https://placehold.co/60x60?text=Receipt'}
-                        alt={receipt.fileName}
-                        className="receipt-list-thumbnail me-3 flex-shrink-0"
-                        onError={(e) => { e.target.src = 'https://placehold.co/60x60?text=Error'; }}
-                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
-                      />
-                      <span className="fw-bold text-truncate">{receipt.fileName}</span>
-                    </div>
-                    <div style={{ flex: 1 }} className="text-muted small">{formatDateTime(receipt.createdAt)}</div>
-                    <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary">{formatPrice(receipt.price)}</div>
-                    <div style={{ width: '50px', display: 'flex', justifyContent: 'flex-end' }}>
-                      <button
-                        className="delete-entry-btn"
-                        onClick={(e) => handleDeleteReceipt(e, receipt.id)}
-                        title="Delete Receipt"
+                {user && !loadingReceipts && (
+                  <>
+                    {receipts.map(receipt => (
+                      <div
+                        key={receipt.id}
+                        className="list-group-item list-group-item-action d-flex align-items-center p-3"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => navigate(`/receipts/${receipt.id}`)}
                       >
-                        <svg viewBox="0 0 448 512" className="delete-entry-svgIcon">
-                          <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                        <div style={{ flex: 2, minWidth: 0 }} className="d-flex align-items-center pe-2">
+                          <img
+                            src={receipt.imageUrl || 'https://placehold.co/60x60?text=Receipt'}
+                            alt={receipt.fileName}
+                            className="receipt-list-thumbnail me-3 flex-shrink-0"
+                            onError={(e) => { e.target.src = 'https://placehold.co/60x60?text=Error'; }}
+                            style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                          />
+                          <span className="fw-bold text-truncate">{receipt.fileName}</span>
+                        </div>
+                        <div style={{ flex: 1 }} className="text-muted small">{formatDateTime(receipt.createdAt)}</div>
+                        <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary">{formatPrice(receipt.price)}</div>
+                        <div style={{ width: '50px', display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            className="delete-entry-btn"
+                            onClick={(e) => handleDeleteReceipt(e, receipt.id)}
+                            title="Delete Receipt"
+                          >
+                            <svg viewBox="0 0 448 512" className="delete-entry-svgIcon">
+                              <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* 🔥 YENİ: DAHA FAZLA YÜKLE BUTONU */}
+                    {receipts.length >= displayLimit && (
+                      <div className="list-group-item text-center p-3 bg-light">
+                        <button
+                          className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold shadow-sm"
+                          onClick={() => setDisplayLimit(prev => prev + 20)}
+                        >
+                          <FaPlus className="me-2 small" /> Load Older Receipts
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* GÖRÜNTÜLEME MODALI */}
       <ImageModal
         isShowing={isModalShowing}
         onClose={closeModal}
@@ -575,7 +568,6 @@ function Receipts() {
         imageAlt={selectedImage.alt}
       />
 
-      {/* DOĞRULAMA (VERIFICATION) MODALI */}
       {showVerifyModal && (
         <>
           <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
@@ -624,7 +616,6 @@ function Receipts() {
                     <div className="form-text">Detected from OCR analysis.</div>
                   </div>
 
-                  {/* Kalem Detayları - Expandable Area */}
                   {verifyData && (
                     <div className="border rounded mb-3 overflow-hidden">
                       <button
@@ -686,13 +677,19 @@ function Receipts() {
                   )}
                 </div>
 
-                <div className="modal-footer bg-light">
-                  <button type="button" className="btn btn-outline-secondary" onClick={handleCancelSave}>
-                    <FaTimes className="me-2" /> Discard & Next
+                <div className="modal-footer bg-light d-flex justify-content-between">
+                  {/* 🔥 OCR Hata yaparsa Manuel Forma Aktarma Butonu */}
+                  <button className="btn btn-outline-info border-0 d-flex align-items-center" onClick={handleSendToManual}>
+                    <FaEdit className="me-1" /> Use Manual Form
                   </button>
-                  <button type="button" className="btn btn-success px-4" onClick={handleConfirmSave}>
-                    <FaCheck className="me-2" /> Save & Next
-                  </button>
+                  <div className="d-flex gap-2">
+                    <button type="button" className="btn btn-outline-secondary" onClick={handleCancelSave}>
+                      <FaTimes className="me-2" /> Discard
+                    </button>
+                    <button type="button" className="btn btn-success px-4" onClick={handleConfirmSave}>
+                      <FaCheck className="me-2" /> Save & Next
+                    </button>
+                  </div>
                 </div>
 
               </div>

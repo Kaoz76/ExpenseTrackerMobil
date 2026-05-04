@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { Capacitor } from '@capacitor/core'; // 🔥 GELİŞTİRME 2: Platform kontrolü için eklendi
 import { useTheme } from '../context/ThemeContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../context/AuthContext';
@@ -27,7 +28,7 @@ function Settings() {
 
   // Verileri Çekme
   useEffect(() => {
-    if (user) {
+    if (user?.uid) {
       const fetchData = async () => {
         try {
           const docRef = doc(db, "users", user.uid);
@@ -47,9 +48,10 @@ function Settings() {
     }
   }, [user]);
 
-  // BİLDİRİMİ SİSTEME KAYDET (Her gün belirtilen saatte çalar)
+  // BİLDİRİMİ SİSTEME KAYDET
   const scheduleNotification = async (time) => {
-    // Önce eskisi varsa iptal et ki üst üste binmesin
+    if (!Capacitor.isNativePlatform()) return; // Sadece mobilde çalışır
+
     await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
 
     const [hours, minutes] = time.split(':').map(Number);
@@ -59,13 +61,13 @@ function Settings() {
         {
           title: "Expense Tracker",
           body: "Don't forget to log your daily expenses! 💰",
-          id: 1, // Sabit bir ID veriyoruz ki sonradan silebilelim
+          id: 1,
           schedule: {
             on: {
               hour: hours,
               minute: minutes,
             },
-            repeats: true, // Her gün tekrarla
+            repeats: true,
           },
         }
       ]
@@ -74,12 +76,13 @@ function Settings() {
 
   // BİLDİRİMİ İPTAL ET
   const cancelNotification = async () => {
+    if (!Capacitor.isNativePlatform()) return;
     await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
   };
 
   // Bütçeyi Kaydetme
   const handleSaveBudget = async () => {
-    if (!user) return;
+    if (!user?.uid) return;
 
     const budgetVal = parseFloat(budgetInput);
     if (budgetVal < 0) {
@@ -92,9 +95,8 @@ function Settings() {
     setMessage('');
 
     try {
-      // Users koleksiyonuna bütçeyi kaydet (Merge: true ile diğer verileri silmez)
       await setDoc(doc(db, "users", user.uid), {
-        budgetLimit: parseFloat(budgetInput) || 0
+        budgetLimit: budgetVal || 0
       }, { merge: true });
 
       setMessage('Budget updated successfully!');
@@ -107,14 +109,20 @@ function Settings() {
     }
   };
 
-  // BİLDİRİM AÇMA/KAPAMA (Capacitor Versiyonu)
+  // BİLDİRİM AÇMA/KAPAMA
   const handleToggleReminder = async (e) => {
-    if (!user) return;
+    if (!user?.uid) return;
 
-    const isChecked = e.target.checked; // Switch'in yeni durumu
+    const isChecked = e.target.checked;
 
     if (isChecked) {
-      // AÇARKEN: Telefondan izin iste
+      // 🔥 GELİŞTİRME 2: Web tarayıcıda izne çalışıp çökmemesi için koruma
+      if (!Capacitor.isNativePlatform()) {
+        alert("Push notifications are only supported on the mobile app.");
+        setReminderEnabled(false);
+        return;
+      }
+
       let permStatus = await LocalNotifications.checkPermissions();
       if (permStatus.display === 'prompt') {
         permStatus = await LocalNotifications.requestPermissions();
@@ -132,7 +140,6 @@ function Settings() {
         setReminderEnabled(false);
       }
     } else {
-      // KAPATIRKEN: Bildirimi sistemden sil
       setReminderEnabled(false);
       saveReminderSettings(false, reminderTime);
       await cancelNotification();
@@ -142,12 +149,11 @@ function Settings() {
     }
   };
 
-  // SAAT DEĞİŞİP KUTUDAN ÇIKILDIĞINDA (onBlur)
+  // SAAT DEĞİŞİP KUTUDAN ÇIKILDIĞINDA
   const handleTimeBlur = async (e) => {
     const newTime = e.target.value;
     saveReminderSettings(reminderEnabled, newTime);
 
-    // Eğer bildirim açıksa, yeni saate göre sistemi güncelle
     if (reminderEnabled) {
       await scheduleNotification(newTime);
       setMessage(`Reminder time updated to ${newTime}`);
@@ -155,10 +161,9 @@ function Settings() {
     }
   };
 
-
-
   // Firestore Yardımcısı
   const saveReminderSettings = async (enabled, time) => {
+    if (!user?.uid) return;
     try {
       await setDoc(doc(db, "users", user.uid), {
         reminderEnabled: enabled,
@@ -171,7 +176,7 @@ function Settings() {
 
   // Veri Sıfırlama
   const handleResetData = async () => {
-    if (!user) return;
+    if (!user?.uid) return;
 
     if (!window.confirm("ARE YOU SURE? \n\nThis will permanently delete ALL your scanned receipts and manual entries. This action cannot be undone.")) {
       return;
@@ -183,16 +188,20 @@ function Settings() {
     try {
       const q = query(collection(db, "receipts"), where("userId", "==", user.uid));
       const querySnapshot = await getDocs(q);
+      const docsArray = querySnapshot.docs;
 
-      // Batch oluştur
-      const batch = writeBatch(db);
+      // 🔥 GELİŞTİRME 1: Firebase 500 Belge Sınırı Çözümü (Chunking)
+      // Belgeleri 500'lük parçalara ayırarak siliyoruz
+      for (let i = 0; i < docsArray.length; i += 500) {
+        const batch = writeBatch(db);
+        const chunk = docsArray.slice(i, i + 500);
 
-      querySnapshot.docs.forEach((document) => {
-        batch.delete(document.ref);
-      });
+        chunk.forEach((document) => {
+          batch.delete(document.ref);
+        });
 
-      // Hepsini tek seferde sil
-      await batch.commit();
+        await batch.commit();
+      }
 
       setResetMessage('All data has been successfully deleted.');
       setTimeout(() => setResetMessage(''), 5000);

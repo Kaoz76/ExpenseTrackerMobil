@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
@@ -9,8 +9,7 @@ function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  // Yeni state'ler
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -18,6 +17,12 @@ function SignUpPage() {
 
   const { signup } = useAuth();
   const navigate = useNavigate();
+
+  // GELİŞTİRME 2: Kullanıcı formda düzeltme yapmaya başladığında genel hatayı gizle
+  useEffect(() => {
+    if (error) setError('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, password, termsAccepted]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,7 +33,7 @@ function SignUpPage() {
       setPasswordError('Passwords do not match.');
       return;
     }
-    
+
     if (!termsAccepted) {
       setError('You must agree to the Terms of Service and Privacy Policy.');
       return;
@@ -50,8 +55,10 @@ function SignUpPage() {
           setError('Failed to create an account. Please try again.');
           console.error(err);
       }
+    } finally {
+      // GELİŞTİRME 3: Güvenli Loading kapanışı
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleConfirmPasswordChange = (e) => {
@@ -69,7 +76,7 @@ function SignUpPage() {
       <div className="container">
         <div className="row justify-content-center">
           <div className="col-md-6 col-lg-5">
-            
+
             {/* Başlık ve Alt Başlık */}
             <div className="text-center mb-4">
               <h1 className="h2 fw-bold">Create Your Account</h1>
@@ -80,7 +87,7 @@ function SignUpPage() {
               <div className="card-body p-4 p-md-5">
                 <form onSubmit={handleSubmit}>
                   {error && <div className="alert alert-danger">{error}</div>}
-                  
+
                   {/* Email */}
                   <div className="mb-3">
                     <label htmlFor="email" className="form-label">Email</label>
@@ -93,53 +100,65 @@ function SignUpPage() {
                       required
                     />
                   </div>
-                  
+
                   {/* Password */}
-                  <div className="mb-3"> 
+                  <div className="mb-3">
                     <label htmlFor="password" className="form-label">Password</label>
-                    <div className="position-relative">
+                    {/* GELİŞTİRME 1: Bootstrap Input Group yapısı */}
+                    <div className="input-group">
                       <input
                         type={showPassword ? 'text' : 'password'}
-                        className="form-control"
+                        className="form-control border-end-0"
                         id="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                       />
-                      <span onClick={() => setShowPassword(!showPassword)} className="input-group-password-icon">
-                        {showPassword ? <FaEye /> : <FaEyeSlash />}
-                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary bg-transparent border-start-0 text-muted"
+                        onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <FaEyeSlash /> : <FaEye />}
+                      </button>
                     </div>
                   </div>
-                  
+
                   {/* Confirm Password */}
                   <div className="mb-3">
                     <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-                    <div className="position-relative">
+                    {/* GELİŞTİRME 1: Bootstrap Input Group yapısı */}
+                    <div className="input-group">
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
-                        className={`form-control ${passwordError ? 'is-invalid' : ''}`}
+                        className={`form-control border-end-0 ${passwordError ? 'is-invalid' : ''}`}
                         id="confirmPassword"
                         value={confirmPassword}
                         onChange={handleConfirmPasswordChange}
                         required
                       />
-                      <span onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="input-group-password-icon">
-                        {showConfirmPassword ? <FaEye /> : <FaEyeSlash />}
-                      </span>
+                      <button
+                        type="button"
+                        className={`btn btn-outline-secondary bg-transparent border-start-0 text-muted ${passwordError ? 'border-danger' : ''}`}
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                      </button>
                     </div>
                     {passwordError && (
-                      <div className="invalid-feedback-text mt-1">
+                      <div className="invalid-feedback-text mt-1 text-danger small">
                         {passwordError}
                       </div>
                     )}
                   </div>
 
                   {/* Terms & Privacy */}
-                  <div className="form-check mb-3">
-                    <input 
-                      className="form-check-input" 
-                      type="checkbox" 
+                  <div className="form-check mb-4 mt-4">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
                       id="termsCheck"
                       checked={termsAccepted}
                       onChange={(e) => setTermsAccepted(e.target.checked)}
@@ -148,12 +167,12 @@ function SignUpPage() {
                       By creating an account, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
                     </label>
                   </div>
-                  
+
                   {/* Create Account Button */}
                   <div className="d-grid">
-                     <button type="submit" className="btn btn-primary" disabled={loading}>
-                       {loading ? 'Creating...' : 'Create Account'}
-                     </button>
+                    <button type="submit" className="btn btn-primary" disabled={loading}>
+                      {loading ? 'Creating...' : 'Create Account'}
+                    </button>
                   </div>
                 </form>
               </div>
