@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, Timestamp, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt, FaArrowDown } from 'react-icons/fa';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
@@ -56,12 +56,11 @@ function ManualEntry() {
   useEffect(() => {
     if (user) {
       setLoadingEntries(true);
+      // Query without orderBy to avoid composite index requirement
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
-        where("isManual", "==", true),
-        orderBy("createdAt", "desc"),
-        limit(entryLimit) // 🔥 LİMİT ARTIK DİNAMİK!
+        where("isManual", "==", true)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -69,6 +68,13 @@ function ManualEntry() {
           id: doc.id,
           ...doc.data()
         }));
+
+        // Sort client-side to avoid composite index requirement
+        entries.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || 0;
+          const bTime = b.createdAt?.toMillis?.() || 0;
+          return bTime - aTime;
+        });
 
         setManualEntries(entries);
         setLoadingEntries(false);
@@ -82,7 +88,7 @@ function ManualEntry() {
       setManualEntries([]);
       setLoadingEntries(false);
     }
-  }, [user, entryLimit]); // 🔥 entryLimit değiştiğinde bu kod tekrar çalışır
+  }, [user]); // Only re-run when user changes
 
   const addProductRow = () => {
     setProducts([
@@ -369,7 +375,7 @@ function ManualEntry() {
                   </div>
                 )}
 
-                {!loadingEntries && manualEntries.map((entry) => (
+                {!loadingEntries && manualEntries.slice(0, entryLimit).map((entry) => (
                   <div
                     key={entry.id}
                     className="list-group-item list-group-item-action d-flex align-items-center p-3"
@@ -403,7 +409,7 @@ function ManualEntry() {
                 ))}
 
                 {/* 🔥 YENİ: DAHA FAZLA YÜKLE BUTONU */}
-                {!loadingEntries && manualEntries.length >= entryLimit && (
+                {!loadingEntries && manualEntries.length > entryLimit && (
                   <div className="list-group-item text-center p-3 bg-light">
                     <button
                       className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold d-flex align-items-center mx-auto"
