@@ -34,6 +34,10 @@ function Products() {
           const data = doc.data();
           if (data.items && Array.isArray(data.items)) {
             data.items.forEach(item => {
+              // Skip items with negative prices (discounts/sales)
+              const itemPrice = Number(item.price) || 0;
+              if (itemPrice < 0) return;
+
               // Marka veya isim yoksa undefined olmasını engelle
               const safeBrand = item.brand || 'Unknown Brand';
               const safeName = item.name || 'Unnamed Product';

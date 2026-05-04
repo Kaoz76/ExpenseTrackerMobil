@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { FaHistory, FaTag, FaChartLine, FaThumbsUp, FaThumbsDown } from 'react-icons/fa';
+import { FaHistory, FaTag, FaChartLine, FaThumbsUp, FaThumbsDown, FaExternalLinkAlt } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 function ProductDetails() {
   const { productId } = useParams(); // URL'den gelen ham ürün adı
@@ -30,29 +30,49 @@ function ProductDetails() {
     return cleaned.trim();
   };
 
-  const rawProductName = decodeURIComponent(productId || '');
+  let rawProductName = productId || '';
+  try {
+    rawProductName = decodeURIComponent(rawProductName);
+  } catch (e) {
+    // If decoding fails (malformed URI), use the raw value as-is
+    console.warn('Failed to decode productId, using raw value:', e);
+  }
   const productName = cleanName(rawProductName);
 
   useEffect(() => {
     if (user && productName) {
       setLoading(true);
 
+      // Query all receipts (not just manual) — consistent with Products page
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        where("isManual", "==", true),
-        orderBy("createdAt", "desc")
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         let foundItems = [];
         let typeFound = ''; // Döngü içinde türü yakalamak için
 
+        console.log('=== ProductDetails Debug ===');
+        console.log('Looking for productName:', JSON.stringify(productName));
+        console.log('Looking for brandName:', JSON.stringify(brandName));
+
         snapshot.forEach((doc) => {
           const data = doc.data();
           if (data.items && Array.isArray(data.items)) {
             data.items.forEach(item => {
-              if (cleanName(item.name) === productName && item.brand === brandName) {
+              const itemPrice = Number(item.price);
+              // Skip items with negative prices (discounts/sales)
+              if (itemPrice < 0) return;
+
+              // Normalize brand comparison: treat null/undefined/empty as equivalent
+              const itemBrand = item.brand || '';
+              const matchBrand = brandName || '';
+              const cleanedItemName = cleanName(item.name);
+
+              console.log(`  Item: ${JSON.stringify(item.name)} -> cleaned: ${JSON.stringify(cleanedItemName)} | brand: ${JSON.stringify(itemBrand)} | nameMatch: ${cleanedItemName === productName} | brandMatch: ${itemBrand === matchBrand}`);
+
+              if (cleanedItemName === productName && itemBrand === matchBrand) {
                 // Tür bilgisini ilk bulduğumuz kayıttan alalım
                 if (!typeFound && item.type) {
                   typeFound = item.type;
@@ -60,7 +80,8 @@ function ProductDetails() {
 
                 foundItems.push({
                   id: doc.id,
-                  price: Number(item.price),
+                  receiptId: doc.id,
+                  price: itemPrice,
                   store: data.fileName,
                   date: data.date,
                   createdAt: data.createdAt,
@@ -69,6 +90,16 @@ function ProductDetails() {
               }
             });
           }
+        });
+
+        console.log('Found items count:', foundItems.length);
+        console.log('=== End Debug ===');
+
+        // Sort client-side by createdAt descending
+        foundItems.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || 0;
+          const bTime = b.createdAt?.toMillis?.() || 0;
+          return bTime - aTime;
         });
 
         setHistory(foundItems);
@@ -204,25 +235,32 @@ function ProductDetails() {
                       <th className="py-3 ps-4">Date</th>
                       <th className="py-3">Store</th>
                       <th className="py-3">Size</th>
-                      <th className="py-3 text-end pe-4">Price</th>
+                      <th className="py-3 text-end">Price</th>
+                      <th className="py-3 text-center pe-4">Receipt</th>
                     </tr>
                   </thead>
                   <tbody>
                     {history.map((record, idx) => (
-                      <tr 
-                        key={idx} 
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => navigate(`/receipts/${record.id}`)}
-                      >
+                      <tr key={idx}>
                         <td className="ps-4 text-body-secondary fw-medium">{record.date}</td>
                         <td className="fw-bold">{record.store}</td>
                         <td>{record.size || '-'}</td>
-                        <td className="text-end pe-4 fw-bold text-primary">{formatPrice(record.price)}</td>
+                        <td className="text-end fw-bold text-primary">{formatPrice(record.price)}</td>
+                        <td className="text-center pe-4">
+                          <Link
+                            to={`/receipts/${record.receiptId}`}
+                            className="btn btn-sm btn-outline-secondary rounded-pill px-2"
+                            title="View Receipt"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <FaExternalLinkAlt style={{ fontSize: '0.75rem' }} />
+                          </Link>
+                        </td>
                       </tr>
                     ))}
                     {history.length === 0 && (
                       <tr>
-                        <td colSpan="4" className="text-center py-5 text-body-secondary">No history found.</td>
+                        <td colSpan="5" className="text-center py-5 text-body-secondary">No history found.</td>
                       </tr>
                     )}
                   </tbody>
