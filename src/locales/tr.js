@@ -237,6 +237,15 @@ export const tr = {
     quick_link_analyze: "Analiz",
     quick_link_subs: "Abonelikler",
     quick_link_stores: "Mağazalar",
-    quick_link_reports: "Raporlar"
+    quick_link_reports: "Raporlar",
+    price_greater_zero: "Fiyat sıfırdan büyük olmalıdır.",
+    failed_to_add: "Abonelik eklenemedi.",
+    confirm_delete_sub: "Bu aboneliği silmek istediğinizden emin misiniz?",
+    failed_to_delete: "Abonelik silinemedi.",
+    load_older_visits: "Daha Eski Ziyaretleri Yükle",
+    search_stores_placeholder: "Mağaza ara...",
+    no_stores_matched: "\"{{search}}\" aramasıyla eşleşen mağaza bulunamadı.",
+    not_enough_data: "Yeterli ürün verisi yok",
+    items_scanned: "ürün tarandı"
   }
 };

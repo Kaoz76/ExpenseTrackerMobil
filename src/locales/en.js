@@ -235,6 +235,15 @@ export const en = {
     quick_link_analyze: "Analyze",
     quick_link_subs: "Subscriptions",
     quick_link_stores: "Stores",
-    quick_link_reports: "Reports"
+    quick_link_reports: "Reports",
+    price_greater_zero: "Price must be greater than zero.",
+    failed_to_add: "Failed to add subscription.",
+    confirm_delete_sub: "Are you sure you want to delete this subscription?",
+    failed_to_delete: "Failed to delete subscription.",
+    load_older_visits: "Load Older Visits",
+    search_stores_placeholder: "Search stores...",
+    no_stores_matched: "No stores matched your search \"{{search}}\".",
+    not_enough_data: "Not enough item data",
+    items_scanned: "items scanned"
   }
 };
