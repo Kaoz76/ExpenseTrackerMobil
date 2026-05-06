@@ -8,6 +8,7 @@ import DynamicFavicon from './components/DynamicFavicon';
 import ScrollToTopButton from './components/ScrollToTopButton';
 
 import Dashboard from './pages/Dashboard';
+import Landing from './pages/Landing';
 import Receipts from './pages/Receipts';
 import ManualEntry from './pages/ManualEntry';
 import Subscriptions from './pages/Subscriptions';
@@ -42,8 +43,8 @@ function App() {
       {/* Capacitor "Safe Area" destekli mobil boşluk mantığı mükemmel çalışıyor */}
       <main style={{ paddingBottom: isMobile ? 'calc(70px + env(safe-area-inset-bottom))' : '0' }}>
         <Routes>
-          {/* 🔥 GELİŞTİRME 1: Kök dizine (/) girenleri otomatik /dashboard'a yönlendir */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* 🔥 Kök dizin (/) için artık Landing (Açılış) sayfasını gösteriyoruz */}
+          <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/receipts" element={<Receipts />} />

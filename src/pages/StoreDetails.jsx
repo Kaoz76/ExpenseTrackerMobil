@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FaHistory, FaArrowLeft, FaStore, FaChartPie, FaMoneyBillWave, FaShoppingBasket, FaReceipt, FaFileAlt, FaPlus } from 'react-icons/fa';
+import { FaHistory, FaStore, FaChartPie, FaMoneyBillWave, FaShoppingBasket, FaReceipt, FaFileAlt, FaPlus } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { trTitleCase, trToLower } from '../utils/stringUtils';
 
 // YARDIMCI FONKSİYON
@@ -23,7 +23,7 @@ function StoreDetails() {
 
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [displayLimit, setDisplayLimit] = useState(20); // Performans için
+  const [displayLimit, setDisplayLimit] = useState(20);
 
   const [stats, setStats] = useState({
     totalSpent: 0,
@@ -39,6 +39,7 @@ function StoreDetails() {
       setLoading(true);
 
       // KULLANICININ TÜM FİŞLERİNİ ÇEK VE İSTEMCİ TARAFINDA FİLTRELE (Index hatasını önlemek için)
+      // orderBy kaldırıldı, çünkü sıralamayı lokalde (JS ile) yapacağız.
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid)
@@ -52,6 +53,8 @@ function StoreDetails() {
         snapshot.forEach((doc) => {
           const data = doc.data();
           const rawName = data.fileName || data.title || "Unknown Store";
+
+          // 🔥 ESKİ VERİLER İÇİN HAYAT KURTARAN DÜZELTME
           const storeName = data.storeNameCleaned || cleanStoreName(rawName);
 
           if (storeName === targetStoreName) {
@@ -84,11 +87,20 @@ function StoreDetails() {
           }
         });
 
-        // İstemci tarafında tarihe göre azalan (desc) sıralama yap
+        // 🔥 ZIRHLI SIRALAMA (Tarih verisi bozuksa NaN dönüp listeyi çökertmesini engeller)
         receiptsData.sort((a, b) => {
-          const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.date || 0).getTime();
-          const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.date || 0).getTime();
-          return dateB - dateA;
+          const getSafeTime = (record) => {
+            if (record.createdAt && typeof record.createdAt.toDate === 'function') {
+              return record.createdAt.toDate().getTime();
+            }
+            if (record.date) {
+              const parsed = new Date(record.date).getTime();
+              return isNaN(parsed) ? 0 : parsed;
+            }
+            return 0; // Tarih hiç yoksa en sona at
+          };
+
+          return getSafeTime(b) - getSafeTime(a); // desc (yeni olan en üstte)
         });
 
         let mostFrequent = null;
@@ -116,13 +128,11 @@ function StoreDetails() {
     }
   }, [user, targetStoreName]);
 
-  // 🔥 ALTIN VURUŞ: Tıklayınca Çökmeyi Engelleyen Akıllı Yönlendirme
+  // 🔥 Tıklayınca Çökmeyi Engelleyen Akıllı Yönlendirme
   const handleRowClick = (record) => {
     if (record.isManual) {
-      // Eğer elle girilmişse Texts sayfasına git (veya ilgili detay sayfasına)
       navigate(`/texts`, { state: { receiptId: record.id } });
     } else {
-      // Eğer OCR Taraması ise Receipt Detay Sayfasına git
       navigate(`/receipts/${record.id}`);
     }
   };
