@@ -25,7 +25,7 @@ export const ReportProvider = ({ children }) => {
           const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
 
           const currentReportKey = `${prevMonthDate.getFullYear()}-${prevMonthDate.getMonth() + 1}`;
-          const monthName = prevMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+          const monthName = prevMonthDate.toLocaleString(navigator.language || 'tr-TR', { month: 'long', year: 'numeric' });
 
           setReportMonthText(monthName);
 
@@ -95,7 +95,7 @@ export const ReportProvider = ({ children }) => {
 
         let dateStr = data.date || "";
         if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-          dateStr = data.createdAt.toDate().toLocaleDateString('tr-TR');
+          dateStr = data.createdAt.toDate().toLocaleDateString(navigator.language || 'tr-TR');
         }
 
         const description = `"${(data.fileName || data.title || "No Title").replace(/"/g, '""')}"`;
@@ -157,7 +157,7 @@ export const ReportProvider = ({ children }) => {
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-      const monthName = startOfLastMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const monthName = startOfLastMonth.toLocaleString(navigator.language || 'tr-TR', { month: 'long', year: 'numeric' });
 
       const q = query(
         collection(db, "receipts"),
@@ -235,7 +235,7 @@ export const ReportProvider = ({ children }) => {
         let dateStr = "N/A";
         try {
           if (receipt.createdAt && typeof receipt.createdAt.toDate === 'function') {
-            dateStr = receipt.createdAt.toDate().toLocaleDateString('tr-TR');
+            dateStr = receipt.createdAt.toDate().toLocaleDateString(navigator.language || 'tr-TR');
           } else if (receipt.date) {
             dateStr = receipt.date;
           }

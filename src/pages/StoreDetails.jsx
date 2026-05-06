@@ -7,6 +7,7 @@ import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import ImageModal from '../components/ImageModal';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
+import { trTitleCase, trToLower } from '../utils/stringUtils';
 
 function StoreDetails() {
   const { storeId } = useParams();
@@ -34,11 +35,7 @@ function StoreDetails() {
   const cleanStoreName = (name) => {
     if (!name) return "Unknown Store";
     let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-    cleanName = cleanName
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    cleanName = trTitleCase(cleanName);
     return cleanName.trim();
   };
 
@@ -76,7 +73,7 @@ function StoreDetails() {
               data.items.forEach(item => {
                 // Benzersiz anahtar oluştur (Marka + İsim)
                 // "Sütaş Süt" ile "Pınar Süt" karışmasın diye
-                const key = `${item.brand}-${item.name}`.toLowerCase();
+                const key = trToLower(`${item.brand}-${item.name}`);
                 
                 if (!itemFrequency[key]) {
                   itemFrequency[key] = {
@@ -233,7 +230,7 @@ function StoreDetails() {
                           onClick={() => handleRowClick(record)}
                         >
                           <td className="ps-4 text-body-secondary fw-medium">
-                              {record.createdAt?.toDate ? record.createdAt.toDate().toLocaleDateString('tr-TR') : record.date}
+                              {record.createdAt?.toDate ? record.createdAt.toDate().toLocaleDateString(navigator.language || 'tr-TR') : record.date}
                           </td>
                           
                           <td>

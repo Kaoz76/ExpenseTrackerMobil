@@ -6,6 +6,8 @@ import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
+import { trTitleCase } from '../utils/stringUtils';
+
 function ProductDetails() {
   const { productId } = useParams(); // URL'den gelen ham ürün adı
   const [searchParams] = useSearchParams();
@@ -22,12 +24,7 @@ function ProductDetails() {
   const cleanName = (name) => {
     if (!name) return "";
     let cleaned = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-    cleaned = cleaned
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    return cleaned.trim();
+    return trTitleCase(cleaned).trim();
   };
 
   let rawProductName = productId || '';

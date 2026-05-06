@@ -6,6 +6,8 @@ import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
+import { trTitleCase } from '../utils/stringUtils';
+
 function Stores() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
@@ -23,11 +25,7 @@ function Stores() {
     // Baş harfleri büyüt, kalanı küçük yap (Standartlaştırma)
     // Örn: "a101" -> "A101", "migros jet" -> "Migros Jet"
     // (Basitçe 'Title Case' yapıyoruz)
-    cleanName = cleanName
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    cleanName = trTitleCase(cleanName);
 
     return cleanName.trim();
   };
@@ -68,7 +66,7 @@ function Stores() {
         });
 
         // Objeyi diziye çevirip A-Z sırala
-        const storesArray = Object.values(storeMap).sort((a, b) => a.name.localeCompare(b.name));
+        const storesArray = Object.values(storeMap).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
         
         setStores(storesArray);
         setLoading(false);

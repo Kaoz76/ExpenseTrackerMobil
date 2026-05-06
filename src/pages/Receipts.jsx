@@ -12,17 +12,13 @@ import Tesseract from 'tesseract.js';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
 import { formatDateTime } from '../utils/dateFormatter';
+import { trTitleCase, trToLower } from '../utils/stringUtils';
 
 // 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
 const cleanStoreName = (name) => {
   if (!name) return "Unknown Store";
   let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-  cleanName = cleanName
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-  return cleanName.trim();
+  return trTitleCase(cleanName).trim();
 };
 
 function Receipts() {
@@ -82,7 +78,7 @@ function Receipts() {
   const extractDataFromText = (text) => {
     if (!text) return { total: 0, items: [] };
 
-    const normalizedText = text.replace(/\r/g, '\n').toLocaleLowerCase('tr-TR');
+    const normalizedText = trToLower(text.replace(/\r/g, '\n'));
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
     const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
@@ -138,7 +134,7 @@ function Receipts() {
             let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_-]/g, '').trim();
 
             if (namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
-              let formattedName = namePart.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+              let formattedName = trTitleCase(namePart);
 
               if (/(indirim|ndirim|iskonto)/i.test(line)) {
                 parsedPrice = -Math.abs(parsedPrice);

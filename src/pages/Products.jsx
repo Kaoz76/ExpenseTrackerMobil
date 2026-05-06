@@ -6,6 +6,8 @@ import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
+import { trToLower } from '../utils/stringUtils';
+
 function Products() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
@@ -41,7 +43,7 @@ function Products() {
               // Marka veya isim yoksa undefined olmasını engelle
               const safeBrand = item.brand || 'Unknown Brand';
               const safeName = item.name || 'Unnamed Product';
-              const uniqueKey = `${safeBrand}-${safeName}`.toLowerCase();
+              const uniqueKey = trToLower(`${safeBrand}-${safeName}`);
 
               if (!productMap[uniqueKey]) {
                 productMap[uniqueKey] = {
@@ -80,11 +82,11 @@ function Products() {
   // 🔥 DÜZELTME 2 & 3: useMemo ile performans artışı, çökme koruması ve historyCount'a göre sıralama
   const filteredAndSortedProducts = useMemo(() => {
     let result = products.filter(product => {
-      const search = searchTerm.toLowerCase();
+      const search = trToLower(searchTerm);
       return (
-        (product.name?.toLowerCase().includes(search)) ||
-        (product.brand?.toLowerCase().includes(search)) ||
-        (product.type?.toLowerCase().includes(search))
+        trToLower(product.name || '').includes(search) ||
+        trToLower(product.brand || '').includes(search) ||
+        trToLower(product.type || '').includes(search)
       );
     });
 
