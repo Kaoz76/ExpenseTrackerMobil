@@ -1,67 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FaHistory, FaArrowLeft, FaStore, FaChartPie, FaMoneyBillWave, FaShoppingBasket, FaReceipt, FaFileAlt } from 'react-icons/fa';
+import { FaHistory, FaArrowLeft, FaStore, FaChartPie, FaMoneyBillWave, FaShoppingBasket, FaReceipt, FaFileAlt, FaPlus } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
-import ImageModal from '../components/ImageModal';
-import ReceiptDetailModal from '../components/ReceiptDetailModal';
 import { trTitleCase, trToLower } from '../utils/stringUtils';
+
+// YARDIMCI FONKSİYON
+export const cleanStoreName = (name) => {
+  if (!name) return "Unknown Store";
+  let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
+  cleanName = trTitleCase(cleanName);
+  return cleanName.trim();
+};
 
 function StoreDetails() {
   const { storeId } = useParams();
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
-  
+
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [displayLimit, setDisplayLimit] = useState(20); // Performans için
+
   const [stats, setStats] = useState({
     totalSpent: 0,
     avgSpend: 0,
     visitCount: 0,
-    mostFrequentItem: null // Artık obje olacak (null başlangıç)
+    mostFrequentItem: null
   });
 
-  // Modal State'leri
-  const [isImageModalShowing, setIsImageModalShowing] = useState(false);
-  const [selectedImage, setSelectedImage] = useState({ url: '', alt: '' });
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
-
   const targetStoreName = decodeURIComponent(storeId || '');
-
-  const cleanStoreName = (name) => {
-    if (!name) return "Unknown Store";
-    let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-    cleanName = trTitleCase(cleanName);
-    return cleanName.trim();
-  };
 
   useEffect(() => {
     if (user && targetStoreName) {
       setLoading(true);
-      
+
+      // KULLANICININ TÜM FİŞLERİNİ ÇEK VE İSTEMCİ TARAFINDA FİLTRELE (Index hatasını önlemek için)
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         let receiptsData = [];
         let total = 0;
-        
-        // Ürün Sayacı için Map: { "Marka-İsim": { count: 5, details: {...} } }
         const itemFrequency = {};
 
         snapshot.forEach((doc) => {
           const data = doc.data();
-          const rawName = data.fileName || data.title || "";
-          
-          if (cleanStoreName(rawName) === targetStoreName) {
-            
+          const rawName = data.fileName || data.title || "Unknown Store";
+          const storeName = data.storeNameCleaned || cleanStoreName(rawName);
+
+          if (storeName === targetStoreName) {
             receiptsData.push({
               id: doc.id,
               ...data
@@ -69,37 +62,43 @@ function StoreDetails() {
 
             total += Number(data.price) || 0;
 
-            if (data.isManual && data.items && Array.isArray(data.items)) {
+            if (data.items && Array.isArray(data.items)) {
               data.items.forEach(item => {
-                // Benzersiz anahtar oluştur (Marka + İsim)
-                // "Sütaş Süt" ile "Pınar Süt" karışmasın diye
-                const key = trToLower(`${item.brand}-${item.name}`);
-                
-                if (!itemFrequency[key]) {
-                  itemFrequency[key] = {
-                    count: 0,
-                    details: { // Detayları sakla
-                      name: item.name || 'Unnamed',
-                      brand: item.brand || 'Unknown',
-                      type: item.type || 'General'
-                    }
-                  };
+                if (item.name && item.name.length > 1) {
+                  const key = trToLower(`${item.brand || 'Unknown'}-${item.name}`);
+
+                  if (!itemFrequency[key]) {
+                    itemFrequency[key] = {
+                      count: 0,
+                      details: {
+                        name: item.name,
+                        brand: item.brand || 'Unknown',
+                        type: item.type || 'General'
+                      }
+                    };
+                  }
+                  itemFrequency[key].count += 1;
                 }
-                itemFrequency[key].count += 1;
               });
             }
           }
         });
 
-        // En sık alınan ürünü bul
+        // İstemci tarafında tarihe göre azalan (desc) sıralama yap
+        receiptsData.sort((a, b) => {
+          const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.date || 0).getTime();
+          const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.date || 0).getTime();
+          return dateB - dateA;
+        });
+
         let mostFrequent = null;
         let maxCount = 0;
 
         Object.values(itemFrequency).forEach(entry => {
-           if (entry.count > maxCount) {
-             maxCount = entry.count;
-             mostFrequent = entry.details;
-           }
+          if (entry.count > maxCount) {
+            maxCount = entry.count;
+            mostFrequent = entry.details;
+          }
         });
 
         setHistory(receiptsData);
@@ -107,9 +106,9 @@ function StoreDetails() {
           totalSpent: total,
           visitCount: receiptsData.length,
           avgSpend: receiptsData.length > 0 ? total / receiptsData.length : 0,
-          mostFrequentItem: mostFrequent // Obje veya null
+          mostFrequentItem: mostFrequent
         });
-        
+
         setLoading(false);
       });
 
@@ -117,177 +116,181 @@ function StoreDetails() {
     }
   }, [user, targetStoreName]);
 
-  const handleRowClick = (record) => { navigate(`/receipts/${record.id}`); };
-
-  const closeImageModal = () => {
-    setIsImageModalShowing(false);
-    setSelectedImage({ url: '', alt: '' });
+  // 🔥 ALTIN VURUŞ: Tıklayınca Çökmeyi Engelleyen Akıllı Yönlendirme
+  const handleRowClick = (record) => {
+    if (record.isManual) {
+      // Eğer elle girilmişse Texts sayfasına git (veya ilgili detay sayfasına)
+      navigate(`/texts`, { state: { receiptId: record.id } });
+    } else {
+      // Eğer OCR Taraması ise Receipt Detay Sayfasına git
+      navigate(`/receipts/${record.id}`);
+    }
   };
+
+  const displayedHistory = history.slice(0, displayLimit);
 
   return (
     <div className="dashboard-page-wrapper p-4">
-      <div 
-        className={isImageModalShowing || showDetailModal ? 'content-blurred' : ''}
-        style={{ transition: 'filter 0.3s ease-in-out' }}
-      >
-        <div className="container-fluid">
-          
-          <nav aria-label="breadcrumb" className="mb-4">
-            <ol className="breadcrumb">
-              <li className="breadcrumb-item">
-                <Link to="/stores" className="text-decoration-none">Stores</Link>
-              </li>
-              <li className="breadcrumb-item active" aria-current="page">
-                {targetStoreName}
-              </li>
-            </ol>
-          </nav>
+      <div className="container-fluid">
 
-          <div className="d-flex align-items-center mb-4">
-             <div className="bg-primary-subtle rounded-circle p-3 me-3 text-primary d-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px' }}>
-                <FaStore className="fs-3" />
-             </div>
-             <div>
-               <h1 className="display-6 fw-bold mb-0">{targetStoreName}</h1>
-               <span className="text-muted">Store Analytics</span>
-             </div>
+        <nav aria-label="breadcrumb" className="mb-4">
+          <ol className="breadcrumb">
+            <li className="breadcrumb-item">
+              <Link to="/stores" className="text-decoration-none">Stores</Link>
+            </li>
+            <li className="breadcrumb-item active" aria-current="page">
+              {targetStoreName}
+            </li>
+          </ol>
+        </nav>
+
+        <div className="d-flex align-items-center mb-4">
+          <div className="bg-primary-subtle rounded-circle p-3 me-3 text-primary d-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px' }}>
+            <FaStore className="fs-3" />
           </div>
-
-          {loading && <div className="text-center p-5"><div className="spinner-border" role="status"></div></div>}
-
-          {!loading && (
-            <>
-              <div className="row mb-5 g-3">
-                <div className="col-md-4">
-                   <div className="card border-0 shadow-sm h-100 p-3 bg-primary-subtle text-primary">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                         <h6 className="mb-0 fw-bold">Total Spent</h6>
-                         <FaMoneyBillWave />
-                      </div>
-                      <h3 className="fw-bold mb-0">{formatPrice(stats.totalSpent)}</h3>
-                   </div>
-                </div>
-                <div className="col-md-4">
-                   <div className="card border-0 shadow-sm h-100 p-3 bg-info-subtle text-info-emphasis">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                         <h6 className="mb-0 fw-bold">Average Spend</h6>
-                         <FaChartPie />
-                      </div>
-                      <h3 className="fw-bold mb-0">{formatPrice(stats.avgSpend)}</h3>
-                   </div>
-                </div>
-                
-                {/* FAVORITE ITEM KARTI */}
-                <div className="col-md-4">
-                   <div className="card border-0 shadow-sm h-100 p-3 bg-warning-subtle text-warning-emphasis">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                         <h6 className="mb-0 fw-bold">Favorite Item</h6>
-                         <FaShoppingBasket />
-                      </div>
-                      
-                      {stats.mostFrequentItem ? (
-                        <div>
-                            <h4 className="fw-bold mb-0 text-truncate" title={stats.mostFrequentItem.name}>
-                                {stats.mostFrequentItem.name}
-                            </h4>
-                            <div className="d-flex align-items-center mt-1">
-                                <small className="fw-semibold me-2">{stats.mostFrequentItem.brand}</small>
-                                <span className="badge bg-warning text-dark bg-opacity-50 border border-warning border-opacity-25">
-                                    {stats.mostFrequentItem.type}
-                                </span>
-                            </div>
-                        </div>
-                      ) : (
-                        <h4 className="fw-bold mb-0">-</h4>
-                      )}
-                      
-                   </div>
-                </div>
-              </div>
-
-              <div className="card border-0 shadow-sm">
-                <div className="card-header bg-body-tertiary py-3">
-                  <h5 className="mb-0 fw-bold d-flex align-items-center text-body">
-                    <FaHistory className="me-2 text-body-secondary" /> Visit History
-                  </h5>
-                </div>
-
-                <div className="table-responsive">
-                  <table className="table table-hover mb-0 align-middle">
-                    <thead className="table-secondary">
-                      <tr>
-                        <th className="py-3 ps-4">Date</th>
-                        <th className="py-3">Entry Type</th>
-                        <th className="py-3 text-center">Details</th>
-                        <th className="py-3 text-end pe-4">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {history.map((record) => (
-                        <tr 
-                          key={record.id} 
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => handleRowClick(record)}
-                        >
-                          <td className="ps-4 text-body-secondary fw-medium">
-                              {record.createdAt?.toDate ? record.createdAt.toDate().toLocaleDateString(navigator.language || 'tr-TR') : record.date}
-                          </td>
-                          
-                          <td>
-                              {record.isManual ? (
-                                  <span className="badge bg-secondary d-inline-flex align-items-center">
-                                    <FaFileAlt className="me-1" /> Manual Entry
-                                  </span>
-                              ) : (
-                                  <span className="badge bg-info text-dark d-inline-flex align-items-center">
-                                    <FaReceipt className="me-1" /> Scanned Receipt
-                                  </span>
-                              )}
-                          </td>
-                          
-                          <td className="text-center text-muted small">
-                              {record.isManual 
-                                ? `${record.items ? record.items.length : 0} items logged` 
-                                : 'View Image'
-                              }
-                          </td>
-                          
-                          <td className="text-end pe-4 fw-bold text-primary">
-                              {formatPrice(record.price)}
-                          </td>
-                        </tr>
-                      ))}
-                      
-                      {history.length === 0 && (
-                         <tr>
-                           <td colSpan="4" className="text-center py-5 text-body-secondary">
-                              No visits found for this store.
-                           </td>
-                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
-
+          <div>
+            <h1 className="display-6 fw-bold mb-0">{targetStoreName}</h1>
+            <span className="text-muted">Store Analytics</span>
+          </div>
         </div>
+
+        {loading && <div className="text-center p-5"><div className="spinner-border text-primary" role="status"></div></div>}
+
+        {!loading && (
+          <>
+            <div className="row mb-5 g-3">
+              <div className="col-md-4">
+                <div className="card border-0 shadow-sm h-100 p-3 bg-primary-subtle text-primary">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="mb-0 fw-bold">Total Spent</h6>
+                    <FaMoneyBillWave />
+                  </div>
+                  <h3 className="fw-bold mb-0">{formatPrice(stats.totalSpent)}</h3>
+                  <small className="opacity-75">Lifetime across {stats.visitCount} visits</small>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="card border-0 shadow-sm h-100 p-3 bg-info-subtle text-info-emphasis">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="mb-0 fw-bold">Average Spend</h6>
+                    <FaChartPie />
+                  </div>
+                  <h3 className="fw-bold mb-0">{formatPrice(stats.avgSpend)}</h3>
+                  <small className="opacity-75">Per visit</small>
+                </div>
+              </div>
+
+              <div className="col-md-4">
+                <div className="card border-0 shadow-sm h-100 p-3 bg-warning-subtle text-warning-emphasis">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h6 className="mb-0 fw-bold">Favorite Item</h6>
+                    <FaShoppingBasket />
+                  </div>
+
+                  {stats.mostFrequentItem ? (
+                    <div>
+                      <h4 className="fw-bold mb-0 text-truncate" title={stats.mostFrequentItem.name}>
+                        {stats.mostFrequentItem.name}
+                      </h4>
+                      <div className="d-flex align-items-center mt-1">
+                        <small className="fw-semibold me-2">{stats.mostFrequentItem.brand}</small>
+                        <span className="badge bg-warning text-dark bg-opacity-50 border border-warning border-opacity-25">
+                          {stats.mostFrequentItem.type}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-1">
+                      <h4 className="fw-bold mb-0 opacity-50">-</h4>
+                      <small className="opacity-75">Not enough item data</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="card border-0 shadow-sm">
+              <div className="card-header bg-body-tertiary py-3">
+                <h5 className="mb-0 fw-bold d-flex align-items-center text-body">
+                  <FaHistory className="me-2 text-body-secondary" /> Visit History
+                </h5>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table table-hover mb-0 align-middle">
+                  <thead className="table-secondary">
+                    <tr>
+                      <th className="py-3 ps-4">Date</th>
+                      <th className="py-3">Entry Type</th>
+                      <th className="py-3 text-center">Details</th>
+                      <th className="py-3 text-end pe-4">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedHistory.map((record) => (
+                      <tr
+                        key={record.id}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleRowClick(record)}
+                        className="card-hover-effect"
+                      >
+                        <td className="ps-4 text-body-secondary fw-medium">
+                          {record.createdAt?.toDate ? record.createdAt.toDate().toLocaleDateString(navigator.language || 'tr-TR') : record.date}
+                        </td>
+
+                        <td>
+                          {record.isManual ? (
+                            <span className="badge bg-secondary d-inline-flex align-items-center">
+                              <FaFileAlt className="me-1" /> Manual Entry
+                            </span>
+                          ) : (
+                            <span className="badge bg-info text-dark d-inline-flex align-items-center">
+                              <FaReceipt className="me-1" /> Scanned Receipt
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="text-center text-muted small">
+                          {record.isManual
+                            ? `${record.items ? record.items.length : 0} items logged`
+                            : `${record.items ? record.items.length : 0} items scanned`
+                          }
+                        </td>
+
+                        <td className="text-end pe-4 fw-bold text-primary">
+                          {formatPrice(record.price)}
+                        </td>
+                      </tr>
+                    ))}
+
+                    {history.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="text-center py-5 text-body-secondary">
+                          No visits found for this store.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Performans için Load More */}
+              {!loading && history.length > displayLimit && (
+                <div className="text-center p-3 bg-light border-top">
+                  <button
+                    className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold shadow-sm"
+                    onClick={() => setDisplayLimit(prev => prev + 20)}
+                  >
+                    <FaPlus className="me-2 small" /> Load Older Visits
+                  </button>
+                </div>
+              )}
+
+            </div>
+          </>
+        )}
+
       </div>
-
-      <ImageModal
-        isShowing={isImageModalShowing}
-        onClose={closeImageModal}
-        imageUrl={selectedImage.url}
-        imageAlt={selectedImage.alt}
-      />
-
-      <ReceiptDetailModal 
-        show={showDetailModal} 
-        onClose={() => setShowDetailModal(false)} 
-        receipt={selectedReceipt} 
-      />
-
     </div>
   );
 }

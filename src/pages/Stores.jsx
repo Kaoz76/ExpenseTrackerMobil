@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { FaStore, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaStore } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
@@ -8,26 +8,25 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 import { trTitleCase } from '../utils/stringUtils';
 
+// YARDIMCI FONKSİYON: İsim Temizleme (Dışarı aktarılabilir Pure Function)
+export const cleanStoreName = (name) => {
+  if (!name) return "Unknown Store";
+  let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
+  cleanName = trTitleCase(cleanName);
+  return cleanName.trim();
+};
+
 function Stores() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // YARDIMCI FONKSİYON: İsim Temizleme
-  const cleanStoreName = (name) => {
-    if (!name) return "Unknown Store";
-    
-    // Dosya uzantılarını kaldır (.jpg, .png, .jpeg vb.)
-    // Regex: Nokta ile başlayan ve 3-4 harfli uzantıları bulup sil
-    let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-    
-    // Baş harfleri büyüt, kalanı küçük yap (Standartlaştırma)
-    // Örn: "a101" -> "A101", "migros jet" -> "Migros Jet"
-    // (Basitçe 'Title Case' yapıyoruz)
-    cleanName = trTitleCase(cleanName);
+  // 🔥 YENİ: Arama çubuğu için state
+  const [searchTerm, setSearchTerm] = useState('');
 
-    return cleanName.trim();
+  const handleReset = () => {
+    setSearchTerm('');
   };
 
   useEffect(() => {
@@ -43,19 +42,15 @@ function Stores() {
 
         snapshot.forEach((doc) => {
           const data = doc.data();
-          
-          // Ham veriyi al (fileName veya title)
+
+          // 🔥 OPTİMİZASYON: Veritabanında hazır storeNameCleaned varsa onu kullan, yoksa anlık temizle
           const rawName = data.fileName || data.title || "Unknown Store";
-          
-          // Temizlenmiş ismi oluştur
-          const storeName = cleanStoreName(rawName);
-          
-          // Gruplama (Temiz isim üzerinden)
+          const storeName = data.storeNameCleaned || cleanStoreName(rawName);
+
           if (!storeMap[storeName]) {
             storeMap[storeName] = {
-              id: storeName, // ID olarak temiz ismi kullanıyoruz
+              id: storeName,
               name: storeName,
-              address: "Address not available", 
               totalSpent: 0,
               visitCount: 0
             };
@@ -65,9 +60,9 @@ function Stores() {
           storeMap[storeName].visitCount += 1;
         });
 
-        // Objeyi diziye çevirip A-Z sırala
-        const storesArray = Object.values(storeMap).sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-        
+        // 🔥 UX GELİŞTİRMESİ: A-Z yerine En Çok Para Harcanan Mağazayı en üste koy! (Premium His)
+        const storesArray = Object.values(storeMap).sort((a, b) => b.totalSpent - a.totalSpent);
+
         setStores(storesArray);
         setLoading(false);
       });
@@ -79,6 +74,14 @@ function Stores() {
     }
   }, [user]);
 
+  // 🔥 YENİ: Performanslı (useMemo) ve Türkçe Uyumlu Arama Filtresi
+  const filteredStores = useMemo(() => {
+    if (!searchTerm) return stores;
+    return stores.filter(store =>
+      store.name.toLocaleLowerCase('tr-TR').includes(searchTerm.toLocaleLowerCase('tr-TR'))
+    );
+  }, [stores, searchTerm]);
+
   return (
     <div className="dashboard-page-wrapper p-4">
       <div className="container-fluid">
@@ -88,47 +91,84 @@ function Stores() {
           </ol>
         </nav>
 
-        <h1 className="display-6 fw-bold mb-4">Stores</h1>
+        {/* 🔥 BAŞLIK VE YENİ ARAMA ÇUBUĞU */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+          <h1 className="display-6 fw-bold mb-3 mb-md-0">Stores</h1>
 
-        {loading && <div className="text-center p-5"><div className="spinner-border" role="status"></div></div>}
+          <form className="search-form" onSubmit={(e) => e.preventDefault()}>
+            <button type="button">
+              <svg width="17" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="search">
+                <path d="M7.667 12.667A5.333 5.333 0 107.667 2a5.333 5.333 0 000 10.667zM14.334 14l-2.9-2.9" stroke="currentColor" strokeWidth="1.333" strokeLinecap="round" strokeLinejoin="round"></path>
+              </svg>
+            </button>
+
+            <input
+              className="search-input"
+              placeholder="Search stores..."
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
+            <button className="search-reset" type="button" onClick={handleReset}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </form>
+        </div>
+
+        {loading && <div className="text-center p-5"><div className="spinner-border text-primary" role="status"></div></div>}
 
         {!loading && stores.length === 0 && (
-          <div className="alert alert-info text-center">
-            No store data found. Use <Link to="/receipts" className="alert-link fw-bold">Scans</Link> or <Link to="/texts" className="alert-link fw-bold">Texts</Link> to add stores.
+          <div className="alert alert-info text-center p-4 border border-dashed">
+            <h5 className="mb-2">No store data found.</h5>
+            <p className="mb-0 text-muted">
+              Use <Link to="/receipts" className="alert-link fw-bold">Scans</Link> or <Link to="/texts" className="alert-link fw-bold">Texts</Link> to add stores.
+            </p>
           </div>
         )}
 
         <div className="row">
-          {stores.map((store, index) => (
+          {/* 🔥 Eski stores.map yerine filteredStores.map kullanıyoruz */}
+          {filteredStores.map((store, index) => (
             <div key={index} className="col-md-6 col-lg-4 mb-4">
-              <div className="card shadow-sm h-100 card-accent">
-                <div className="card-body d-flex flex-column">
+              {/* Premium Card Class eklendi */}
+              <div className="card shadow-sm h-100 card-hover-effect border-0">
+                <div className="card-body d-flex flex-column p-4">
                   <div className="d-flex align-items-center mb-3">
-                    <div className="bg-light rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px' }}>
+                    <div className="bg-primary-subtle rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px' }}>
                       <FaStore className="text-primary fs-4" />
                     </div>
-                    <div>
-                      <h5 className="card-title mb-1">{store.name}</h5>
-                      <p className="card-text text-muted small">
+                    <div className="overflow-hidden">
+                      <h5 className="card-title mb-1 fw-bold text-truncate" title={store.name}>{store.name}</h5>
+                      <p className="card-text text-muted small mb-0">
                         {store.visitCount} visit(s) recorded
                       </p>
                     </div>
                   </div>
-                  
-                  <div className="mt-auto d-flex justify-content-between align-items-center">
-                     <div>
-                        <small className="text-muted d-block">Total Spent</small>
-                        <span className="fw-bold fs-5">{formatPrice(store.totalSpent)}</span>
-                     </div>
-                     
-                     <Link to={`/stores/${encodeURIComponent(store.name)}`} className="btn btn-outline-primary btn-sm">
-                        View Details
+
+                  <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                    <div>
+                      <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Total Spent</small>
+                      <span className="fw-bold fs-5 text-primary">{formatPrice(store.totalSpent)}</span>
+                    </div>
+
+                    <Link to={`/stores/${encodeURIComponent(store.name)}`} className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                      View Details
                     </Link>
                   </div>
                 </div>
               </div>
             </div>
           ))}
+
+          {/* 🔥 Arama Sonucu Bulunamazsa Kullanıcıyı Bilgilendir */}
+          {!loading && stores.length > 0 && filteredStores.length === 0 && (
+            <div className="col-12 text-center p-5">
+              <h5 className="text-muted">No stores matched your search "{searchTerm}".</h5>
+            </div>
+          )}
         </div>
 
       </div>

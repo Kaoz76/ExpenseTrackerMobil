@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
@@ -35,13 +35,15 @@ function App() {
     <div>
       <ScrollToHash />
       <DynamicFavicon />
-      {/* NotificationManager BURADAN SİLİNDİ! 🚀 */}
       <ScrollToTopButton />
 
       <Navbar />
+
+      {/* Capacitor "Safe Area" destekli mobil boşluk mantığı mükemmel çalışıyor */}
       <main style={{ paddingBottom: isMobile ? 'calc(70px + env(safe-area-inset-bottom))' : '0' }}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          {/* 🔥 GELİŞTİRME 1: Kök dizine (/) girenleri otomatik /dashboard'a yönlendir */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/receipts" element={<Receipts />} />
@@ -60,8 +62,12 @@ function App() {
           <Route path="/analyze" element={<AnalyzeExpenses />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
+
+          {/* 🔥 GELİŞTİRME 2: 404 Catch-All (Bilinmeyen bir URL girilirse Dashboard'a geri fırlat) */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
+
       <BottomNav />
     </div>
   );
