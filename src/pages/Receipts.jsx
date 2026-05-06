@@ -4,6 +4,7 @@ import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus, FaEdit 
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, Timestamp, limit } from "firebase/firestore";
 import ImageModal from '../components/ImageModal';
@@ -28,6 +29,7 @@ const cleanStoreName = (name) => {
 function Receipts() {
   const { user } = useAuth();
   const { formatPrice, currency } = useCurrency();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -455,8 +457,8 @@ function Receipts() {
         <div className="container-fluid">
 
           <div className="mb-5">
-            <h1 className="display-6 fw-bold">Scan New Receipt</h1>
-            <p className="text-muted">Upload an image of your receipt. (Auto-detects Total Price via OCR)</p>
+            <h1 className="display-6 fw-bold">{t('common.scan_new_receipt')}</h1>
+            <p className="text-muted">{t('common.upload_image')}</p>
             {error && <div className="alert alert-danger">{error}</div>}
 
             <div
@@ -466,15 +468,15 @@ function Receipts() {
               <input {...getInputProps()} />
               <FaCloudUploadAlt className="dropzone-icon mb-3" />
               <p className="mb-1">
-                <span className="dropzone-link-text">Click to upload</span> or drag and drop
+                <span className="dropzone-link-text">{t('common.click_to_upload')}</span> {t('common.or_drag_drop')}
               </p>
-              <p className="text-muted small">PNG, JPG or PDF (MAX. 10MB) - Up to 10 files</p>
+              <p className="text-muted small">{t('common.file_limits')}</p>
             </div>
           </div>
 
           {isUploading && (
             <div className="mb-5">
-              <h3 className="h5 mb-3">Processing...</h3>
+              <h3 className="h5 mb-3">{t('common.processing')}</h3>
               <div className="progress" style={{ height: '20px' }}>
                 <div
                   className="progress-bar progress-bar-striped progress-bar-animated"
@@ -491,21 +493,21 @@ function Receipts() {
 
           <div className="mt-5 mb-5">
             <h3 id="scanned-section" className="h5 mb-3 fw-bold d-flex align-items-center">
-              <FaListAlt className="me-2 text-muted" /> All Scanned Receipts
+              <FaListAlt className="me-2 text-muted" /> {t('common.all_scanned_receipts')}
             </h3>
 
             <div className="card shadow-sm border-0">
               <div className="list-group list-group-flush">
                 <div className="list-group-item bg-body-tertiary text-body-secondary fw-bold small text-uppercase d-flex align-items-center">
-                  <div style={{ flex: 2 }}>Store Name</div>
-                  <div style={{ flex: 1 }}>Date & Time</div>
-                  <div style={{ flex: 1, textAlign: 'right' }}>Total Price (OCR)</div>
+                  <div style={{ flex: 2 }}>{t('common.store_name')}</div>
+                  <div style={{ flex: 1 }}>{t('common.date_time')}</div>
+                  <div style={{ flex: 1, textAlign: 'right' }}>{t('common.total_price_ocr')}</div>
                   <div style={{ width: '40px' }}></div>
                 </div>
 
-                {loadingReceipts && <div className="p-4 text-center text-muted">Loading receipts...</div>}
-                {!user && !loadingReceipts && <div className="p-5 text-center text-muted">Please <Link to="/login">log in</Link> to view your receipts.</div>}
-                {user && !loadingReceipts && receipts.length === 0 && <div className="p-5 text-center text-muted">You haven't uploaded any receipts yet.</div>}
+                {loadingReceipts && <div className="p-4 text-center text-muted">{t('common.loading_receipts')}</div>}
+                {!user && !loadingReceipts && <div className="p-5 text-center text-muted"><Link to="/login">Log in</Link> {t('common.please_log_in_receipts').replace('Please log in ', '')}</div>}
+                {user && !loadingReceipts && receipts.length === 0 && <div className="p-5 text-center text-muted">{t('common.no_receipts_uploaded')}</div>}
 
                 {user && !loadingReceipts && (
                   <>
@@ -542,14 +544,13 @@ function Receipts() {
                       </div>
                     ))}
 
-                    {/* 🔥 YENİ: DAHA FAZLA YÜKLE BUTONU */}
                     {receipts.length >= displayLimit && (
                       <div className="list-group-item text-center p-3 bg-light">
                         <button
                           className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold shadow-sm"
                           onClick={() => setDisplayLimit(prev => prev + 20)}
                         >
-                          <FaPlus className="me-2 small" /> Load Older Receipts
+                          <FaPlus className="me-2 small" /> {t('common.load_older_receipts')}
                         </button>
                       </div>
                     )}
@@ -577,14 +578,14 @@ function Receipts() {
 
                 <div className="modal-header bg-primary text-white">
                   <h5 className="modal-title fw-bold">
-                    Verify Receipt ({processedScans.length} remaining)
+                    {t('common.verify_receipt')} ({processedScans.length} remaining)
                   </h5>
                   <button type="button" className="btn-close btn-close-white" onClick={handleCloseAll} title="Cancel All"></button>
                 </div>
 
                 <div className="modal-body p-4">
                   <p className="text-muted mb-4">
-                    OCR detected the following total price. Please verify if it's correct or edit it manually.
+                    {t('common.ocr_detected_price')}
                   </p>
 
                   <div className="text-center mb-4">
@@ -595,14 +596,14 @@ function Receipts() {
                         className="form-control text-center fw-bold mt-2"
                         value={verifyData?.fileName || ''}
                         onChange={(e) => setVerifyData({ ...verifyData, fileName: e.target.value })}
-                        placeholder="Store Name"
+                        placeholder={t('common.store_name')}
                       />
-                      <small className="text-muted mt-1 d-block">Enter store name</small>
+                      <small className="text-muted mt-1 d-block">{t('common.enter_store_name')}</small>
                     </div>
                   </div>
 
                   <div className="form-group mb-4">
-                    <label className="form-label fw-bold">Total Price</label>
+                    <label className="form-label fw-bold">{t('common.total_price_ocr').replace(' (OCR)', '')}</label>
                     <div className="input-group input-group-lg">
                       <span className="input-group-text">{currency?.symbol || '$'}</span>
                       <input
@@ -613,7 +614,7 @@ function Receipts() {
                         step="0.01"
                       />
                     </div>
-                    <div className="form-text">Detected from OCR analysis.</div>
+                    <div className="form-text">{t('common.detected_from_ocr')}</div>
                   </div>
 
                   {verifyData && (
@@ -624,7 +625,7 @@ function Receipts() {
                         style={{ borderRadius: 0, border: 'none', borderBottom: showItems ? '1px solid #dee2e6' : 'none' }}
                       >
                         <span className="fw-bold text-dark">
-                          Parsed Items <span className="badge bg-secondary ms-2">{(verifyData.items || []).length}</span>
+                          {t('common.parsed_items')} <span className="badge bg-secondary ms-2">{(verifyData.items || []).length}</span>
                         </span>
                         <span>{showItems ? <FaTimes size={14} className="text-secondary" /> : <FaListAlt size={14} className="text-secondary" />}</span>
                       </button>
@@ -647,7 +648,7 @@ function Receipts() {
                                   style={{ fontWeight: '500' }}
                                   value={item.name}
                                   onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
-                                  placeholder="Item Name"
+                                  placeholder={t('common.item_name')}
                                 />
                                 <div className="input-group input-group-sm" style={{ width: '120px' }}>
                                   <span className="input-group-text bg-light text-primary fw-bold border-end-0">{currency?.symbol || '$'}</span>
@@ -657,7 +658,7 @@ function Receipts() {
                                     className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0"
                                     value={item.price}
                                     onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
-                                    placeholder="Price"
+                                    placeholder={t('common.price')}
                                   />
                                 </div>
                               </li>
@@ -668,7 +669,7 @@ function Receipts() {
                               className="btn btn-sm btn-outline-primary w-100 d-flex justify-content-center align-items-center"
                               onClick={handleAddItem}
                             >
-                              <FaPlus className="me-2" /> Add Item
+                              <FaPlus className="me-2" /> {t('common.add_item')}
                             </button>
                           </div>
                         </div>
@@ -678,16 +679,15 @@ function Receipts() {
                 </div>
 
                 <div className="modal-footer bg-light d-flex justify-content-between">
-                  {/* 🔥 OCR Hata yaparsa Manuel Forma Aktarma Butonu */}
                   <button className="btn btn-outline-info border-0 d-flex align-items-center" onClick={handleSendToManual}>
-                    <FaEdit className="me-1" /> Use Manual Form
+                    <FaEdit className="me-1" /> {t('common.use_manual_form')}
                   </button>
                   <div className="d-flex gap-2">
                     <button type="button" className="btn btn-outline-secondary" onClick={handleCancelSave}>
-                      <FaTimes className="me-2" /> Discard
+                      <FaTimes className="me-2" /> {t('common.discard')}
                     </button>
                     <button type="button" className="btn btn-success px-4" onClick={handleConfirmSave}>
-                      <FaCheck className="me-2" /> Save & Next
+                      <FaCheck className="me-2" /> {t('common.save_next')}
                     </button>
                   </div>
                 </div>

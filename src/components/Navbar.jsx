@@ -4,11 +4,13 @@ import { FaUserCircle, FaFilePdf, FaTimes, FaBell, FaCheckCircle } from 'react-i
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useReport } from '../context/ReportContext';
+import { useLanguage } from '../context/LanguageContext';
 
 
 function Navbar() {
   const { user, logout } = useAuth();
   const { theme } = useTheme();
+  const { t } = useLanguage();
 
   const reportContext = useReport();
   const hasNotification = reportContext?.hasNotification || false;
@@ -76,12 +78,12 @@ function Navbar() {
         <div className="collapse navbar-collapse" id="mainNavbar">
           {/* Sayfa Linkleri (Sadece PC'de görünür, Mobilde gizlenir) */}
           <ul className="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-5 gap-1 d-none d-md-flex">
-            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/dashboard">Dashboard</NavLink></li>
-            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/receipts">Scans</NavLink></li>
-            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/texts">Texts</NavLink></li>
-            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/subscriptions">Subscriptions</NavLink></li>
-            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/products">Products</NavLink></li>
-            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/stores">Stores</NavLink></li>
+            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/dashboard">{t('nav.dashboard')}</NavLink></li>
+            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/receipts">{t('nav.receipts')}</NavLink></li>
+            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/texts">{t('nav.manual_entry')}</NavLink></li>
+            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/subscriptions">{t('nav.subscriptions')}</NavLink></li>
+            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/products">{t('nav.products')}</NavLink></li>
+            <li className="nav-item"><NavLink className="nav-link nav-link-animated" to="/stores">{t('nav.stores')}</NavLink></li>
           </ul>
         </div>
 

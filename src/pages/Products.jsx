@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { FaBoxOpen, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 function Products() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,13 +101,13 @@ function Products() {
         {/* Breadcrumb Navigasyonu */}
         <nav aria-label="breadcrumb" className="mb-3">
           <ol className="breadcrumb">
-            <li className="breadcrumb-item active" aria-current="page">Products</li>
+            <li className="breadcrumb-item active" aria-current="page">{t('common.products')}</li>
           </ol>
         </nav>
 
         {/* Başlık ve Animasyonlu Arama Çubuğu */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-          <h1 className="display-6 fw-bold mb-3 mb-md-0">Products</h1>
+          <h1 className="display-6 fw-bold mb-3 mb-md-0">{t('common.products')}</h1>
 
           <form className="search-form" onSubmit={(e) => e.preventDefault()}>
             <button type="button">
@@ -116,7 +118,7 @@ function Products() {
 
             <input
               className="search-input"
-              placeholder="Search products..."
+              placeholder={t('common.search_products')}
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -134,9 +136,9 @@ function Products() {
 
         {!loading && products.length === 0 && (
           <div className="alert alert-info text-center p-4 border border-dashed">
-            <h5 className="mb-2">No products found.</h5>
+            <h5 className="mb-2">{t('common.no_products_found')}</h5>
             <p className="mb-0 text-muted">
-              Use <Link to="/texts" className="alert-link fw-bold">Manual Entry</Link> or scan a receipt to add products to your inventory.
+              {t('common.use_manual_entry_or_scan')}
             </p>
           </div>
         )}
@@ -163,7 +165,7 @@ function Products() {
 
                   <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-end">
                     <div>
-                      <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Last Price</small>
+                      <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>{t('common.last_price')}</small>
                       <span className="fs-5 fw-bold text-primary">{formatPrice(product.latestPrice)}</span>
                     </div>
 
@@ -172,13 +174,13 @@ function Products() {
                       to={`/products/${encodeURIComponent(product.name)}?brand=${encodeURIComponent(product.brand !== 'Unknown Brand' ? product.brand : '')}`}
                       className="btn btn-sm btn-outline-primary rounded-pill px-3"
                     >
-                      Details <FaChevronRight className="ms-1" style={{ fontSize: '0.7rem' }} />
+                      {t('common.details')} <FaChevronRight className="ms-1" style={{ fontSize: '0.7rem' }} />
                     </Link>
                   </div>
 
                   <div className="text-end mt-2">
                     <small className="text-muted" style={{ fontSize: '0.7rem' }}>
-                      {product.historyCount} purchase(s) recorded
+                      {product.historyCount} {t('common.purchase_recorded')}
                     </small>
                   </div>
 
@@ -190,7 +192,7 @@ function Products() {
           {/* Arama Sonucu Bulunamazsa */}
           {!loading && products.length > 0 && filteredAndSortedProducts.length === 0 && (
             <div className="col-12 text-center p-5">
-              <h5 className="text-muted">No products matched your search.</h5>
+              <h5 className="text-muted">{t('common.no_products_matched')}</h5>
             </div>
           )}
         </div>

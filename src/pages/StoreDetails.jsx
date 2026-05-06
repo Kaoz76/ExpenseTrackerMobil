@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaHistory, FaArrowLeft, FaStore, FaChartPie, FaMoneyBillWave, FaShoppingBasket, FaReceipt, FaFileAlt } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import ImageModal from '../components/ImageModal';
@@ -12,6 +13,7 @@ function StoreDetails() {
   const { storeId } = useParams();
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   
   const [history, setHistory] = useState([]);
@@ -138,7 +140,7 @@ function StoreDetails() {
           <nav aria-label="breadcrumb" className="mb-4">
             <ol className="breadcrumb">
               <li className="breadcrumb-item">
-                <Link to="/stores" className="text-decoration-none">Stores</Link>
+                <Link to="/stores" className="text-decoration-none">{t('common.stores')}</Link>
               </li>
               <li className="breadcrumb-item active" aria-current="page">
                 {targetStoreName}
@@ -152,7 +154,7 @@ function StoreDetails() {
              </div>
              <div>
                <h1 className="display-6 fw-bold mb-0">{targetStoreName}</h1>
-               <span className="text-muted">Store Analytics</span>
+               <span className="text-muted">{t('common.store_analytics')}</span>
              </div>
           </div>
 
@@ -164,7 +166,7 @@ function StoreDetails() {
                 <div className="col-md-4">
                    <div className="card border-0 shadow-sm h-100 p-3 bg-primary-subtle text-primary">
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                         <h6 className="mb-0 fw-bold">Total Spent</h6>
+                         <h6 className="mb-0 fw-bold">{t('common.total_spent')}</h6>
                          <FaMoneyBillWave />
                       </div>
                       <h3 className="fw-bold mb-0">{formatPrice(stats.totalSpent)}</h3>
@@ -173,7 +175,7 @@ function StoreDetails() {
                 <div className="col-md-4">
                    <div className="card border-0 shadow-sm h-100 p-3 bg-info-subtle text-info-emphasis">
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                         <h6 className="mb-0 fw-bold">Average Spend</h6>
+                         <h6 className="mb-0 fw-bold">{t('common.average_spend')}</h6>
                          <FaChartPie />
                       </div>
                       <h3 className="fw-bold mb-0">{formatPrice(stats.avgSpend)}</h3>
@@ -184,7 +186,7 @@ function StoreDetails() {
                 <div className="col-md-4">
                    <div className="card border-0 shadow-sm h-100 p-3 bg-warning-subtle text-warning-emphasis">
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                         <h6 className="mb-0 fw-bold">Favorite Item</h6>
+                         <h6 className="mb-0 fw-bold">{t('common.favorite_item')}</h6>
                          <FaShoppingBasket />
                       </div>
                       
@@ -211,7 +213,7 @@ function StoreDetails() {
               <div className="card border-0 shadow-sm">
                 <div className="card-header bg-body-tertiary py-3">
                   <h5 className="mb-0 fw-bold d-flex align-items-center text-body">
-                    <FaHistory className="me-2 text-body-secondary" /> Visit History
+                    <FaHistory className="me-2 text-body-secondary" /> {t('common.visit_history')}
                   </h5>
                 </div>
 
@@ -219,10 +221,10 @@ function StoreDetails() {
                   <table className="table table-hover mb-0 align-middle">
                     <thead className="table-secondary">
                       <tr>
-                        <th className="py-3 ps-4">Date</th>
-                        <th className="py-3">Entry Type</th>
-                        <th className="py-3 text-center">Details</th>
-                        <th className="py-3 text-end pe-4">Total</th>
+                        <th className="py-3 ps-4">{t('common.date')}</th>
+                        <th className="py-3">{t('common.entry_type')}</th>
+                        <th className="py-3 text-center">{t('common.details_col')}</th>
+                        <th className="py-3 text-end pe-4">{t('common.total_col')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -239,19 +241,19 @@ function StoreDetails() {
                           <td>
                               {record.isManual ? (
                                   <span className="badge bg-secondary d-inline-flex align-items-center">
-                                    <FaFileAlt className="me-1" /> Manual Entry
+                                    <FaFileAlt className="me-1" /> {t('common.manual_entry_badge')}
                                   </span>
                               ) : (
                                   <span className="badge bg-info text-dark d-inline-flex align-items-center">
-                                    <FaReceipt className="me-1" /> Scanned Receipt
+                                    <FaReceipt className="me-1" /> {t('common.scanned_receipt_badge')}
                                   </span>
                               )}
                           </td>
                           
                           <td className="text-center text-muted small">
                               {record.isManual 
-                                ? `${record.items ? record.items.length : 0} items logged` 
-                                : 'View Image'
+                                ? `${record.items ? record.items.length : 0} ${t('common.items_logged')}` 
+                                : t('common.view_image')
                               }
                           </td>
                           
@@ -264,7 +266,7 @@ function StoreDetails() {
                       {history.length === 0 && (
                          <tr>
                            <td colSpan="4" className="text-center py-5 text-body-secondary">
-                              No visits found for this store.
+                              {t('common.no_visits_found')}
                            </td>
                          </tr>
                       )}

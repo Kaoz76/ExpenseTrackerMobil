@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { FaStore, FaMapMarkerAlt } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 function Stores() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -86,17 +88,21 @@ function Stores() {
       <div className="container-fluid">
         <nav aria-label="breadcrumb" className="mb-3">
           <ol className="breadcrumb">
-            <li className="breadcrumb-item active" aria-current="page">Stores</li>
+            <li className="breadcrumb-item active" aria-current="page">{t('common.stores')}</li>
           </ol>
         </nav>
 
-        <h1 className="display-6 fw-bold mb-4">Stores</h1>
+        <h1 className="display-6 fw-bold mb-4">{t('common.stores')}</h1>
 
         {loading && <div className="text-center p-5"><div className="spinner-border" role="status"></div></div>}
 
         {!loading && stores.length === 0 && (
           <div className="alert alert-info text-center">
-            No store data found. Use <Link to="/receipts" className="alert-link fw-bold">Scans</Link> or <Link to="/texts" className="alert-link fw-bold">Texts</Link> to add stores.
+            {t('common.no_store_data').split('Scans')[0]}
+            <Link to="/receipts" className="alert-link fw-bold">Scans</Link>
+            {" or "}
+            <Link to="/texts" className="alert-link fw-bold">Texts</Link>
+            {t('common.no_store_data').split('Texts')[1]}
           </div>
         )}
 
@@ -112,19 +118,19 @@ function Stores() {
                     <div>
                       <h5 className="card-title mb-1">{store.name}</h5>
                       <p className="card-text text-muted small">
-                        {store.visitCount} visit(s) recorded
+                        {store.visitCount} {t('common.visit_recorded')}
                       </p>
                     </div>
                   </div>
                   
                   <div className="mt-auto d-flex justify-content-between align-items-center">
                      <div>
-                        <small className="text-muted d-block">Total Spent</small>
+                        <small className="text-muted d-block">{t('common.total_spent')}</small>
                         <span className="fw-bold fs-5">{formatPrice(store.totalSpent)}</span>
                      </div>
                      
                      <Link to={`/stores/${encodeURIComponent(store.name)}`} className="btn btn-outline-primary btn-sm">
-                        View Details
+                        {t('common.view_details')}
                     </Link>
                   </div>
                 </div>

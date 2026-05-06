@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { FaHistory, FaTag, FaChartLine, FaThumbsUp, FaThumbsDown, FaExternalLinkAlt } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
@@ -13,6 +14,7 @@ function ProductDetails() {
 
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,7 +138,7 @@ function ProductDetails() {
         <nav aria-label="breadcrumb" className="mb-4">
           <ol className="breadcrumb">
             <li className="breadcrumb-item">
-              <Link to="/products" className="text-decoration-none">Products</Link>
+              <Link to="/products" className="text-decoration-none">{t('common.products')}</Link>
             </li>
             <li className="breadcrumb-item active" aria-current="page">
               {/* Format: Marka + İsim + (Tür) */}
@@ -169,11 +171,11 @@ function ProductDetails() {
               <div className="col-md-4">
                 <div className="card border-0 shadow-sm h-100 p-3 bg-primary-subtle text-primary">
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <h6 className="mb-0 fw-bold">Average Price</h6>
+                    <h6 className="mb-0 fw-bold">{t('common.average_price')}</h6>
                     <FaChartLine />
                   </div>
                   <h3 className="fw-bold mb-0">{formatPrice(avgPrice)}</h3>
-                  <small className="text-primary-emphasis opacity-75">Based on {history.length} purchases</small>
+                  <small className="text-primary-emphasis opacity-75">{t('common.based_on')} {history.length} {t('common.purchases_lower')}</small>
                 </div>
               </div>
 
@@ -181,7 +183,7 @@ function ProductDetails() {
               <div className="col-md-4">
                 <div className="card border-0 shadow-sm h-100 p-3 bg-success-subtle text-success">
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <h6 className="mb-0 fw-bold">Lowest Price</h6>
+                    <h6 className="mb-0 fw-bold">{t('common.lowest_price')}</h6>
                     <FaTag />
                   </div>
                   <h3 className="fw-bold mb-1">
@@ -191,7 +193,7 @@ function ProductDetails() {
                     <div className="mt-1">
                       <div className="fw-bold text-success-emphasis">{minRecord.store}</div>
                       <div className="badge bg-success text-white mt-2 d-inline-flex align-items-center">
-                        <FaThumbsUp className="me-1" /> Öneriliyor
+                        <FaThumbsUp className="me-1" /> {t('common.recommended')}
                       </div>
                     </div>
                   )}
@@ -202,7 +204,7 @@ function ProductDetails() {
               <div className="col-md-4">
                 <div className="card border-0 shadow-sm h-100 p-3 bg-danger-subtle text-danger">
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <h6 className="mb-0 fw-bold">Highest Price</h6>
+                    <h6 className="mb-0 fw-bold">{t('common.highest_price')}</h6>
                     <FaTag />
                   </div>
                   <h3 className="fw-bold mb-1">
@@ -212,7 +214,7 @@ function ProductDetails() {
                     <div className="mt-1">
                       <div className="fw-bold text-danger-emphasis">{maxRecord.store}</div>
                       <div className="badge bg-danger text-white mt-2 d-inline-flex align-items-center">
-                        <FaThumbsDown className="me-1" /> Önerilmiyor
+                        <FaThumbsDown className="me-1" /> {t('common.not_recommended')}
                       </div>
                     </div>
                   )}
@@ -224,7 +226,7 @@ function ProductDetails() {
             <div className="card border-0 shadow-sm">
               <div className="card-header bg-body-tertiary py-3">
                 <h5 className="mb-0 fw-bold d-flex align-items-center text-body">
-                  <FaHistory className="me-2 text-body-secondary" /> Purchase History
+                  <FaHistory className="me-2 text-body-secondary" /> {t('common.purchase_history')}
                 </h5>
               </div>
 
@@ -232,11 +234,11 @@ function ProductDetails() {
                 <table className="table table-hover mb-0 align-middle">
                   <thead className="table-secondary">
                     <tr>
-                      <th className="py-3 ps-4">Date</th>
-                      <th className="py-3">Store</th>
-                      <th className="py-3">Size</th>
-                      <th className="py-3 text-end">Price</th>
-                      <th className="py-3 text-center pe-4">Receipt</th>
+                      <th className="py-3 ps-4">{t('common.date')}</th>
+                      <th className="py-3">{t('common.store')}</th>
+                      <th className="py-3">{t('common.size')}</th>
+                      <th className="py-3 text-end">{t('common.price')}</th>
+                      <th className="py-3 text-center pe-4">{t('common.receipt')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -250,7 +252,7 @@ function ProductDetails() {
                           <Link
                             to={`/receipts/${record.receiptId}`}
                             className="btn btn-sm btn-outline-secondary rounded-pill px-2"
-                            title="View Receipt"
+                            title={t('common.view_receipt')}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <FaExternalLinkAlt style={{ fontSize: '0.75rem' }} />
@@ -260,7 +262,7 @@ function ProductDetails() {
                     ))}
                     {history.length === 0 && (
                       <tr>
-                        <td colSpan="5" className="text-center py-5 text-body-secondary">No history found.</td>
+                        <td colSpan="5" className="text-center py-5 text-body-secondary">{t('common.no_history_found')}</td>
                       </tr>
                     )}
                   </tbody>

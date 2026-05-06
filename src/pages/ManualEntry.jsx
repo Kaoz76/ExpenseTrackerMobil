@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt, FaArrowDown } from 'react-icons/fa';
@@ -11,6 +12,7 @@ import { formatDateTime } from '../utils/dateFormatter';
 function ManualEntry() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -190,15 +192,15 @@ function ManualEntry() {
         <div className="container-fluid">
 
           <div className="mb-4">
-            <h1 className="display-6 fw-bold">Manual Entry</h1>
-            <p className="text-muted">Enter your expense data manually by filling out the fields below.</p>
+            <h1 className="display-6 fw-bold">{t('common.manual_entry')}</h1>
+            <p className="text-muted">{t('common.manual_entry_desc')}</p>
           </div>
 
           {!user && (
             <div className="alert alert-warning d-flex align-items-center mb-4" role="alert">
               <FaExclamationTriangle className="me-2" />
               <div>
-                You are in <strong>View Only</strong> mode. Please <Link to="/login">log in</Link> to save data.
+                {t('common.view_only_mode').replace('Please log in', '')} <Link to="/login">Log in</Link>
               </div>
             </div>
           )}
@@ -209,12 +211,12 @@ function ManualEntry() {
             <div className="col-12 mb-4">
               <div className="card border-0 shadow-sm p-4">
                 <div className="mb-4">
-                  <h5 className="fw-bold mb-3">Store Information</h5>
-                  <label className="form-label text-muted">Store Name</label>
+                  <h5 className="fw-bold mb-3">{t('common.store_info')}</h5>
+                  <label className="form-label text-muted">{t('common.store_name')}</label>
                   <input type="text" className="form-control" placeholder="e.g., Walmart" value={storeName} onChange={(e) => setStoreName(e.target.value)} disabled={isDisabled} />
                 </div>
                 <div className="mb-4">
-                  <h5 className="fw-bold mb-3">Product Details</h5>
+                  <h5 className="fw-bold mb-3">{t('common.product_details')}</h5>
                   {products.map((product, index) => (
                     <div key={product.id} className="card border-0 shadow-sm p-4 mb-3">
                       <div className="row g-3">
@@ -222,7 +224,7 @@ function ManualEntry() {
                         {/* Type (Zorunlu) */}
                         <div className="col-md-2">
                           <label className="form-label small text-muted">
-                            Type<span className="text-danger">*</span>
+                            {t('common.type')}<span className="text-danger">*</span>
                           </label>
                           <input
                             type="text"
@@ -237,7 +239,7 @@ function ManualEntry() {
                         {/* Brand (Zorunlu) */}
                         <div className="col-md-3">
                           <label className="form-label small text-muted">
-                            Brand<span className="text-danger">*</span>
+                            {t('common.brand')}<span className="text-danger">*</span>
                           </label>
                           <input
                             type="text"
@@ -251,7 +253,7 @@ function ManualEntry() {
 
                         {/* Name (İsteğe Bağlı) */}
                         <div className="col-md-3">
-                          <label className="form-label small text-muted">Name</label>
+                          <label className="form-label small text-muted">{t('common.name')}</label>
                           <input
                             type="text"
                             className="form-control"
@@ -264,7 +266,7 @@ function ManualEntry() {
 
                         {/* Liter/Gram (İsteğe Bağlı) */}
                         <div className="col-md-2">
-                          <label className="form-label small text-muted">Liter/Gram</label>
+                          <label className="form-label small text-muted">{t('common.liter_gram')}</label>
                           <input
                             type="text"
                             className="form-control"
@@ -278,7 +280,7 @@ function ManualEntry() {
                         {/* Price (Zorunlu) */}
                         <div className="col-md-2">
                           <label className="form-label small text-muted">
-                            Price<span className="text-danger">*</span>
+                            {t('common.price')}<span className="text-danger">*</span>
                           </label>
                           <div className="d-flex align-items-center gap-2">
                             <input
@@ -326,7 +328,7 @@ function ManualEntry() {
                       <path strokeWidth="1.5" d="M8 12H16"></path>
                       <path strokeWidth="1.5" d="M12 16V8"></path>
                     </svg>
-                    <span>Add Product</span>
+                    <span>{t('common.add_product')}</span>
                   </button>
                 </div>
                 <div className="d-flex justify-content-end mt-3 pb-5">
@@ -339,11 +341,11 @@ function ManualEntry() {
                       {loading ? (
                         <>
                           <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                          Saving...
+                          {t('common.saving')}
                         </>
                       ) : (
                         <>
-                          <FaSave className="me-2" /> Save Data
+                          <FaSave className="me-2" /> {t('common.save_data')}
                         </>
                       )}
                     </span>
@@ -355,23 +357,23 @@ function ManualEntry() {
 
           <div className="mt-5 mb-5">
             <h3 id="manual-section" className="h5 mb-3 fw-bold d-flex align-items-center">
-              <FaListAlt className="me-2 text-muted" /> Recent Manual Entries
+              <FaListAlt className="me-2 text-muted" /> {t('common.recent_manual_entries')}
             </h3>
 
             <div className="card shadow-sm border-0">
               <div className="list-group list-group-flush">
                 <div className="list-group-item bg-body-tertiary text-muted fw-bold small text-uppercase d-flex align-items-center">
-                  <div style={{ flex: 2 }}>Store Name</div>
-                  <div style={{ flex: 1 }}>Date & Time</div>
-                  <div style={{ flex: 1, textAlign: 'right' }}>Total Price</div>
+                  <div style={{ flex: 2 }}>{t('common.store_name')}</div>
+                  <div style={{ flex: 1 }}>{t('common.date_time')}</div>
+                  <div style={{ flex: 1, textAlign: 'right' }}>{t('common.total_price')}</div>
                   <div style={{ width: '40px' }}></div>
                 </div>
 
-                {loadingEntries && <div className="p-4 text-center text-muted">Loading entries...</div>}
+                {loadingEntries && <div className="p-4 text-center text-muted">{t('common.loading_entries')}</div>}
 
                 {!loadingEntries && manualEntries.length === 0 && (
                   <div className="p-5 text-center text-muted">
-                    You have no data, enter data first.
+                    {t('common.no_data_enter_first')}
                   </div>
                 )}
 
@@ -408,14 +410,13 @@ function ManualEntry() {
                   </div>
                 ))}
 
-                {/* 🔥 YENİ: DAHA FAZLA YÜKLE BUTONU */}
                 {!loadingEntries && manualEntries.length > entryLimit && (
                   <div className="list-group-item text-center p-3 bg-light">
                     <button
                       className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold d-flex align-items-center mx-auto"
                       onClick={() => setEntryLimit(prev => prev + 10)}
                     >
-                      <FaArrowDown className="me-2" /> Load More Entries
+                      <FaArrowDown className="me-2" /> {t('common.load_more_entries')}
                     </button>
                   </div>
                 )}

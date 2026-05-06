@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ReportProvider } from './context/ReportContext'; 
 import { CurrencyProvider } from './context/CurrencyContext';
+import { LanguageProvider } from './context/LanguageContext';
 
 import { registerSW } from 'virtual:pwa-register';
 registerSW({ immediate: true });
@@ -19,11 +20,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
-          <CurrencyProvider>
-            <ReportProvider> 
-              <App />
-            </ReportProvider>
-          </CurrencyProvider>
+          <LanguageProvider>
+            <CurrencyProvider>
+              <ReportProvider> 
+                <App />
+              </ReportProvider>
+            </CurrencyProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>

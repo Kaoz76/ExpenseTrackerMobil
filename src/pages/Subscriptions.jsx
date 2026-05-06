@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { FaPlus, FaTrash, FaCalendarCheck, FaExclamationTriangle, FaSync } from 'react-icons/fa';
@@ -9,6 +10,7 @@ import { Link } from 'react-router-dom';
 function Subscriptions() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
   
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -104,8 +106,8 @@ function Subscriptions() {
               <FaSync className="fs-3" />
            </div>
            <div>
-             <h1 className="display-6 fw-bold mb-0">Subscriptions</h1>
-             <span className="text-muted">Manage your recurring monthly expenses.</span>
+             <h1 className="display-6 fw-bold mb-0">{t('nav.subscriptions')}</h1>
+             <span className="text-muted">{t('common.manage_recurring')}</span>
            </div>
         </div>
 
@@ -114,7 +116,7 @@ function Subscriptions() {
             <div className="alert alert-warning d-flex align-items-center mb-4" role="alert">
               <FaExclamationTriangle className="me-2" />
               <div>
-                You must be <Link to="/login" className="alert-link">logged in</Link> to manage subscriptions.
+                {t('common.must_be_logged_in_subs')} <Link to="/login" className="alert-link">Log in</Link>
               </div>
             </div>
         )}
@@ -126,16 +128,16 @@ function Subscriptions() {
                 <div className="card border-0 shadow-sm h-100">
                     <div className="card-body p-4">
                         <h5 className="fw-bold mb-4 d-flex align-items-center">
-                            <FaPlus className="me-2 text-primary" /> Add New
+                            <FaPlus className="me-2 text-primary" /> {t('common.add_new')}
                         </h5>
                         
                         <form onSubmit={handleAddSubscription}>
                             <div className="mb-3">
-                                <label className="form-label small text-muted fw-bold">NAME</label>
+                                <label className="form-label small text-muted fw-bold">{t('common.name_upper')}</label>
                                 <input 
                                     type="text" 
                                     className="form-control" 
-                                    placeholder="e.g. Netflix" 
+                                    placeholder={t('common.eg_netflix')} 
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     disabled={!user}
@@ -144,7 +146,7 @@ function Subscriptions() {
                             </div>
 
                             <div className="mb-3">
-                                <label className="form-label small text-muted fw-bold">PRICE</label>
+                                <label className="form-label small text-muted fw-bold">{t('common.price_upper')}</label>
                                 <input 
                                     type="number" 
                                     className="form-control" 
@@ -158,11 +160,11 @@ function Subscriptions() {
                             </div>
 
                             <div className="mb-4">
-                                <label className="form-label small text-muted fw-bold">RENEWAL DAY (1-31)</label>
+                                <label className="form-label small text-muted fw-bold">{t('common.renewal_day')}</label>
                                 <input 
                                     type="number" 
                                     className="form-control" 
-                                    placeholder="e.g. 5" 
+                                    placeholder={t('common.eg_5')} 
                                     value={dayOfMonth}
                                     onChange={(e) => setDayOfMonth(e.target.value)}
                                     min="1"
@@ -170,11 +172,11 @@ function Subscriptions() {
                                     disabled={!user}
                                     required
                                 />
-                                <div className="form-text">Day of the month payment occurs.</div>
+                                <div className="form-text">{t('common.day_payment_occurs')}</div>
                             </div>
 
                             <button className="btn btn-primary w-100" type="submit" disabled={!user || adding}>
-                                {adding ? 'Adding...' : 'Add Subscription'}
+                                {adding ? t('common.adding') : t('common.add_subscription')}
                             </button>
                         </form>
                     </div>
@@ -186,19 +188,19 @@ function Subscriptions() {
                 <div className="card border-0 shadow-sm h-100">
                     <div className="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
                         <h5 className="mb-0 fw-bold d-flex align-items-center text-body">
-                          <FaCalendarCheck className="me-2 text-body-secondary" /> Active Subscriptions
+                          <FaCalendarCheck className="me-2 text-body-secondary" /> {t('common.active_subscriptions')}
                         </h5>
                         <span className="badge bg-primary fs-6">
-                            Total: {formatPrice(totalMonthlyFixed)} / mo
+                            {t('common.total')} {formatPrice(totalMonthlyFixed)} {t('common.per_mo')}
                         </span>
                     </div>
                     
                     <div className="list-group list-group-flush">
                         {/* Başlık - Karanlık Mod Uyumlu */}
                         <div className="list-group-item bg-body-tertiary text-body-secondary fw-bold small text-uppercase d-flex align-items-center">
-                            <div style={{ width: '50px' }} className="text-center">Day</div>
-                            <div style={{ flex: 1 }}>Name</div>
-                            <div style={{ flex: 1, textAlign: 'right' }}>Cost</div>
+                            <div style={{ width: '50px' }} className="text-center">{t('common.day')}</div>
+                            <div style={{ flex: 1 }}>{t('common.name')}</div>
+                            <div style={{ flex: 1, textAlign: 'right' }}>{t('common.cost')}</div>
                             <div style={{ width: '40px' }}></div>
                         </div>
 
@@ -213,8 +215,8 @@ function Subscriptions() {
                         {/* BOŞ DURUM */}
                         {!loading && subscriptions.length === 0 && (
                             <div className="p-5 text-center">
-                                <div className="text-body fs-5 mb-2">No active subscriptions found.</div>
-                                <p className="text-secondary small">Add your recurring expenses using the form on the left.</p>
+                                <div className="text-body fs-5 mb-2">{t('common.no_active_subs')}</div>
+                                <p className="text-secondary small">{t('common.add_recurring_left')}</p>
                             </div>
                         )}
 
@@ -223,7 +225,7 @@ function Subscriptions() {
                             <div key={sub.id} className="list-group-item list-group-item-action d-flex align-items-center p-3">
                                 {/* Gün Kutusu */}
                                 <div className="bg-body-secondary rounded text-center d-flex flex-column justify-content-center me-3" style={{ width: '50px', height: '50px' }}>
-                                    <span className="small fw-bold text-uppercase" style={{fontSize: '0.65rem'}}>Day</span>
+                                    <span className="small fw-bold text-uppercase" style={{fontSize: '0.65rem'}}>{t('common.day')}</span>
                                     <span className="fw-bold fs-5 lh-1 text-body">{sub.dayOfMonth}</span>
                                 </div>
 
