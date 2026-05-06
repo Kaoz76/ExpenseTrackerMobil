@@ -1,18 +1,20 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaFileAlt, FaReceipt, FaFileCsv, FaFilePdf } from 'react-icons/fa'; // FaFilePdf eklendi
+import { FaFileAlt, FaReceipt, FaFileCsv, FaFilePdf } from 'react-icons/fa';
 import { useReport } from '../context/ReportContext';
+import { useLanguage } from '../context/LanguageContext';
 
 function Reports() {
   // Unutulan generateAndDownloadPDF context'ten çekildi!
   const { exportAllDataToCSV, generateAndDownloadPDF, isGenerating } = useReport();
+  const { t } = useLanguage();
 
   return (
     <div className="dashboard-page-wrapper p-4">
       <div className="container">
         <div className="mb-5 text-center">
-          <h1 className="display-5 fw-bold mb-3">View Reports</h1>
-          <p className="text-muted fs-5">Select a category below to view details or export data.</p>
+          <h1 className="display-5 fw-bold mb-3">{t('common.view_reports')}</h1>
+          <p className="text-muted fs-5">{t('common.select_category_below')}</p>
         </div>
 
         {/* 2x2 Izgara sistemi (col-md-6) ile mükemmel simetri sağlandı */}
@@ -27,10 +29,10 @@ function Reports() {
                     <FaReceipt />
                   </div>
                 </div>
-                <h3 className="h4 fw-bold mb-3">Scanned Receipts</h3>
-                <p className="text-muted mb-4">View all receipts you have uploaded via image scanning.</p>
+                <h3 className="h4 fw-bold mb-3">{t('common.scanned_receipts_title')}</h3>
+                <p className="text-muted mb-4">{t('common.view_all_receipts_uploaded')}</p>
                 <div className="mt-auto">
-                  <span className="btn btn-outline-primary rounded-pill px-4">View Receipts</span>
+                  <span className="btn btn-outline-primary rounded-pill px-4">{t('common.view_receipts')}</span>
                 </div>
               </div>
             </Link>
@@ -45,10 +47,10 @@ function Reports() {
                     <FaFileAlt />
                   </div>
                 </div>
-                <h3 className="h4 fw-bold mb-3">Manual Entries</h3>
-                <p className="text-muted mb-4">View all expenses you have entered manually via the text form.</p>
+                <h3 className="h4 fw-bold mb-3">{t('common.manual_entries_title')}</h3>
+                <p className="text-muted mb-4">{t('common.view_all_expenses_manual')}</p>
                 <div className="mt-auto">
-                  <span className="btn btn-outline-info rounded-pill px-4">View Entries</span>
+                  <span className="btn btn-outline-info rounded-pill px-4">{t('common.view_entries')}</span>
                 </div>
               </div>
             </Link>
@@ -66,15 +68,15 @@ function Reports() {
                   <FaFileCsv />
                 </div>
               </div>
-              <h3 className="h4 fw-bold mb-3">Export All Data</h3>
-              <p className="text-muted mb-4">Download all your expense history as an Excel-compatible CSV file.</p>
+              <h3 className="h4 fw-bold mb-3">{t('common.export_all_data')}</h3>
+              <p className="text-muted mb-4">{t('common.download_all_expense_history')}</p>
 
               <div className="mt-auto">
                 <button
                   className="btn btn-success rounded-pill px-4"
                   disabled={isGenerating}
                 >
-                  {isGenerating ? 'Exporting...' : 'Download CSV'}
+                  {isGenerating ? t('common.exporting') : t('common.download_csv')}
                 </button>
               </div>
             </div>
@@ -92,15 +94,15 @@ function Reports() {
                   <FaFilePdf />
                 </div>
               </div>
-              <h3 className="h4 fw-bold mb-3">Monthly PDF Report</h3>
-              <p className="text-muted mb-4">Generate a beautifully formatted PDF summary of your last month's expenses.</p>
+              <h3 className="h4 fw-bold mb-3">{t('common.monthly_pdf_report')}</h3>
+              <p className="text-muted mb-4">{t('common.generate_beautifully_formatted')}</p>
 
               <div className="mt-auto">
                 <button
                   className="btn btn-danger rounded-pill px-4"
                   disabled={isGenerating}
                 >
-                  {isGenerating ? 'Generating...' : 'Download PDF'}
+                  {isGenerating ? t('common.generating') : t('common.download_pdf')}
                 </button>
               </div>
             </div>

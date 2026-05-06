@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
@@ -13,6 +14,7 @@ import { Link } from 'react-router-dom';
 function AnalyzeExpenses() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState([]);
@@ -24,11 +26,11 @@ function AnalyzeExpenses() {
 
   const getRangeLabel = () => {
     switch (timeRange) {
-      case 'this_month': return 'This Month';
-      case 'last_3_months': return 'Last 3 Months';
-      case 'this_year': return 'This Year';
-      case 'all_time': return 'All Time';
-      default: return 'This Year';
+      case 'this_month': return t('common.this_month');
+      case 'last_3_months': return t('common.last_3_months');
+      case 'this_year': return t('common.this_year');
+      case 'all_time': return t('common.all_time');
+      default: return t('common.this_year');
     }
   };
 
@@ -152,8 +154,8 @@ function AnalyzeExpenses() {
         {/* HEADER & FİLTRELER */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
           <div className="mb-3 mb-md-0">
-            <h1 className="display-6 fw-bold">Expense Analysis</h1>
-            <p className="text-muted">Real-time insights from your database.</p>
+            <h1 className="display-6 fw-bold">{t('common.expense_analysis')}</h1>
+            <p className="text-muted">{t('common.real_time_insights')}</p>
           </div>
 
           <div className="position-relative">
@@ -176,10 +178,10 @@ function AnalyzeExpenses() {
 
                 <div className="card position-absolute end-0 mt-2 shadow-sm border-0" style={{ zIndex: 1000, minWidth: '150px' }}>
                   <div className="list-group list-group-flush">
-                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('this_month'); setIsDropdownOpen(false); }}>This Month</button>
-                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('last_3_months'); setIsDropdownOpen(false); }}>Last 3 Months</button>
-                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('this_year'); setIsDropdownOpen(false); }}>This Year</button>
-                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('all_time'); setIsDropdownOpen(false); }}>All Time</button>
+                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('this_month'); setIsDropdownOpen(false); }}>{t('common.this_month')}</button>
+                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('last_3_months'); setIsDropdownOpen(false); }}>{t('common.last_3_months')}</button>
+                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('this_year'); setIsDropdownOpen(false); }}>{t('common.this_year')}</button>
+                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('all_time'); setIsDropdownOpen(false); }}>{t('common.all_time')}</button>
                   </div>
                 </div>
               </>
@@ -197,17 +199,17 @@ function AnalyzeExpenses() {
         {/* KULLANICI GİRİŞ YAPMAMIŞSA */}
         {!user && !loading && (
           <div className="alert alert-info text-center p-5">
-            <h4 className="alert-heading fw-bold">Login Required</h4>
-            <p className="mb-3">Please log in to view your expense analysis and charts.</p>
-            <Link to="/login" className="btn btn-primary">Log In</Link>
+            <h4 className="alert-heading fw-bold">{t('common.login_required')}</h4>
+            <p className="mb-3">{t('common.please_log_in_analysis')}</p>
+            <Link to="/login" className="btn btn-primary">{t('common.log_in')}</Link>
           </div>
         )}
 
         {/* KULLANICI VARSA AMA VERİ YOKSA */}
         {user && !loading && chartData.length === 0 && (
           <div className="alert alert-light text-center p-5 border border-dashed">
-            <h5 className="text-muted">No data found for this period.</h5>
-            <p className="mb-0 text-muted">Try changing the date filter or add new expenses.</p>
+            <h5 className="text-muted">{t('common.no_data_period')}</h5>
+            <p className="mb-0 text-muted">{t('common.try_changing_filter')}</p>
           </div>
         )}
 
@@ -223,8 +225,8 @@ function AnalyzeExpenses() {
                   <div className="card-body p-4">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                       <div>
-                        <h5 className="card-title fw-bold mb-1">Spending Over Time</h5>
-                        <p className="text-muted small mb-0">Breakdown for: <strong>{getRangeLabel()}</strong></p>
+                        <h5 className="card-title fw-bold mb-1">{t('common.spending_over_time')}</h5>
+                        <p className="text-muted small mb-0">{t('common.breakdown_for')} <strong>{getRangeLabel()}</strong></p>
                       </div>
                       <div className="bg-primary-subtle p-2 rounded text-primary">
                         <FaCalendarAlt />
@@ -236,7 +238,7 @@ function AnalyzeExpenses() {
                         {formatPrice(totalSpent)}
                       </h2>
                       <span className="text-success fw-medium d-flex align-items-center">
-                        <FaArrowUp className="me-1 small" /> Total Selected
+                        <FaArrowUp className="me-1 small" /> {t('common.total_selected')}
                       </span>
                     </div>
 
@@ -256,7 +258,7 @@ function AnalyzeExpenses() {
                           <Tooltip
                             contentStyle={{ backgroundColor: 'var(--bs-body-bg)', borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                             itemStyle={{ color: 'var(--bs-body-color)' }}
-                            formatter={(value) => [formatPrice(value), "Amount"]}
+                            formatter={(value) => [formatPrice(value), t('common.amount')]}
                           />
 
                           <Area type="monotone" dataKey="amount" stroke="#0d6efd" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
@@ -273,8 +275,8 @@ function AnalyzeExpenses() {
                   <div className="card-body p-4">
                     <div className="d-flex justify-content-between align-items-center mb-4">
                       <div>
-                        <h5 className="card-title fw-bold mb-1">By Category</h5>
-                        <p className="text-muted small mb-0">Where your money goes</p>
+                        <h5 className="card-title fw-bold mb-1">{t('common.by_category')}</h5>
+                        <p className="text-muted small mb-0">{t('common.where_money_goes')}</p>
                       </div>
                       <div className="bg-info-subtle p-2 rounded text-info-emphasis">
                         <FaChartPie />
@@ -290,7 +292,7 @@ function AnalyzeExpenses() {
                           <Tooltip
                             cursor={{ fill: 'transparent' }}
                             contentStyle={{ borderRadius: '8px' }}
-                            formatter={(value) => [formatPrice(value), "Amount"]}
+                            formatter={(value) => [formatPrice(value), t('common.amount')]}
                           />
 
                           <Bar dataKey="amount" fill="#0d6efd" radius={[0, 4, 4, 0]} barSize={20}>
@@ -308,14 +310,14 @@ function AnalyzeExpenses() {
 
             {/* BASİT ANALİZ TABLOSU */}
             <div className="mb-5">
-              <h3 className="h4 fw-bold mb-4">Category Breakdown</h3>
+              <h3 className="h4 fw-bold mb-4">{t('common.category_breakdown')}</h3>
               <div className="card border-0 shadow-sm">
                 <div className="table-responsive">
                   <table className="table table-hover mb-0 align-middle">
                     <thead className="table-light">
                       <tr>
-                        <th scope="col" className="ps-4 py-3 text-muted fw-normal">Category</th>
-                        <th scope="col" className="py-3 text-muted fw-normal text-end pe-4">Total Amount</th>
+                        <th scope="col" className="ps-4 py-3 text-muted fw-normal">{t('common.category')}</th>
+                        <th scope="col" className="py-3 text-muted fw-normal text-end pe-4">{t('common.total_amount')}</th>
                       </tr>
                     </thead>
                     <tbody>

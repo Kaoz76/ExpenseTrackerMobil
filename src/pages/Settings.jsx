@@ -3,6 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core'; // 🔥 GELİŞTİRME 2: Platform kontrolü için eklendi
 import { useTheme } from '../context/ThemeContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
@@ -11,6 +12,7 @@ import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExcl
 function Settings() {
   const { theme, toggleTheme } = useTheme();
   const { currency, updateCurrency } = useCurrency();
+  const { language, setLanguage, t } = useLanguage();
   const { user, logout } = useAuth();
 
   // Bütçe State'i
@@ -217,7 +219,7 @@ function Settings() {
   return (
     <div className="dashboard-page-wrapper p-4">
       <div className="container-fluid">
-        <h1 className="display-6 fw-bold mb-4">Settings</h1>
+        <h1 className="display-6 fw-bold mb-4">{t('settings.title')}</h1>
 
         <div className="row g-4">
 
@@ -229,11 +231,22 @@ function Settings() {
                   <div className="bg-primary-subtle text-primary p-2 rounded me-3">
                     <FaGlobe className="fs-5" />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">Preferences</h5>
+                  <h5 className="card-title mb-0 fw-bold">{t('common.preferences')}</h5>
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label text-muted small fw-bold">CURRENCY</label>
+                  <label className="form-label text-muted small fw-bold">{t('settings.language')}</label>
+                  <select
+                    className="form-select form-select-lg mb-4"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <option value="en">{t('settings.english')}</option>
+                    <option value="tr">{t('settings.turkish')}</option>
+                  </select>
+
+                  <label className="form-label text-muted small fw-bold">{t('settings.currency').toUpperCase()}</label>
                   <select
                     className="form-select form-select-lg"
                     value={currency.code}
@@ -247,7 +260,7 @@ function Settings() {
                     <option value="JPY">JPY (¥) - Japanese Yen</option>
                   </select>
                   <div className="form-text mt-2">
-                    Used for all price displays across the app.
+                    {t('common.currency_desc')}
                   </div>
                 </div>
               </div>
@@ -262,11 +275,11 @@ function Settings() {
                   <div className="bg-success-subtle text-success p-2 rounded me-3">
                     <FaWallet className="fs-5" />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">Budget Goals</h5>
+                  <h5 className="card-title mb-0 fw-bold">{t('common.budget_goals')}</h5>
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label text-muted small fw-bold">MONTHLY LIMIT ({currency.symbol})</label>
+                  <label className="form-label text-muted small fw-bold">{t('common.monthly_limit')} ({currency.symbol})</label>
                   <div className="input-group input-group-lg">
                     <span className="input-group-text bg-body-tertiary">{currency.symbol}</span>
                     <input
@@ -285,7 +298,7 @@ function Settings() {
                     </button>
                   </div>
                   <div className="form-text mt-2">
-                    Set a monthly spending limit to track your progress on the dashboard.
+                    {t('common.monthly_limit_desc')}
                   </div>
                   {message && <div className={`mt-2 small fw-bold ${message.includes('Failed') ? 'text-danger' : 'text-success'}`}>{message}</div>}
                 </div>
@@ -301,13 +314,13 @@ function Settings() {
                   <div className="bg-warning-subtle text-warning-emphasis p-2 rounded me-3">
                     <FaPalette className="fs-5" />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">Appearance</h5>
+                  <h5 className="card-title mb-0 fw-bold">{t('common.appearance')}</h5>
                 </div>
 
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <span className="d-block fw-medium">Dark Mode</span>
-                    <small className="text-muted">Switch between light and dark themes.</small>
+                    <span className="d-block fw-medium">{t('common.dark_mode')}</span>
+                    <small className="text-muted">{t('common.dark_mode_desc')}</small>
                   </div>
 
                   <div className="switch-container">
@@ -333,13 +346,13 @@ function Settings() {
                   <div className="bg-info-subtle text-info-emphasis p-2 rounded me-3">
                     <FaBell className="fs-5" />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">Notifications</h5>
+                  <h5 className="card-title mb-0 fw-bold">{t('common.notifications')}</h5>
                 </div>
 
                 {/* Saat Seçici */}
                 <div className="mb-3">
                   <label className="form-label text-muted small fw-bold d-flex align-items-center">
-                    <FaClock className="me-2" /> SET REMINDER TIME
+                    <FaClock className="me-2" /> {t('common.set_reminder_time')}
                   </label>
                   <input
                     type="time"
@@ -349,15 +362,15 @@ function Settings() {
                     onBlur={handleTimeBlur}
                   />
                   <div className="form-text mt-1">
-                    Choose the time you want to be notified.
+                    {t('common.reminder_time_desc')}
                   </div>
                 </div>
 
                 {/* Hatırlatıcı Switch */}
                 <div className="d-flex justify-content-between align-items-center pt-3 border-top">
                   <div>
-                    <span className="d-block fw-medium">Enable Reminder</span>
-                    <small className="text-muted">Turn on daily notifications.</small>
+                    <span className="d-block fw-medium">{t('common.enable_reminder')}</span>
+                    <small className="text-muted">{t('common.enable_reminder_desc')}</small>
                   </div>
                   <div className="switch-container">
                     <input
@@ -383,14 +396,14 @@ function Settings() {
                   <div className="bg-secondary-subtle text-secondary p-2 rounded me-3">
                     <FaUserCog className="fs-5" />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">Account Management</h5>
+                  <h5 className="card-title mb-0 fw-bold">{t('common.account_management')}</h5>
                 </div>
 
                 <div className="mb-4">
-                  <p className="text-muted mb-1 small fw-bold">LOGGED IN AS</p>
+                  <p className="text-muted mb-1 small fw-bold">{t('common.logged_in_as')}</p>
                   <p className="fw-medium fs-5">{user?.email}</p>
                   <button className="btn btn-outline-danger btn-sm mt-2" onClick={logout}>
-                    Logout
+                    {t('common.logout')}
                   </button>
                 </div>
 
@@ -398,17 +411,17 @@ function Settings() {
 
                 <div>
                   <p className="text-danger fw-bold small d-flex align-items-center">
-                    <FaExclamationTriangle className="me-2" /> DANGER ZONE
+                    <FaExclamationTriangle className="me-2" /> {t('common.danger_zone')}
                   </p>
                   <p className="text-muted small mb-3">
-                    This will permanently delete all your scanned receipts and manual entries. Your account will remain active.
+                    {t('common.danger_zone_desc')}
                   </p>
                   <button
                     className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center"
                     onClick={handleResetData}
                     disabled={resetting}
                   >
-                    {resetting ? 'Processing...' : <><FaTrashRestore className="me-2" /> Reset All Data</>}
+                    {resetting ? t('common.processing') : <><FaTrashRestore className="me-2" /> {t('common.reset_all_data')}</>}
                   </button>
                   {resetMessage && <div className="mt-2 text-center small fw-bold text-success">{resetMessage}</div>}
                 </div>

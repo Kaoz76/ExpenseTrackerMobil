@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FaStore } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
@@ -19,6 +20,7 @@ export const cleanStoreName = (name) => {
 function Stores() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,13 +89,13 @@ function Stores() {
       <div className="container-fluid">
         <nav aria-label="breadcrumb" className="mb-3">
           <ol className="breadcrumb">
-            <li className="breadcrumb-item active" aria-current="page">Stores</li>
+            <li className="breadcrumb-item active" aria-current="page">{t('common.stores')}</li>
           </ol>
         </nav>
 
         {/* 🔥 BAŞLIK VE YENİ ARAMA ÇUBUĞU */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-          <h1 className="display-6 fw-bold mb-3 mb-md-0">Stores</h1>
+          <h1 className="display-6 fw-bold mb-3 mb-md-0">{t('common.stores')}</h1>
 
           <form className="search-form" onSubmit={(e) => e.preventDefault()}>
             <button type="button">
@@ -104,7 +106,7 @@ function Stores() {
 
             <input
               className="search-input"
-              placeholder="Search stores..."
+              placeholder={t('common.search_stores_placeholder')}
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -122,9 +124,9 @@ function Stores() {
 
         {!loading && stores.length === 0 && (
           <div className="alert alert-info text-center p-4 border border-dashed">
-            <h5 className="mb-2">No store data found.</h5>
+            <h5 className="mb-2">{t('common.no_store_data')}</h5>
             <p className="mb-0 text-muted">
-              Use <Link to="/receipts" className="alert-link fw-bold">Scans</Link> or <Link to="/texts" className="alert-link fw-bold">Texts</Link> to add stores.
+              <Link to="/receipts" className="alert-link fw-bold">{t('nav.receipts')}</Link> / <Link to="/texts" className="alert-link fw-bold">{t('nav.manual_entry')}</Link>
             </p>
           </div>
         )}
@@ -143,19 +145,19 @@ function Stores() {
                     <div className="overflow-hidden">
                       <h5 className="card-title mb-1 fw-bold text-truncate" title={store.name}>{store.name}</h5>
                       <p className="card-text text-muted small mb-0">
-                        {store.visitCount} visit(s) recorded
+                        {store.visitCount} {t('common.visit_recorded')}
                       </p>
                     </div>
                   </div>
 
                   <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
                     <div>
-                      <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Total Spent</small>
+                      <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>{t('common.total_spent')}</small>
                       <span className="fw-bold fs-5 text-primary">{formatPrice(store.totalSpent)}</span>
                     </div>
 
                     <Link to={`/stores/${encodeURIComponent(store.name)}`} className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
-                      View Details
+                      {t('common.view_details')}
                     </Link>
                   </div>
                 </div>
@@ -166,7 +168,7 @@ function Stores() {
           {/* 🔥 Arama Sonucu Bulunamazsa Kullanıcıyı Bilgilendir */}
           {!loading && stores.length > 0 && filteredStores.length === 0 && (
             <div className="col-12 text-center p-5">
-              <h5 className="text-muted">No stores matched your search "{searchTerm}".</h5>
+              <h5 className="text-muted">{t('common.no_stores_matched', { search: searchTerm })}</h5>
             </div>
           )}
         </div>

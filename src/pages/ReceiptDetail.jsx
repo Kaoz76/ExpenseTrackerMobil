@@ -9,12 +9,14 @@ import { useCurrency } from '../context/CurrencyContext';
 import { db } from '../firebase';
 import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { formatDateTime } from '../utils/dateFormatter';
+import { useLanguage } from '../context/LanguageContext';
 
 function ReceiptDetail() {
   const { receiptId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { formatPrice, currency } = useCurrency();
+  const { t } = useLanguage();
 
   const [receipt, setReceipt] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -186,9 +188,9 @@ function ReceiptDetail() {
       <div className="dashboard-page-wrapper p-4">
         <div className="container-fluid text-center py-5">
           <FaReceipt size={48} className="text-muted mb-3" />
-          <h4 className="text-muted">Receipt not found</h4>
+          <h4 className="text-muted">{t('common.receipt_not_found')}</h4>
           <Link to="/receipts" className="btn btn-primary mt-3">
-            <FaArrowLeft className="me-2" /> Back to Receipts
+            <FaArrowLeft className="me-2" /> {t('common.back_to_receipts')}
           </Link>
         </div>
       </div>
@@ -203,10 +205,10 @@ function ReceiptDetail() {
         <nav aria-label="breadcrumb" className="mb-4">
           <ol className="breadcrumb">
             <li className="breadcrumb-item">
-              <Link to="/receipts" className="text-decoration-none">Receipts</Link>
+              <Link to="/receipts" className="text-decoration-none">{t('common.receipts')}</Link>
             </li>
             <li className="breadcrumb-item active" aria-current="page">
-              {receipt.fileName || 'Receipt Details'}
+              {receipt.fileName || t('common.details')}
             </li>
           </ol>
         </nav>
@@ -244,11 +246,11 @@ function ReceiptDetail() {
                 </div>
               ) : (
                 <div className="d-flex align-items-center gap-2">
-                  <h1 className="display-6 fw-bold mb-0">{receipt.fileName || 'Unknown Store'}</h1>
+                  <h1 className="display-6 fw-bold mb-0">{receipt.fileName || t('common.unknown_store')}</h1>
                   <button
                     className="btn btn-sm btn-outline-secondary border-0"
                     onClick={() => setEditingStoreName(true)}
-                    title="Edit store name"
+                    title={t('common.edit')}
                   >
                     <FaPen size={14} />
                   </button>
@@ -264,7 +266,7 @@ function ReceiptDetail() {
             className="btn btn-outline-danger d-flex align-items-center gap-2"
             onClick={handleDeleteReceipt}
           >
-            <FaTrash /> Delete Receipt
+            <FaTrash /> {t('common.delete_receipt')}
           </button>
         </div>
 
@@ -274,7 +276,7 @@ function ReceiptDetail() {
           <div className="col-md-4">
             <div className="card border-0 shadow-sm h-100 p-3 bg-primary-subtle text-primary">
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <h6 className="mb-0 fw-bold">Total Price</h6>
+                <h6 className="mb-0 fw-bold">{t('common.total_price')}</h6>
                 <FaReceipt />
               </div>
               {editingTotal ? (
@@ -320,11 +322,11 @@ function ReceiptDetail() {
           <div className="col-md-4">
             <div className="card border-0 shadow-sm h-100 p-3 bg-info-subtle text-info-emphasis">
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <h6 className="mb-0 fw-bold">Items</h6>
+                <h6 className="mb-0 fw-bold">{t('common.items')}</h6>
                 <FaShoppingCart />
               </div>
               <h3 className="fw-bold mb-0">{items.length}</h3>
-              <small className="opacity-75">parsed items on this receipt</small>
+              <small className="opacity-75">{t('common.parsed_items_on_this')}</small>
             </div>
           </div>
 
@@ -332,11 +334,11 @@ function ReceiptDetail() {
           <div className="col-md-4">
             <div className="card border-0 shadow-sm h-100 p-3 bg-success-subtle text-success">
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <h6 className="mb-0 fw-bold">Items Total</h6>
+                <h6 className="mb-0 fw-bold">{t('common.items_total')}</h6>
                 <FaReceipt />
               </div>
               <h3 className="fw-bold mb-0">{formatPrice(itemsTotal)}</h3>
-              <small className="opacity-75">sum of all item prices</small>
+              <small className="opacity-75">{t('common.sum_of_all_items')}</small>
             </div>
           </div>
         </div>
@@ -345,7 +347,7 @@ function ReceiptDetail() {
         <div className="card border-0 shadow-sm">
           <div className="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
             <h5 className="mb-0 fw-bold d-flex align-items-center text-body">
-              <FaShoppingCart className="me-2 text-body-secondary" /> Parsed Items
+              <FaShoppingCart className="me-2 text-body-secondary" /> {t('common.parsed_items')}
             </h5>
             <div className="d-flex gap-2">
               {hasChanges && (
@@ -354,14 +356,14 @@ function ReceiptDetail() {
                   onClick={handleSaveItems}
                   disabled={saving}
                 >
-                  <FaSave /> {saving ? 'Saving...' : 'Save Changes'}
+                  <FaSave /> {saving ? t('common.saving') : t('common.save_changes')}
                 </button>
               )}
               <button
                 className="btn btn-primary btn-sm d-flex align-items-center gap-1"
                 onClick={() => setShowAddForm(true)}
               >
-                <FaPlus /> Add Item
+                <FaPlus /> {t('common.add_item')}
               </button>
             </div>
           </div>
@@ -369,10 +371,10 @@ function ReceiptDetail() {
           {/* Add Item Form */}
           {showAddForm && (
             <div className="p-3 bg-primary-subtle border-bottom">
-              <h6 className="fw-bold mb-3 text-primary">Add New Item</h6>
+              <h6 className="fw-bold mb-3 text-primary">{t('common.add_new_item')}</h6>
               <div className="row g-2 align-items-end">
                 <div className="col-md-3">
-                  <label className="form-label small fw-bold">Name *</label>
+                  <label className="form-label small fw-bold">{t('common.name_star')}</label>
                   <input
                     type="text"
                     className="form-control form-control-sm"
@@ -382,7 +384,7 @@ function ReceiptDetail() {
                   />
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label small fw-bold">Price</label>
+                  <label className="form-label small fw-bold">{t('common.price')}</label>
                   <div className="input-group input-group-sm">
                     <span className="input-group-text">{currency?.symbol || '$'}</span>
                     <input
@@ -396,7 +398,7 @@ function ReceiptDetail() {
                   </div>
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label small fw-bold">Brand</label>
+                  <label className="form-label small fw-bold">{t('common.brand')}</label>
                   <input
                     type="text"
                     className="form-control form-control-sm"
@@ -406,7 +408,7 @@ function ReceiptDetail() {
                   />
                 </div>
                 <div className="col-md-2">
-                  <label className="form-label small fw-bold">Type</label>
+                  <label className="form-label small fw-bold">{t('common.type')}</label>
                   <input
                     type="text"
                     className="form-control form-control-sm"
@@ -416,7 +418,7 @@ function ReceiptDetail() {
                   />
                 </div>
                 <div className="col-md-1">
-                  <label className="form-label small fw-bold">Size</label>
+                  <label className="form-label small fw-bold">{t('common.size')}</label>
                   <input
                     type="text"
                     className="form-control form-control-sm"
@@ -431,7 +433,7 @@ function ReceiptDetail() {
                     onClick={handleAddItem}
                     disabled={!newItem.name.trim()}
                   >
-                    <FaCheck className="me-1" /> Add
+                    <FaCheck className="me-1" /> {t('common.add_action')}
                   </button>
                   <button
                     className="btn btn-outline-secondary btn-sm"
@@ -452,12 +454,12 @@ function ReceiptDetail() {
               <thead className="table-secondary">
                 <tr>
                   <th className="py-3 ps-4" style={{ width: '40px' }}>#</th>
-                  <th className="py-3">Name</th>
-                  <th className="py-3">Brand</th>
-                  <th className="py-3">Type</th>
-                  <th className="py-3">Size</th>
-                  <th className="py-3 text-end">Price</th>
-                  <th className="py-3 text-center pe-4" style={{ width: '100px' }}>Actions</th>
+                  <th className="py-3">{t('common.name')}</th>
+                  <th className="py-3">{t('common.brand')}</th>
+                  <th className="py-3">{t('common.type')}</th>
+                  <th className="py-3">{t('common.size')}</th>
+                  <th className="py-3 text-end">{t('common.price')}</th>
+                  <th className="py-3 text-center pe-4" style={{ width: '100px' }}>{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -515,14 +517,14 @@ function ReceiptDetail() {
                           <button
                             className="btn btn-sm btn-success me-1"
                             onClick={() => setEditingItemIdx(null)}
-                            title="Done editing"
+                            title={t('common.done_editing')}
                           >
                             <FaCheck size={12} />
                           </button>
                           <button
                             className="btn btn-sm btn-outline-danger"
                             onClick={() => handleRemoveItem(idx)}
-                            title="Delete item"
+                            title={t('common.delete_item')}
                           >
                             <FaTrash size={12} />
                           </button>
@@ -545,14 +547,14 @@ function ReceiptDetail() {
                           <button
                             className="btn btn-sm btn-outline-primary me-1 border-0"
                             onClick={() => setEditingItemIdx(idx)}
-                            title="Edit item"
+                            title={t('common.edit_item')}
                           >
                             <FaPen size={12} />
                           </button>
                           <button
                             className="btn btn-sm btn-outline-danger border-0"
                             onClick={() => handleRemoveItem(idx)}
-                            title="Delete item"
+                            title={t('common.delete_item')}
                           >
                             <FaTrash size={12} />
                           </button>
@@ -566,12 +568,12 @@ function ReceiptDetail() {
                   <tr>
                     <td colSpan="7" className="text-center py-5 text-body-secondary">
                       <FaShoppingCart size={32} className="mb-2 opacity-50" />
-                      <div>No items on this receipt yet.</div>
+                      <div>{t('common.no_items_on_receipt')}</div>
                       <button
                         className="btn btn-sm btn-primary mt-2"
                         onClick={() => setShowAddForm(true)}
                       >
-                        <FaPlus className="me-1" /> Add your first item
+                        <FaPlus className="me-1" /> {t('common.add_first_item')}
                       </button>
                     </td>
                   </tr>
@@ -581,7 +583,7 @@ function ReceiptDetail() {
               {items.length > 0 && (
                 <tfoot className="table-secondary">
                   <tr>
-                    <td colSpan="5" className="text-end fw-bold py-3 ps-4">Items Total</td>
+                    <td colSpan="5" className="text-end fw-bold py-3 ps-4">{t('common.items_total')}</td>
                     <td className="text-end fw-bold fs-5 text-primary py-3">{formatPrice(itemsTotal)}</td>
                     <td></td>
                   </tr>
@@ -598,14 +600,14 @@ function ReceiptDetail() {
             style={{ zIndex: 1030 }}
           >
             <span className="text-warning fw-bold d-none d-sm-inline">
-              ⚠ You have unsaved item changes
+              {t('common.unsaved_changes')}
             </span>
             <button
               className="btn btn-success d-flex align-items-center gap-2"
               onClick={handleSaveItems}
               disabled={saving}
             >
-              <FaSave /> {saving ? 'Saving...' : 'Save All Changes'}
+              <FaSave /> {saving ? t('common.saving') : t('common.save_all_changes')}
             </button>
             <button
               className="btn btn-outline-secondary"
@@ -615,7 +617,7 @@ function ReceiptDetail() {
                 setEditingItemIdx(null);
               }}
             >
-              Discard
+              {t('common.discard')}
             </button>
           </div>
         )}
