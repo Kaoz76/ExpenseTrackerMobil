@@ -142,7 +142,10 @@ function Navbar() {
                         <div className="d-grid gap-2">
                           <button
                             className="btn btn-primary btn-sm d-flex align-items-center justify-content-center"
-                            onClick={generateAndDownloadPDF}
+                            onClick={async () => {
+                              await generateAndDownloadPDF();
+                              setShowDropdown(false);
+                            }}
                             disabled={isGenerating}
                           >
                             {isGenerating ? (
@@ -151,13 +154,27 @@ function Navbar() {
                               <> <FaFilePdf className="me-2" /> Download PDF </>
                             )}
                           </button>
-                          <button className="btn btn-outline-secondary btn-sm" onClick={markAsRead}>Mark as Read</button>
+                          <button className="btn btn-outline-secondary btn-sm" onClick={() => { markAsRead(); setShowDropdown(false); }}>Mark as Read</button>
                         </div>
                       </>
                     ) : (
                       <div className="text-center py-4 text-muted">
                         <FaCheckCircle className="mb-2 fs-3 text-success opacity-50" />
-                        <p className="mb-0 small">No new notifications.</p>
+                        <p className="mb-3 small">No new notifications.</p>
+                        <button
+                          className="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center"
+                          onClick={async () => {
+                            await generateAndDownloadPDF();
+                            setShowDropdown(false);
+                          }}
+                          disabled={isGenerating}
+                        >
+                          {isGenerating ? (
+                            <>Generating...</>
+                          ) : (
+                            <> <FaFilePdf className="me-2" /> Download Report </>
+                          )}
+                        </button>
                       </div>
                     )}
                   </div>
