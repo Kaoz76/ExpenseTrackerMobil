@@ -7,7 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
-import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExclamationTriangle, FaBell, FaClock } from 'react-icons/fa';
+import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExclamationTriangle, FaBell, FaClock, FaTrash } from 'react-icons/fa';
 
 function Settings() {
   const { theme, toggleTheme } = useTheme();
@@ -106,6 +106,29 @@ function Settings() {
     } catch (error) {
       console.error("Error saving budget:", error);
       setMessage('Failed to save budget.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Bütçeyi Sıfırlama
+  const handleResetBudget = async () => {
+    if (!user?.uid) return;
+
+    setSaving(true);
+    setMessage('');
+
+    try {
+      await setDoc(doc(db, "users", user.uid), {
+        budgetLimit: 0
+      }, { merge: true });
+
+      setBudgetInput('');
+      setMessage('Budget reset successfully!');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error("Error resetting budget:", error);
+      setMessage('Failed to reset budget.');
     } finally {
       setSaving(false);
     }
@@ -289,14 +312,23 @@ function Settings() {
                       value={budgetInput}
                       onChange={(e) => setBudgetInput(e.target.value)}
                     />
-                    <button
-                      className="btn btn-primary"
-                      onClick={handleSaveBudget}
-                      disabled={saving}
-                    >
-                      {saving ? '...' : <FaSave />}
-                    </button>
-                  </div>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSaveBudget}
+                        disabled={saving}
+                        title="Save Budget"
+                      >
+                        {saving ? '...' : <FaSave />}
+                      </button>
+                      <button
+                        className="btn btn-outline-danger"
+                        onClick={handleResetBudget}
+                        disabled={saving}
+                        title="Reset Budget"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
                   <div className="form-text mt-2">
                     {t('common.monthly_limit_desc')}
                   </div>
