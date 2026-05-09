@@ -61,8 +61,8 @@ function Settings() {
     await LocalNotifications.schedule({
       notifications: [
         {
-          title: "Expense Tracker",
-          body: "Don't forget to log your daily expenses! 💰",
+          title: t('common.msg_notification_title'),
+          body: t('common.msg_notification_body'),
           id: 1,
           schedule: {
             on: {
@@ -88,7 +88,7 @@ function Settings() {
 
     const budgetVal = parseFloat(budgetInput);
     if (budgetVal < 0) {
-      setMessage('Budget cannot be negative!');
+      setMessage(t('common.msg_budget_negative'));
       setTimeout(() => setMessage(''), 3000);
       return;
     }
@@ -101,11 +101,11 @@ function Settings() {
         budgetLimit: budgetVal || 0
       }, { merge: true });
 
-      setMessage('Budget updated successfully!');
+      setMessage(t('common.msg_budget_success'));
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error("Error saving budget:", error);
-      setMessage('Failed to save budget.');
+      setMessage(t('common.msg_budget_failed'));
     } finally {
       setSaving(false);
     }
@@ -124,11 +124,11 @@ function Settings() {
       }, { merge: true });
 
       setBudgetInput('');
-      setMessage('Budget reset successfully!');
+      setMessage(t('common.msg_budget_reset_success'));
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error("Error resetting budget:", error);
-      setMessage('Failed to reset budget.');
+      setMessage(t('common.msg_budget_reset_failed'));
     } finally {
       setSaving(false);
     }
@@ -143,7 +143,7 @@ function Settings() {
     if (isChecked) {
       // 🔥 GELİŞTİRME 2: Web tarayıcıda izne çalışıp çökmemesi için koruma
       if (!Capacitor.isNativePlatform()) {
-        alert("Push notifications are only supported on the mobile app.");
+        alert(t('common.msg_push_mobile_only'));
         setReminderEnabled(false);
         return;
       }
@@ -158,10 +158,10 @@ function Settings() {
         saveReminderSettings(true, reminderTime);
         await scheduleNotification(reminderTime);
 
-        setMessage('Daily reminder set successfully!');
+        setMessage(t('common.msg_reminder_set'));
         setTimeout(() => setMessage(''), 3000);
       } else {
-        alert("Please allow notifications from your phone settings.");
+        alert(t('common.msg_allow_notifications'));
         setReminderEnabled(false);
       }
     } else {
@@ -169,7 +169,7 @@ function Settings() {
       saveReminderSettings(false, reminderTime);
       await cancelNotification();
 
-      setMessage('Reminder turned off.');
+      setMessage(t('common.msg_reminder_off'));
       setTimeout(() => setMessage(''), 3000);
     }
   };
@@ -181,7 +181,7 @@ function Settings() {
 
     if (reminderEnabled) {
       await scheduleNotification(newTime);
-      setMessage(`Reminder time updated to ${newTime}`);
+      setMessage(t('common.msg_reminder_time_updated').replace('{{time}}', newTime));
       setTimeout(() => setMessage(''), 3000);
     }
   };
@@ -203,7 +203,7 @@ function Settings() {
   const handleResetData = async () => {
     if (!user?.uid) return;
 
-    if (!window.confirm("ARE YOU SURE? \n\nThis will permanently delete ALL your scanned receipts and manual entries. This action cannot be undone.")) {
+    if (!window.confirm(t('common.msg_reset_confirm'))) {
       return;
     }
 
@@ -228,12 +228,12 @@ function Settings() {
         await batch.commit();
       }
 
-      setResetMessage('All data has been successfully deleted.');
+      setResetMessage(t('common.msg_reset_success'));
       setTimeout(() => setResetMessage(''), 5000);
 
     } catch (error) {
       console.error("Error resetting data:", error);
-      setResetMessage('Failed to reset data. Please try again.');
+      setResetMessage(t('common.msg_reset_failed'));
     } finally {
       setResetting(false);
     }
@@ -308,7 +308,7 @@ function Settings() {
                     <input
                       type="number"
                       className="form-control"
-                      placeholder="e.g. 5000"
+                      placeholder={t('common.placeholder_budget')}
                       value={budgetInput}
                       onChange={(e) => setBudgetInput(e.target.value)}
                     />

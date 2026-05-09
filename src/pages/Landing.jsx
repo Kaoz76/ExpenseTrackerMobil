@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FaCamera, FaChartLine, FaSync, FaArrowRight, FaReceipt, FaMoneyBillWave, FaCalendarCheck, FaSearch, FaClipboardList, FaGithub, FaHeart } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
@@ -77,6 +78,7 @@ function RevealSection({ children, className = '', delay = 0 }) {
 function Landing() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
 
   // Canlı istatistikler (sadece giriş yapmış kullanıcılar için)
   const [stats, setStats] = useState({ totalSpent: 0, receiptCount: 0, subscriptionCount: 0 });
@@ -135,29 +137,29 @@ function Landing() {
           <div className="col-md-10 col-lg-8">
             <RevealSection>
               <h1 className="display-4 fw-bold mb-4">
-                Take Control of Your Finances with <br className="d-none d-md-block" />
-                <span className="text-gradient">Expense Tracker</span>
+                {t('common.landing_hero_title_1')} <br className="d-none d-md-block" />
+                <span className="text-gradient">{t('common.landing_hero_title_2')}</span>
               </h1>
               <p className="lead text-muted mb-5 px-md-4">
-                The smartest way to track your expenses, manage subscriptions, and scan receipts instantly. Take control of your financial journey today.
+                {t('common.landing_hero_desc')}
               </p>
               <div className="d-flex flex-column flex-sm-row justify-content-center gap-3">
                 {user ? (
                   <>
                     <Link to="/receipts" className="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow-sm d-flex align-items-center justify-content-center btn-pulse btn-pulse-primary">
-                      <FaCamera className="me-2" /> Scan Receipt
+                      <FaCamera className="me-2" /> {t('common.landing_scan_receipt')}
                     </Link>
                     <Link to="/texts" className="btn btn-outline-secondary btn-lg rounded-pill px-5 fw-bold d-flex align-items-center justify-content-center">
-                      Add Manual Entry
+                      {t('common.landing_add_manual')}
                     </Link>
                   </>
                 ) : (
                   <>
                     <Link to="/signup" className="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow-sm d-flex align-items-center justify-content-center btn-pulse btn-pulse-primary">
-                      Get Started Free <FaArrowRight className="ms-2" />
+                      {t('common.landing_get_started')} <FaArrowRight className="ms-2" />
                     </Link>
                     <Link to="/login" className="btn btn-outline-secondary btn-lg rounded-pill px-5 fw-bold d-flex align-items-center justify-content-center">
-                      Login
+                      {t('common.landing_login')}
                     </Link>
                   </>
                 )}
@@ -179,7 +181,7 @@ function Landing() {
                   <FaMoneyBillWave className="fs-4" />
                 </div>
                 <h3 className="fw-bold text-gradient mb-1">{formatPrice(stats.totalSpent)}</h3>
-                <p className="text-muted small mb-0">Spent This Month</p>
+                <p className="text-muted small mb-0">{t('common.landing_spent_this_month')}</p>
               </div>
             </div>
             <div className="col-md-4">
@@ -188,7 +190,7 @@ function Landing() {
                   <FaReceipt className="fs-4" />
                 </div>
                 <h3 className="fw-bold mb-1"><AnimatedCounter target={stats.receiptCount} /></h3>
-                <p className="text-muted small mb-0">Receipts This Month</p>
+                <p className="text-muted small mb-0">{t('common.landing_receipts_this_month')}</p>
               </div>
             </div>
             <div className="col-md-4">
@@ -197,7 +199,7 @@ function Landing() {
                   <FaCalendarCheck className="fs-4" />
                 </div>
                 <h3 className="fw-bold mb-1"><AnimatedCounter target={stats.subscriptionCount} /></h3>
-                <p className="text-muted small mb-0">Active Subscriptions</p>
+                <p className="text-muted small mb-0">{t('common.landing_active_subscriptions')}</p>
               </div>
             </div>
           </div>
@@ -208,8 +210,8 @@ function Landing() {
           HOW IT WORKS
           ════════════════════════════════════════ */}
       <RevealSection className="container py-5 mt-2" delay={0.1}>
-        <h2 className="text-center fw-bold mb-2">How It Works</h2>
-        <p className="text-center text-muted mb-5">Start tracking in three easy steps</p>
+        <h2 className="text-center fw-bold mb-2">{t('common.landing_how_it_works')}</h2>
+        <p className="text-center text-muted mb-5">{t('common.landing_how_subtitle')}</p>
 
         <div className="row g-4 align-items-start">
           {/* Step 1 */}
@@ -224,9 +226,9 @@ function Landing() {
               <span className="position-absolute top-0 start-0 badge rounded-pill bg-dark"
                 style={{ fontSize: '0.7rem', transform: 'translate(-25%, -25%)' }}>1</span>
             </div>
-            <h5 className="fw-bold mb-2">Scan or Enter</h5>
+            <h5 className="fw-bold mb-2">{t('common.landing_step1_title')}</h5>
             <p className="text-muted small px-3">
-              Take a photo of your receipt or manually add an expense entry in seconds.
+              {t('common.landing_step1_desc')}
             </p>
           </div>
 
@@ -242,9 +244,9 @@ function Landing() {
               <span className="position-absolute top-0 start-0 badge rounded-pill bg-dark"
                 style={{ fontSize: '0.7rem', transform: 'translate(-25%, -25%)' }}>2</span>
             </div>
-            <h5 className="fw-bold mb-2">AI Extracts Data</h5>
+            <h5 className="fw-bold mb-2">{t('common.landing_step2_title')}</h5>
             <p className="text-muted small px-3">
-              Our OCR engine automatically detects products, prices, store names and categories.
+              {t('common.landing_step2_desc')}
             </p>
           </div>
 
@@ -260,9 +262,9 @@ function Landing() {
               <span className="position-absolute top-0 start-0 badge rounded-pill bg-dark"
                 style={{ fontSize: '0.7rem', transform: 'translate(-25%, -25%)' }}>3</span>
             </div>
-            <h5 className="fw-bold mb-2">Get Insights</h5>
+            <h5 className="fw-bold mb-2">{t('common.landing_step3_title')}</h5>
             <p className="text-muted small px-3">
-              View spending trends, store analytics, and detailed reports to optimize your finances.
+              {t('common.landing_step3_desc')}
             </p>
           </div>
         </div>
@@ -273,8 +275,8 @@ function Landing() {
           ════════════════════════════════════════ */}
       <div className="container py-5">
         <RevealSection>
-          <h2 className="text-center fw-bold mb-2">Why Choose Us?</h2>
-          <p className="text-center text-muted mb-5">Everything you need to manage your money</p>
+          <h2 className="text-center fw-bold mb-2">{t('common.landing_why_choose')}</h2>
+          <p className="text-center text-muted mb-5">{t('common.landing_why_subtitle')}</p>
         </RevealSection>
 
         <div className="row g-4">
@@ -284,9 +286,9 @@ function Landing() {
                 <div className="bg-primary-subtle text-primary rounded-circle p-3 mb-4 d-flex align-items-center justify-content-center" style={{ width: '70px', height: '70px' }}>
                   <FaCamera className="fs-3" />
                 </div>
-                <h5 className="fw-bold mb-3">AI Receipt Scanner</h5>
+                <h5 className="fw-bold mb-3">{t('common.landing_feature1_title')}</h5>
                 <p className="text-muted small mb-0">
-                  Instantly extract products, prices, and store names from any receipt using advanced OCR.
+                  {t('common.landing_feature1_desc')}
                 </p>
               </div>
             </div>
@@ -298,9 +300,9 @@ function Landing() {
                 <div className="bg-info-subtle text-info-emphasis rounded-circle p-3 mb-4 d-flex align-items-center justify-content-center" style={{ width: '70px', height: '70px' }}>
                   <FaChartLine className="fs-3" />
                 </div>
-                <h5 className="fw-bold mb-3">Smart Analytics</h5>
+                <h5 className="fw-bold mb-3">{t('common.landing_feature2_title')}</h5>
                 <p className="text-muted small mb-0">
-                  Visualize your spending habits with interactive charts and detailed store analytics.
+                  {t('common.landing_feature2_desc')}
                 </p>
               </div>
             </div>
@@ -312,9 +314,9 @@ function Landing() {
                 <div className="bg-warning-subtle text-warning-emphasis rounded-circle p-3 mb-4 d-flex align-items-center justify-content-center" style={{ width: '70px', height: '70px' }}>
                   <FaSync className="fs-3" />
                 </div>
-                <h5 className="fw-bold mb-3">Subscription Tracking</h5>
+                <h5 className="fw-bold mb-3">{t('common.landing_feature3_title')}</h5>
                 <p className="text-muted small mb-0">
-                  Never miss a payment. Keep track of all your recurring subscriptions in one place.
+                  {t('common.landing_feature3_desc')}
                 </p>
               </div>
             </div>
@@ -330,12 +332,12 @@ function Landing() {
           <div className="container py-4">
             <div className="row align-items-center">
               <div className="col-md-4 text-center text-md-start mb-3 mb-md-0">
-                <span className="fw-bold" style={{ color: 'var(--modern-primary)' }}>Expense Tracker</span>
-                <p className="text-muted small mb-0 mt-1">© {new Date().getFullYear()} All rights reserved.</p>
+                <span className="fw-bold" style={{ color: 'var(--modern-primary)' }}>{t('common.landing_hero_title_2')}</span>
+                <p className="text-muted small mb-0 mt-1">© {new Date().getFullYear()} {t('common.landing_footer_rights')}</p>
               </div>
               <div className="col-md-4 text-center mb-3 mb-md-0">
                 <span className="text-muted small d-flex align-items-center justify-content-center gap-1">
-                  Built with <FaHeart className="text-danger" style={{ fontSize: '0.7rem' }} /> by Kaan
+                  {t('common.landing_footer_built')} <FaHeart className="text-danger" style={{ fontSize: '0.7rem' }} /> {t('common.landing_footer_by')}
                 </span>
               </div>
               <div className="col-md-4 text-center text-md-end">

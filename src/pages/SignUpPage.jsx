@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
@@ -16,6 +17,7 @@ function SignUpPage() {
   const [passwordError, setPasswordError] = useState('');
 
   const { signup } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   // GELİŞTİRME 2: Kullanıcı formda düzeltme yapmaya başladığında genel hatayı gizle
@@ -30,12 +32,12 @@ function SignUpPage() {
     setPasswordError('');
 
     if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match.');
+      setPasswordError(t('common.signup_mismatch'));
       return;
     }
 
     if (!termsAccepted) {
-      setError('You must agree to the Terms of Service and Privacy Policy.');
+      setError(t('common.signup_terms_error'));
       return;
     }
 
@@ -46,13 +48,13 @@ function SignUpPage() {
     } catch (err) {
       switch (err.code) {
         case 'auth/email-already-in-use':
-          setError('This email is already in use.');
+          setError(t('common.signup_email_in_use'));
           break;
         case 'auth/weak-password':
-          setError('Password must be at least 6 characters.');
+          setError(t('common.signup_weak_password'));
           break;
         default:
-          setError('Failed to create an account. Please try again.');
+          setError(t('common.signup_generic_error'));
           console.error(err);
       }
     } finally {
@@ -65,7 +67,7 @@ function SignUpPage() {
     const value = e.target.value;
     setConfirmPassword(value);
     if (password && value && password !== value) {
-      setPasswordError('Passwords do not match.');
+      setPasswordError(t('common.signup_mismatch'));
     } else {
       setPasswordError('');
     }
@@ -79,8 +81,8 @@ function SignUpPage() {
 
             {/* Başlık ve Alt Başlık */}
             <div className="text-center mb-4">
-              <h1 className="h2 fw-bold">Create Your Account</h1>
-              <p className="text-muted">Start tracking your spending and saving money today.</p>
+              <h1 className="h2 fw-bold">{t('common.signup_title')}</h1>
+              <p className="text-muted">{t('common.signup_subtitle')}</p>
             </div>
 
             <div className="card shadow-sm border-0">
@@ -90,7 +92,7 @@ function SignUpPage() {
 
                   {/* Email */}
                   <div className="mb-3">
-                    <label htmlFor="email" className="form-label">Email</label>
+                    <label htmlFor="email" className="form-label">{t('common.signup_email')}</label>
                     <input
                       type="email"
                       className="form-control"
@@ -103,7 +105,7 @@ function SignUpPage() {
 
                   {/* Password */}
                   <div className="mb-3">
-                    <label htmlFor="password" className="form-label">Password</label>
+                    <label htmlFor="password" className="form-label">{t('common.signup_password')}</label>
                     {/* GELİŞTİRME 1: Bootstrap Input Group yapısı */}
                     <div className="input-group">
                       <input
@@ -127,7 +129,7 @@ function SignUpPage() {
 
                   {/* Confirm Password */}
                   <div className="mb-3">
-                    <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
+                    <label htmlFor="confirmPassword" className="form-label">{t('common.signup_confirm')}</label>
                     {/* GELİŞTİRME 1: Bootstrap Input Group yapısı */}
                     <div className="input-group">
                       <input
@@ -164,14 +166,14 @@ function SignUpPage() {
                       onChange={(e) => setTermsAccepted(e.target.checked)}
                     />
                     <label className="form-check-label small text-muted" htmlFor="termsCheck">
-                      By creating an account, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+                      {t('common.signup_terms')} <a href="#">{t('common.signup_terms_link')}</a> & <a href="#">{t('common.signup_privacy_link')}</a>.
                     </label>
                   </div>
 
                   {/* Create Account Button */}
                   <div className="d-grid">
                     <button type="submit" className="btn btn-primary" disabled={loading}>
-                      {loading ? 'Creating...' : 'Create Account'}
+                      {loading ? t('common.signup_creating') : t('common.signup_create')}
                     </button>
                   </div>
                 </form>
@@ -181,7 +183,7 @@ function SignUpPage() {
             {/* Sign In Link */}
             <div className="text-center mt-4">
               <p className="text-muted">
-                Already have an account? <Link to="/login" className="fw-medium text-decoration-none">Sign In</Link>
+                {t('common.signup_already')} <Link to="/login" className="fw-medium text-decoration-none">{t('common.signup_login_link')}</Link>
               </p>
             </div>
           </div>

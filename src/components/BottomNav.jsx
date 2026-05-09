@@ -49,7 +49,7 @@ function BottomNav() {
           style={{ background: 'transparent', boxShadow: 'none' }}
         >
           <FaLayerGroup className="fs-4 mb-1" />
-          <span style={{ fontSize: '0.75rem' }}>Menu</span>
+          <span style={{ fontSize: '0.75rem' }}>{t('common.nav_menu')}</span>
         </button>
 
         {showMenu && (
@@ -69,13 +69,13 @@ function BottomNav() {
             }}
           >
             <NavLink to="/products" className="btn btn-sm btn-light text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
-              <FaBox className="me-2 text-primary" /> Products
+              <FaBox className="me-2 text-primary" /> {t('nav.products')}
             </NavLink>
             <NavLink to="/stores" className="btn btn-sm btn-light text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
-              <FaStore className="me-2 text-primary" /> Stores
+              <FaStore className="me-2 text-primary" /> {t('nav.stores')}
             </NavLink>
             <NavLink to="/subscriptions" className="btn btn-sm btn-light text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
-              <FaSync className="me-2 text-primary" /> Subscriptions
+              <FaSync className="me-2 text-primary" /> {t('nav.subscriptions')}
             </NavLink>
             
             {/* Küçük ok işareti (pointer) */}

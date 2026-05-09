@@ -154,7 +154,7 @@ function ReceiptDetail() {
 
   // ─── DELETE RECEIPT ────────────────────────────
   const handleDeleteReceipt = async () => {
-    if (!window.confirm("Are you sure you want to delete this entire receipt? This action cannot be undone.")) {
+    if (!window.confirm(t('common.msg_delete_receipt_full_confirm'))) {
       return;
     }
     try {
@@ -162,7 +162,7 @@ function ReceiptDetail() {
       navigate('/receipts');
     } catch (err) {
       console.error("Error deleting receipt:", err);
-      alert("Failed to delete receipt.");
+      alert(t('common.msg_delete_receipt_failed'));
     }
   };
 
@@ -378,7 +378,7 @@ function ReceiptDetail() {
                   <input
                     type="text"
                     className="form-control form-control-sm"
-                    placeholder="Item name"
+                    placeholder={t('common.placeholder_item_name')}
                     value={newItem.name}
                     onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                   />
@@ -402,7 +402,7 @@ function ReceiptDetail() {
                   <input
                     type="text"
                     className="form-control form-control-sm"
-                    placeholder="Brand"
+                    placeholder={t('common.placeholder_brand_short')}
                     value={newItem.brand}
                     onChange={(e) => setNewItem({ ...newItem, brand: e.target.value })}
                   />
@@ -412,7 +412,7 @@ function ReceiptDetail() {
                   <input
                     type="text"
                     className="form-control form-control-sm"
-                    placeholder="Category"
+                    placeholder={t('common.placeholder_category')}
                     value={newItem.type}
                     onChange={(e) => setNewItem({ ...newItem, type: e.target.value })}
                   />

@@ -121,14 +121,14 @@ function ManualEntry() {
     if (!user) return;
 
     if (!storeName.trim()) {
-      setError('Please enter a Store Name.');
+      setError(t('common.msg_enter_store_name'));
       return;
     }
 
     for (let i = 0; i < products.length; i++) {
       const p = products[i];
       if (!p.type.trim() || !p.brand.trim() || !String(p.price).trim()) {
-        setError(`Please fill in all required fields (Type, Brand, Price) for Row ${i + 1}.`);
+        setError(t('common.msg_fill_required').replace('{{row}}', i + 1));
         return;
       }
     }
@@ -152,14 +152,14 @@ function ManualEntry() {
 
       await addDoc(collection(db, "receipts"), newEntryData);
 
-      setSuccess('Data saved successfully! You can see it in the list below.');
+      setSuccess(t('common.msg_save_success'));
       setStoreName('');
       setProducts([{ id: Date.now(), type: '', brand: '', name: '', size: '', price: '' }]);
       setTimeout(() => setSuccess(''), 3000);
 
     } catch (err) {
       console.error("Error saving document: ", err);
-      setError("Failed to save data. Please try again.");
+      setError(t('common.msg_save_error'));
     } finally {
       setLoading(false);
     }
@@ -167,12 +167,12 @@ function ManualEntry() {
 
   const handleDeleteEntry = async (e, entryId) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this entry?")) return;
+    if (!window.confirm(t('common.msg_delete_entry_confirm'))) return;
     try {
       await deleteDoc(doc(db, "receipts", entryId));
     } catch (err) {
       console.error("Error deleting document: ", err);
-      alert("Failed to delete entry.");
+      alert(t('common.msg_delete_entry_failed'));
     }
   };
 
@@ -200,7 +200,7 @@ function ManualEntry() {
             <div className="alert alert-warning d-flex align-items-center mb-4" role="alert">
               <FaExclamationTriangle className="me-2" />
               <div>
-                {t('common.view_only_mode').replace('Please log in', '')} <Link to="/login">Log in</Link>
+                {t('common.view_only_mode')} <Link to="/login">{t('common.log_in')}</Link>
               </div>
             </div>
           )}
@@ -213,7 +213,7 @@ function ManualEntry() {
                 <div className="mb-4">
                   <h5 className="fw-bold mb-3">{t('common.store_info')}</h5>
                   <label className="form-label text-muted">{t('common.store_name')}</label>
-                  <input type="text" className="form-control" placeholder="e.g., Walmart" value={storeName} onChange={(e) => setStoreName(e.target.value)} disabled={isDisabled} />
+                  <input type="text" className="form-control" placeholder={t('common.placeholder_store')} value={storeName} onChange={(e) => setStoreName(e.target.value)} disabled={isDisabled} />
                 </div>
                 <div className="mb-4">
                   <h5 className="fw-bold mb-3">{t('common.product_details')}</h5>
@@ -229,7 +229,7 @@ function ManualEntry() {
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="e.g., Dairy"
+                            placeholder={t('common.placeholder_dairy')}
                             value={product.type}
                             onChange={(e) => handleInputChange(product.id, 'type', e.target.value)}
                             disabled={isDisabled}
@@ -244,7 +244,7 @@ function ManualEntry() {
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="e.g., Farm Fresh"
+                            placeholder={t('common.placeholder_brand')}
                             value={product.brand}
                             onChange={(e) => handleInputChange(product.id, 'brand', e.target.value)}
                             disabled={isDisabled}
@@ -257,7 +257,7 @@ function ManualEntry() {
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="e.g., Whole Milk"
+                            placeholder={t('common.placeholder_product')}
                             value={product.name}
                             onChange={(e) => handleInputChange(product.id, 'name', e.target.value)}
                             disabled={isDisabled}
@@ -270,7 +270,7 @@ function ManualEntry() {
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="e.g., 1L"
+                            placeholder={t('common.placeholder_size')}
                             value={product.size}
                             onChange={(e) => handleInputChange(product.id, 'size', e.target.value)}
                             disabled={isDisabled}

@@ -173,7 +173,7 @@ function Receipts() {
     if (!acceptedFiles || acceptedFiles.length === 0) return;
 
     if (!user) {
-      setError("You must be logged in to upload a receipt.");
+      setError(t('common.msg_must_login_upload'));
       return;
     }
 
@@ -187,7 +187,7 @@ function Receipts() {
     for (let i = 0; i < filesToProcess.length; i++) {
       const file = filesToProcess[i];
       setUploadProgress(0);
-      setStatusText(`Analyzing receipt ${i + 1} of ${filesToProcess.length}...`);
+      setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', i + 1).replace('{{total}}', filesToProcess.length));
 
       let extractedData = { total: 0, items: [] };
 
@@ -300,7 +300,7 @@ function Receipts() {
     }
 
     setUploadProgress(100);
-    setStatusText('Preparing verification queue...');
+    setStatusText(t('common.msg_preparing_queue'));
 
     setTimeout(() => {
       setProcessedScans(results);
@@ -368,7 +368,7 @@ function Receipts() {
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
     if (!verifyData.fileName || !verifyData.fileName.trim()) {
-      alert("Please enter a Store Name before saving.");
+      alert(t('common.msg_enter_store_before_save'));
       return;
     }
 
@@ -396,7 +396,7 @@ function Receipts() {
 
     } catch (e) {
       console.error("Error saving document: ", e);
-      setError("Failed to save receipt data.");
+      setError(t('common.msg_save_failed'));
     }
   };
 
@@ -413,14 +413,14 @@ function Receipts() {
 
   const handleDeleteReceipt = async (e, receiptId) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this receipt? This action cannot be undone.")) {
+    if (!window.confirm(t('common.msg_delete_receipt_confirm'))) {
       return;
     }
     try {
       await deleteDoc(doc(db, "receipts", receiptId));
     } catch (err) {
       console.error("Error deleting document: ", err);
-      alert("Failed to delete receipt.");
+      alert(t('common.msg_delete_receipt_failed'));
     }
   };
 
@@ -502,7 +502,7 @@ function Receipts() {
                 </div>
 
                 {loadingReceipts && <div className="p-4 text-center text-muted">{t('common.loading_receipts')}</div>}
-                {!user && !loadingReceipts && <div className="p-5 text-center text-muted"><Link to="/login">Log in</Link> {t('common.please_log_in_receipts').replace('Please log in ', '')}</div>}
+                {!user && !loadingReceipts && <div className="p-5 text-center text-muted"><Link to="/login">{t('common.log_in')}</Link> {t('common.please_log_in_receipts')}</div>}
                 {user && !loadingReceipts && receipts.length === 0 && <div className="p-5 text-center text-muted">{t('common.no_receipts_uploaded')}</div>}
 
                 {user && !loadingReceipts && (
@@ -574,7 +574,7 @@ function Receipts() {
 
                 <div className="modal-header bg-primary text-white">
                   <h5 className="modal-title fw-bold">
-                    {t('common.verify_receipt')} ({processedScans.length} remaining)
+                    {t('common.verify_receipt')} ({processedScans.length} {t('common.msg_remaining')})
                   </h5>
                   <button type="button" className="btn-close btn-close-white" onClick={handleCloseAll} title="Cancel All"></button>
                 </div>

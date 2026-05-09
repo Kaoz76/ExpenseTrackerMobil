@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaTimes, FaEnvelope } from 'react-icons/fa';
 
@@ -11,6 +12,7 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const { login, resetPassword } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   // ŞİFRE SIFIRLAMA MODAL STATE'LERİ
@@ -54,7 +56,7 @@ function LoginPage() {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError('Invalid email or password');
+      setError(t('common.login_error'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -68,15 +70,15 @@ function LoginPage() {
     setResetError('');
 
     if (!resetEmail) {
-      return setResetError('Please enter your email address.');
+      return setResetError(t('common.login_reset_empty'));
     }
 
     try {
       setResetLoading(true);
       await resetPassword(resetEmail);
-      setResetMessage('Check your inbox for further instructions.');
+      setResetMessage(t('common.login_reset_success'));
     } catch (err) {
-      setResetError('Failed to reset password. Check if the email is correct.');
+      setResetError(t('common.login_reset_error'));
       console.error(err);
     } finally {
       setResetLoading(false);
@@ -90,14 +92,14 @@ function LoginPage() {
           <div className="col-md-6 col-lg-4">
             <div className="card shadow-sm border-0">
               <div className="card-body p-4 p-md-5">
-                <h2 className="card-title text-center mb-4">Log In</h2>
+                <h2 className="card-title text-center mb-4">{t('common.login_title')}</h2>
 
                 {/* Ana Giriş Formu */}
                 <form onSubmit={handleSubmit}>
                   {error && <div className="alert alert-danger">{error}</div>}
 
                   <div className="mb-3">
-                    <label htmlFor="email" className="form-label">Email address</label>
+                    <label htmlFor="email" className="form-label">{t('common.login_email')}</label>
                     <input
                       type="email"
                       className="form-control"
@@ -110,7 +112,7 @@ function LoginPage() {
 
                   <div className="mb-4">
                     <div className="d-flex justify-content-between align-items-center mb-1">
-                      <label htmlFor="password" className="form-label mb-0">Password</label>
+                      <label htmlFor="password" className="form-label mb-0">{t('common.login_password')}</label>
                       {/* Forgot Password Linki */}
                       <button
                         type="button"
@@ -120,7 +122,7 @@ function LoginPage() {
                           setShowResetModal(true);
                         }}
                       >
-                        Forgot Password?
+                        {t('common.login_forgot')}
                       </button>
                     </div>
 
@@ -147,14 +149,14 @@ function LoginPage() {
 
                   <div className="d-grid mt-4">
                     <button type="submit" className="btn btn-primary" disabled={loading}>
-                      {loading ? 'Logging in...' : 'Log In'}
+                      {loading ? t('common.login_logging_in') : t('common.login_title')}
                     </button>
                   </div>
                 </form>
 
                 <div className="text-center mt-4">
                   <small className="text-muted">
-                    Don't have an account? <Link to="/signup" className="fw-medium text-decoration-none">Sign Up</Link>
+                    {t('common.login_no_account')} <Link to="/signup" className="fw-medium text-decoration-none">{t('common.login_signup_link')}</Link>
                   </small>
                 </div>
               </div>
@@ -172,7 +174,7 @@ function LoginPage() {
               <div className="modal-content shadow">
 
                 <div className="modal-header border-0 pb-0 d-flex justify-content-between align-items-center">
-                  <h5 className="modal-title fw-bold">Reset Password</h5>
+                  <h5 className="modal-title fw-bold">{t('common.login_reset_title')}</h5>
                   <button
                     type="button"
                     className="btn-link text-muted border-0 bg-transparent p-0"
@@ -184,7 +186,7 @@ function LoginPage() {
 
                 <div className="modal-body p-4">
                   <p className="text-muted small mb-4">
-                    Enter your email address and we'll send you a link to reset your password.
+                    {t('common.login_reset_desc')}
                   </p>
 
                   {resetMessage && <div className="alert alert-success">{resetMessage}</div>}
@@ -192,7 +194,7 @@ function LoginPage() {
 
                   <form onSubmit={handleResetPassword}>
                     <div className="form-group mb-3">
-                      <label className="form-label text-muted small fw-bold">EMAIL ADDRESS</label>
+                      <label className="form-label text-muted small fw-bold">{t('common.login_reset_email_label')}</label>
                       <div className="input-group">
                         <span className="input-group-text bg-light border-end-0"><FaEnvelope className="text-muted" /></span>
                         <input
@@ -207,7 +209,7 @@ function LoginPage() {
                     </div>
                     <div className="d-grid mt-4">
                       <button type="submit" className="btn btn-primary" disabled={resetLoading}>
-                        {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                        {resetLoading ? t('common.login_reset_sending') : t('common.login_reset_send')}
                       </button>
                     </div>
                   </form>

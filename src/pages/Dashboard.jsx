@@ -222,7 +222,7 @@ function Dashboard() {
             <div className="col-12">
               <div className="card shadow-sm">
                 <div className="card-body p-5 text-center">
-                  <h5 className="text-muted"><Link to="/login">Log in</Link> {t('common.login_to_see').replace('Log in to see your data.', '') || t('common.login_to_see')}</h5>
+                   <h5 className="text-muted"><Link to="/login">{t('common.log_in')}</Link> {t('common.login_to_see')}</h5>
                 </div>
               </div>
             </div>
