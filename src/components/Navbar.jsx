@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { FaUserCircle, FaFilePdf, FaTimes, FaBell, FaCheckCircle } from 'react-icons/fa';
+import { FaUserCircle, FaFilePdf, FaTimes, FaBell, FaCheckCircle, FaCog } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useReport } from '../context/ReportContext';
@@ -181,11 +181,14 @@ function Navbar() {
                 )}
               </div>
 
-              {/* Kullanıcı Bilgisi */}
-              <div className="d-flex align-items-center d-none d-md-flex me-3">
-                <span className="navbar-text me-2 fw-medium" style={{ fontSize: '0.9rem' }}>{user.email || 'User'}</span>
-                <Link to="/settings" className="text-secondary" title="Settings" style={{ textDecoration: 'none' }}>
-                  <FaUserCircle className="fs-4" style={{ cursor: 'pointer', transition: 'opacity 0.2s' }} onMouseEnter={(e) => e.target.style.opacity = 0.7} onMouseLeave={(e) => e.target.style.opacity = 1} />
+              {/* Kullanıcı Bilgisi ve Ayarlar */}
+              <div className="d-flex align-items-center me-2 me-md-3">
+                {/* Email (Sadece PC) */}
+                <span className="navbar-text me-2 fw-medium d-none d-md-block" style={{ fontSize: '0.9rem' }}>{user.email || 'User'}</span>
+                
+                {/* Ayarlar İkonu (Her Yerde Görünür) */}
+                <Link to="/settings" className="text-secondary d-flex align-items-center" title="Settings" style={{ textDecoration: 'none' }}>
+                  <FaCog className="fs-4" style={{ cursor: 'pointer', transition: 'opacity 0.2s', color: 'var(--bs-body-color)' }} onMouseEnter={(e) => e.target.style.opacity = 0.7} onMouseLeave={(e) => e.target.style.opacity = 1} />
                 </Link>
               </div>
 
