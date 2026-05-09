@@ -202,7 +202,7 @@ function Dashboard() {
 
         {/* CURRENT BALANCE (Mobil RN stili mavi kart) */}
         {user && (
-          <div className="card border-0 mb-4 text-white shadow-sm d-md-none" style={{ backgroundColor: '#0d6efd', borderRadius: '20px' }}>
+          <div className="card border-0 mb-4 text-white shadow-sm d-md-none" style={{ background: 'linear-gradient(135deg, var(--modern-primary), #a855f7)', borderRadius: '20px' }}>
             <div className="card-body text-center p-4">
               <p className="mb-1" style={{ fontSize: '1rem', opacity: 0.8 }}>{t('common.current_balance')}</p>
               <h2 className="display-4 fw-bold mb-0">{formatPrice(monthlyStats.totalSpent)}</h2>
@@ -369,7 +369,7 @@ function Dashboard() {
                 </div>
                 <div>
                   <h6 className="text-muted mb-1">{t('common.total_recurring')}</h6>
-                  <h2 className="display-6 fw-bold text-dark mb-0">
+                  <h2 className="display-6 fw-bold mb-0">
                     {formatPrice(subscriptionTotal)}
                   </h2>
                 </div>

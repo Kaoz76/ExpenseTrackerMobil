@@ -1,17 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { FaHome, FaCamera, FaPlusCircle, FaCog } from 'react-icons/fa';
-import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
 function BottomNav() {
-  const { theme } = useTheme();
   const { t } = useLanguage();
 
   return (
 
     <nav
-      className={`bottom-nav-container d-md-none ${theme === 'dark' ? 'bg-dark border-top border-secondary' : 'bg-white border-top'}`}
+      className="bottom-nav-container d-md-none"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom)', // Modern telefonlar için alt boşluk
         zIndex: 1050 // Diğer elemanların altında kalmaması için

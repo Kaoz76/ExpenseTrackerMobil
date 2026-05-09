@@ -96,6 +96,8 @@ body::before {
   filter: blur(100px);
   z-index: -1;
   pointer-events: none;
+  will-change: transform;
+  contain: strict;
 }
 
 body::after {
@@ -105,10 +107,12 @@ body::after {
   right: -10vw;
   width: 50vw;
   height: 50vw;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.05) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
   filter: blur(100px);
   z-index: -1;
   pointer-events: none;
+  will-change: transform;
+  contain: strict;
 }
 
 .hide-scroll::-webkit-scrollbar {
@@ -127,10 +131,9 @@ body::after {
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   border: 1px solid var(--bs-border-color);
-  background-color: rgba(var(--bs-tertiary-bg-rgb), 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(var(--bs-tertiary-bg-rgb), 0.92);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
 }
 
 .card:hover {
@@ -180,15 +183,13 @@ body::after {
 }
 
 .floating-navbar {
-  background-color: rgba(var(--bs-tertiary-bg-rgb), 0.75) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background-color: rgba(var(--bs-tertiary-bg-rgb), 0.92) !important;
   border: 1px solid var(--bs-border-color);
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   max-width: 1400px;
   margin: 0 auto;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 @media (max-width: 768px) {
@@ -252,9 +253,7 @@ body::after {
   left: 15px;
   right: 15px;
   width: calc(100% - 30px);
-  background-color: rgba(var(--bs-tertiary-bg-rgb), 0.85);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  background-color: rgba(var(--bs-tertiary-bg-rgb), 0.95);
   border: 1px solid var(--bs-border-color);
   border-radius: 24px;
   display: flex;
@@ -262,6 +261,7 @@ body::after {
   padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
   z-index: 1050;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  will-change: transform;
 }
 
 .bottom-nav-item {
@@ -464,7 +464,7 @@ body::after {
 
 .btn-pulse-primary {
   color: #fff;
-  background-image: linear-gradient(30deg, #0d6efd, #0dcaf0);
+  background-image: linear-gradient(30deg, var(--modern-primary), #a855f7);
 }
 
 .btn-pulse-secondary {
@@ -474,15 +474,15 @@ body::after {
 
 @keyframes pulse512 {
   0% {
-    box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.4);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
   }
 
   70% {
-    box-shadow: 0 0 0 10px rgba(13, 202, 240, 0);
+    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(13, 202, 240, 0);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
   }
 }
 
@@ -1035,5 +1035,20 @@ body::after {
     right: 20px;
     width: 45px;
     height: 45px;
+  }
+
+  /* Mobilde ağır blur efektlerini kaldır — performans iyileştirmesi */
+  body::before,
+  body::after {
+    display: none;
+  }
+
+  .card {
+    background-color: var(--bs-tertiary-bg);
+    will-change: auto;
+  }
+
+  .card:hover {
+    transform: none;
   }
 }

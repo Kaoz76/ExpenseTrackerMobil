@@ -160,7 +160,7 @@ function AnalyzeExpenses() {
 
           <div className="position-relative">
             <button
-              className="btn btn-outline-secondary d-flex align-items-center bg-white"
+              className="btn btn-outline-secondary d-flex align-items-center"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={!user}
             >
@@ -247,8 +247,8 @@ function AnalyzeExpenses() {
                         <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <defs>
                             <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#0d6efd" stopOpacity={0.8} />
-                              <stop offset="95%" stopColor="#0d6efd" stopOpacity={0} />
+                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
+                              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                             </linearGradient>
                           </defs>
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6c757d' }} />
@@ -261,7 +261,7 @@ function AnalyzeExpenses() {
                             formatter={(value) => [formatPrice(value), t('common.amount')]}
                           />
 
-                          <Area type="monotone" dataKey="amount" stroke="#0d6efd" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
+                          <Area type="monotone" dataKey="amount" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -295,9 +295,9 @@ function AnalyzeExpenses() {
                             formatter={(value) => [formatPrice(value), t('common.amount')]}
                           />
 
-                          <Bar dataKey="amount" fill="#0d6efd" radius={[0, 4, 4, 0]} barSize={20}>
+                          <Bar dataKey="amount" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={20}>
                             {categoryData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#0d6efd' : '#6610f2'} />
+                              <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#6366f1' : '#a855f7'} />
                             ))}
                           </Bar>
                         </BarChart>
