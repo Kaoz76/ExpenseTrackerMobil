@@ -23,6 +23,7 @@ export const en = {
     app_preferences: "App Preferences"
   },
   common: {
+    receipts: "Receipts",
     save: "Save",
     cancel: "Cancel",
     delete: "Delete",

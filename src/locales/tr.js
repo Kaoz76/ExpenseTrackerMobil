@@ -23,6 +23,7 @@ export const tr = {
     app_preferences: "Uygulama Tercihleri"
   },
   common: {
+    receipts: "Fişler",
     save: "Kaydet",
     cancel: "İptal",
     delete: "Sil",
