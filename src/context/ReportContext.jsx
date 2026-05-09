@@ -47,10 +47,15 @@ export const ReportProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Font Yükleme (Bunu dışarı aktarmadığımız için useCallback içine almadım, içeride durabilir)
+  // Font Yükleme (Timeout ile)
   const loadFile = async (url) => {
     try {
-      const response = await fetch(url);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 saniye zaman aşımı
+
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.arrayBuffer();
 
@@ -62,7 +67,7 @@ export const ReportProvider = ({ children }) => {
       }
       return window.btoa(binary);
     } catch (e) {
-      console.warn("Font indirilemedi:", e);
+      console.warn("Font indirilemedi veya zaman aşımına uğradı:", e);
       return null;
     }
   };
@@ -75,8 +80,7 @@ export const ReportProvider = ({ children }) => {
     try {
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc")
+        where("userId", "==", user.uid)
       );
 
       const querySnapshot = await getDocs(q);
@@ -87,11 +91,19 @@ export const ReportProvider = ({ children }) => {
         return;
       }
 
+      // Client-side sorting to avoid composite index requirement
+      const allDocs = [];
+      querySnapshot.forEach((doc) => allDocs.push(doc.data()));
+      
+      allDocs.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        return dateB - dateA;
+      });
+
       let csvContent = "Date;Market/Title;Type;Price;Currency;Details\n";
 
-      // Geliştirme: Parametre ismini firestoreDoc yaparak karışıklığı önledik
-      querySnapshot.forEach((firestoreDoc) => {
-        const data = firestoreDoc.data();
+      allDocs.forEach((data) => {
 
         let dateStr = data.date || "";
         if (data.createdAt && typeof data.createdAt.toDate === 'function') {
@@ -161,25 +173,35 @@ export const ReportProvider = ({ children }) => {
 
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        where("createdAt", ">=", startOfLastMonth),
-        where("createdAt", "<=", endOfLastMonth),
-        orderBy("createdAt", "desc")
+        where("userId", "==", user.uid)
       );
 
       const querySnapshot = await getDocs(q);
       const receipts = [];
       let totalSpent = 0;
 
-      // Geliştirme: firestoreDoc olarak isimlendirildi
       querySnapshot.forEach((firestoreDoc) => {
         const data = firestoreDoc.data();
-        const safeData = {
-          ...data,
-          price: Number(data.price) || 0,
-        };
-        receipts.push(safeData);
-        totalSpent += safeData.price;
+        
+        // Client-side date filtering
+        if (data.createdAt) {
+          const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+          if (date >= startOfLastMonth && date <= endOfLastMonth) {
+            const safeData = {
+              ...data,
+              price: Number(data.price) || 0,
+            };
+            receipts.push(safeData);
+            totalSpent += safeData.price;
+          }
+        }
+      });
+
+      // Client-side sorting
+      receipts.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        return dateB - dateA;
       });
 
       if (receipts.length === 0) {
