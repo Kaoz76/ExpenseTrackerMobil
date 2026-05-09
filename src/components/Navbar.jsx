@@ -58,7 +58,8 @@ function Navbar() {
       <div className="container-fluid px-4 px-md-5">
 
         {/* Marka (Logo) */}
-        <Link className="navbar-brand fw-bold" to="/">Expense Tracker</Link>
+        <Link className="navbar-brand fw-bold d-none d-md-block" to="/">Expense Tracker</Link>
+        <Link className="navbar-brand fw-bold d-md-none" to="/dashboard">Expense Tracker</Link>
 
         {/* Mobil Toggler (Menü boş olduğu için gizleyebiliriz ama login/logout kısmını dışarı taşıyacağız) */}
         <button

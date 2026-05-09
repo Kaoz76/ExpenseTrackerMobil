@@ -19,22 +19,6 @@ export const dashboardData = {
       color: 'success'
     },
     {
-      id: 3,
-      icon: FaBoxOpen,
-      title: 'Products',
-      description: 'Manage purchased items',
-      to: '/products',
-      color: 'info'
-    },
-    {
-      id: 4,
-      icon: FaStore,
-      title: 'Stores',
-      description: 'View registered markets',
-      to: '/stores',
-      color: 'warning'
-    },
-    {
       id: 5,
       icon: FaCog,
       title: 'Settings',
