@@ -43,6 +43,16 @@
   --bs-table-color: rgba(255, 255, 255, 0.85);
 }
 
+[data-bs-theme="dark"] .table-light,
+[data-bs-theme="dark"] .table-light th,
+[data-bs-theme="dark"] .table-light td {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  --bs-table-bg: rgba(255, 255, 255, 0.04);
+  --bs-table-color: rgba(255, 255, 255, 0.7);
+}
+
 [data-bs-theme="dark"] .table,
 [data-bs-theme="dark"] .table-hover tbody tr {
   color: rgba(255, 255, 255, 0.85);
