@@ -26,6 +26,10 @@ function ProductDetails() {
   const cleanName = (name) => {
     if (!name) return "";
     let cleaned = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
+    // Decode any URI-encoded characters (e.g. literal %20 from OCR)
+    try { cleaned = decodeURIComponent(cleaned); } catch (e) { /* ignore */ }
+    // Collapse multiple whitespace into single space
+    cleaned = cleaned.replace(/\s+/g, ' ');
     return trTitleCase(cleaned).trim();
   };
 
