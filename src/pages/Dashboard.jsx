@@ -93,7 +93,14 @@ function Dashboard() {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          const createdAtDate = data.createdAt?.toDate ? data.createdAt.toDate() : null;
+          let createdAtDate = null;
+          if (data.createdAt) {
+            if (typeof data.createdAt.toDate === 'function') createdAtDate = data.createdAt.toDate();
+            else if (data.createdAt.seconds) createdAtDate = new Date(data.createdAt.seconds * 1000);
+            else if (data.createdAt instanceof Date) createdAtDate = data.createdAt;
+          } else {
+            createdAtDate = new Date();
+          }
           
           if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
             total += Number(data.price) || 0;
@@ -134,9 +141,15 @@ function Dashboard() {
 
         // Sort locally by createdAt desc and limit to 3
         scansData.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-          return timeB - timeA;
+          const getMillis = (t) => {
+            if (!t) return Date.now();
+            if (typeof t.toMillis === 'function') return t.toMillis();
+            if (t.seconds) return t.seconds * 1000;
+            if (t instanceof Date) return t.getTime();
+            if (typeof t === 'number') return t;
+            return 0;
+          };
+          return getMillis(b.createdAt) - getMillis(a.createdAt);
         });
 
         setRecentScans(scansData.slice(0, 3));

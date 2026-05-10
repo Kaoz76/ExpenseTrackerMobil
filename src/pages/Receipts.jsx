@@ -52,9 +52,7 @@ function Receipts() {
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
-        where("isManual", "==", false),
-        orderBy("createdAt", "desc"),
-        limit(displayLimit) // 🔥 Dinamik Limit
+        where("isManual", "==", false)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -62,7 +60,20 @@ function Receipts() {
           id: doc.id,
           ...doc.data()
         }));
-        setReceipts(receiptsData);
+
+        receiptsData.sort((a, b) => {
+          const getMillis = (t) => {
+            if (!t) return Date.now();
+            if (typeof t.toMillis === 'function') return t.toMillis();
+            if (t.seconds) return t.seconds * 1000;
+            if (t instanceof Date) return t.getTime();
+            if (typeof t === 'number') return t;
+            return 0;
+          };
+          return getMillis(b.createdAt) - getMillis(a.createdAt);
+        });
+
+        setReceipts(receiptsData.slice(0, displayLimit));
         setLoadingReceipts(false);
       }, (err) => {
         console.error("Error fetching receipts: ", err);

@@ -73,9 +73,15 @@ function ManualEntry() {
 
         // Sort client-side to avoid composite index requirement
         entries.sort((a, b) => {
-          const aTime = a.createdAt?.toMillis?.() || 0;
-          const bTime = b.createdAt?.toMillis?.() || 0;
-          return bTime - aTime;
+          const getMillis = (t) => {
+            if (!t) return Date.now();
+            if (typeof t.toMillis === 'function') return t.toMillis();
+            if (t.seconds) return t.seconds * 1000;
+            if (t instanceof Date) return t.getTime();
+            if (typeof t === 'number') return t;
+            return 0;
+          };
+          return getMillis(b.createdAt) - getMillis(a.createdAt);
         });
 
         setManualEntries(entries);
