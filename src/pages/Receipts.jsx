@@ -633,6 +633,16 @@ function Receipts() {
                 </div>
 
                 <div className="modal-body p-4">
+                  {verifyData?.imageUrl && (
+                    <div className="mb-4 text-center">
+                      <img
+                        src={verifyData.imageUrl}
+                        alt="Scanned Receipt"
+                        style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', border: '1px solid #dee2e6' }}
+                      />
+                    </div>
+                  )}
+
                   <p className="text-muted mb-4">
                     {t('common.ocr_detected_price')}
                   </p>
