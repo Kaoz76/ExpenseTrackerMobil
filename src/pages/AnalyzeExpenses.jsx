@@ -49,6 +49,10 @@ function AnalyzeExpenses() {
     tooltipColor: isDark ? 'rgba(255,255,255,0.9)' : '#334155',
     axisColor: isDark ? 'rgba(255,255,255,0.45)' : '#6c757d',
     gridOpacity: isDark ? 0.06 : 0.1,
+    lineColor: isDark ? '#818cf8' : '#4f46e5', // More saturated indigo for light mode
+    areaStop1: isDark ? '#818cf8' : '#4f46e5',
+    areaStop2: isDark ? '#c084fc' : '#9333ea',
+    areaOpacity: isDark ? 0.4 : 0.6, // Higher opacity for light mode visibility
   }), [isDark]);
 
   const getRangeLabel = () => {
@@ -417,9 +421,9 @@ function AnalyzeExpenses() {
                         <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
                           <defs>
                             <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                              <stop offset="50%" stopColor="#a855f7" stopOpacity={0.15} />
-                              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                              <stop offset="5%" stopColor={chartTheme.areaStop1} stopOpacity={chartTheme.areaOpacity} />
+                              <stop offset="50%" stopColor={chartTheme.areaStop2} stopOpacity={chartTheme.areaOpacity * 0.4} />
+                              <stop offset="95%" stopColor={chartTheme.areaStop1} stopOpacity={0} />
                             </linearGradient>
                           </defs>
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axisColor, fontSize: 12 }} />
@@ -440,7 +444,16 @@ function AnalyzeExpenses() {
                             formatter={(value) => [formatPrice(value), t('common.amount')]}
                           />
 
-                          <Area type="monotone" dataKey="amount" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
+                          <Area 
+                            type="monotone" 
+                            dataKey="amount" 
+                            stroke={chartTheme.lineColor} 
+                            strokeWidth={3} 
+                            fillOpacity={1} 
+                            fill="url(#colorAmount)"
+                            dot={{ r: 3, fill: chartTheme.lineColor, strokeWidth: 2, stroke: isDark ? '#1e293b' : '#fff' }}
+                            activeDot={{ r: 6, strokeWidth: 0 }}
+                          />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
