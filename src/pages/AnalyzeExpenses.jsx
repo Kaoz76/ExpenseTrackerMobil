@@ -21,7 +21,7 @@ const CHART_COLORS = [
 function AnalyzeExpenses() {
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState([]);
@@ -78,8 +78,7 @@ function AnalyzeExpenses() {
       } else if (timeRange === 'this_month') {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       } else if (timeRange === 'last_3_months') {
-        startDate = new Date();
-        startDate.setMonth(startDate.getMonth() - 3);
+        startDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
       } else if (timeRange === 'this_year') {
         startDate = new Date(now.getFullYear(), 0, 1);
       }
@@ -112,6 +111,40 @@ function AnalyzeExpenses() {
         const categoryMap = {};
         let total = 0;
 
+        // Pre-fill the map with zeros to guarantee continuous charts
+        if (timeRange === 'this_week') {
+          const start = new Date(startDate);
+          for (let i = 0; i < 7; i++) {
+            const d = new Date(start);
+            d.setDate(start.getDate() + i);
+            if (d > now) break; // Stop zero-filling after today
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            monthlyMap[key] = 0;
+          }
+        } else if (timeRange === 'this_month') {
+          const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+          for (let i = 1; i <= daysInMonth; i++) {
+            if (i > now.getDate()) break; // Stop zero-filling after today
+            const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            monthlyMap[key] = 0;
+          }
+        } else if (timeRange === 'last_3_months') {
+          for (let i = 2; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthlyMap[key] = 0;
+          }
+        } else if (timeRange === 'this_year') {
+          for (let i = 1; i <= 12; i++) {
+            if (i > now.getMonth() + 1) break; // Stop zero-filling after current month
+            const key = `${now.getFullYear()}-${String(i).padStart(2, '0')}`;
+            monthlyMap[key] = 0;
+          }
+        }
+
+        let minYear = now.getFullYear();
+        let maxYear = now.getFullYear();
+
         // Process receipts
         if (receiptsData) {
           receiptsData.forEach((doc) => {
@@ -126,21 +159,26 @@ function AnalyzeExpenses() {
 
             total += price;
 
-            // Smart grouping key: daily for short ranges, monthly for longer
+            // Smart grouping key: daily for short ranges, monthly for longer, yearly for all_time
             let groupKey = "Unknown";
             if (data.createdAt && typeof data.createdAt.toDate === 'function') {
               const date = data.createdAt.toDate();
-              if (useDailyGrouping) {
+              const y = date.getFullYear();
+              
+              if (y < minYear) minYear = y;
+              if (y > maxYear) maxYear = y;
+
+              if (timeRange === 'all_time') {
+                groupKey = `${y}`;
+              } else if (useDailyGrouping) {
                 // Group by day: "2026-05-10"
-                const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const day = String(date.getDate()).padStart(2, '0');
-                groupKey = `${year}-${month}-${day}`;
+                groupKey = `${y}-${month}-${day}`;
               } else {
                 // Group by month: "2026-05"
-                const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
-                groupKey = `${year}-${month}`;
+                groupKey = `${y}-${month}`;
               }
             }
 
@@ -173,9 +211,26 @@ function AnalyzeExpenses() {
           });
         }
 
-        // Process subscriptions — add monthly cost to current month
+        // Fill missing years for 'all_time'
+        if (timeRange === 'all_time') {
+          for (let y = minYear; y <= maxYear; y++) {
+            if (monthlyMap[`${y}`] === undefined) {
+              monthlyMap[`${y}`] = 0;
+            }
+          }
+        }
+
+        // Process subscriptions — add to the correct target based on time range
         if (subsData && subsData.length > 0) {
-          const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          let subsKey = "Unknown";
+          if (timeRange === 'all_time') {
+            subsKey = `${now.getFullYear()}`;
+          } else if (useDailyGrouping) {
+            subsKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          } else {
+            subsKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          }
+
           let subsTotal = 0;
 
           subsData.forEach(sub => {
@@ -184,10 +239,10 @@ function AnalyzeExpenses() {
           });
 
           if (subsTotal > 0) {
-            // Add subscriptions to the total & monthly chart
+            // Add subscriptions to the total & chart
             total += subsTotal;
-            if (!monthlyMap[currentMonthKey]) monthlyMap[currentMonthKey] = 0;
-            monthlyMap[currentMonthKey] += subsTotal;
+            if (!monthlyMap[subsKey]) monthlyMap[subsKey] = 0;
+            monthlyMap[subsKey] += subsTotal;
 
             // Add as a category
             const subsLabel = t('nav.subscriptions') || "Subscriptions";
@@ -202,17 +257,19 @@ function AnalyzeExpenses() {
           .map(key => {
             if (key === "Unknown") return { name: "Unknown", amount: monthlyMap[key] };
 
-            if (useDailyGrouping) {
+            if (timeRange === 'all_time') {
+              return { name: key, amount: monthlyMap[key] };
+            } else if (useDailyGrouping) {
               // "2026-05-10" → "10 May" or "May 10"
               const [y, m, d] = key.split('-');
               const dateObj = new Date(y, m - 1, d);
-              const displayDay = dateObj.toLocaleString('default', { day: 'numeric', month: 'short' });
+              const displayDay = dateObj.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'short' });
               return { name: displayDay, amount: monthlyMap[key] };
             } else {
               // "2026-05" → "May 2026"
               const [y, m] = key.split('-');
               const dateObj = new Date(y, m - 1);
-              const displayMonth = dateObj.toLocaleString('default', { month: 'short', year: 'numeric' });
+              const displayMonth = dateObj.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { month: 'short', year: 'numeric' });
               return { name: displayMonth, amount: monthlyMap[key] };
             }
           });
@@ -357,7 +414,7 @@ function AnalyzeExpenses() {
 
                     <div style={{ width: '100%', height: 300 }}>
                       <ResponsiveContainer>
-                        <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
                           <defs>
                             <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
