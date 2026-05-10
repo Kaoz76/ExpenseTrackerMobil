@@ -853,57 +853,43 @@ body::after {
   color: #115e59;
 }
 
-/* Delete Entry */
+/* Delete Entry - Modernized */
 .delete-entry-btn {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background-color: rgb(20, 20, 20);
+  background-color: rgba(239, 68, 68, 0.1);
   border: none;
-  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  transition-duration: .3s;
-  overflow: hidden;
-  position: relative;
+  transition: all 0.2s ease-in-out;
 }
 
 .delete-entry-svgIcon {
-  width: 12px;
-  transition-duration: .3s;
-}
-
-.delete-entry-svgIcon path {
-  fill: white;
+  width: 14px;
+  height: 14px;
+  fill: #ef4444;
+  transition: all 0.2s ease-in-out;
 }
 
 .delete-entry-btn:hover {
-  width: 90px;
-  border-radius: 50px;
-  background-color: rgb(255, 69, 69);
+  background-color: #ef4444;
+  transform: scale(1.1);
 }
 
 .delete-entry-btn:hover .delete-entry-svgIcon {
-  width: 25px;
-  transform: translateY(60%);
+  fill: #ffffff;
+  transform: scale(1.1);
+}
+
+.delete-entry-btn:active {
+  transform: scale(0.95);
 }
 
 .delete-entry-btn::before {
-  position: absolute;
-  top: -20px;
-  content: "Delete";
-  color: white;
-  transition-duration: .3s;
-  font-size: 2px;
-}
-
-.delete-entry-btn:hover::before {
-  font-size: 13px;
-  opacity: 1;
-  transform: translateY(20px);
+  display: none;
 }
 
 /* User Login/Signup */
