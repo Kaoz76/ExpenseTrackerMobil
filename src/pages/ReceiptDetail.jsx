@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   FaStore, FaReceipt, FaTrash, FaPlus, FaPen, FaCheck,
-  FaTimes, FaArrowLeft, FaShoppingCart, FaSave
+  FaTimes, FaArrowLeft, FaShoppingCart, FaSave, FaImage, FaExpandAlt
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
 import { formatDateTime } from '../utils/dateFormatter';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -36,6 +37,9 @@ function ReceiptDetail() {
   // New item form
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', price: '', brand: '', type: '', size: '' });
+
+  // Image lightbox
+  const [showImageLightbox, setShowImageLightbox] = useState(false);
 
   // Fetch receipt data in real-time
   useEffect(() => {
@@ -158,6 +162,14 @@ function ReceiptDetail() {
       return;
     }
     try {
+      // 🔥 Delete image from Firebase Storage if it exists
+      if (receipt?.storagePath) {
+        try {
+          await deleteObject(ref(storage, receipt.storagePath));
+        } catch (storageErr) {
+          console.warn("Could not delete storage file:", storageErr);
+        }
+      }
       await deleteDoc(doc(db, "receipts", receiptId));
       navigate('/receipts');
     } catch (err) {
@@ -269,6 +281,32 @@ function ReceiptDetail() {
             <FaTrash /> {t('common.delete_receipt')}
           </button>
         </div>
+
+        {/* RECEIPT IMAGE */}
+        {receipt.imageUrl && (
+          <div className="card border-0 shadow-sm mb-4">
+            <div className="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
+              <h5 className="mb-0 fw-bold d-flex align-items-center text-body">
+                <FaImage className="me-2 text-body-secondary" /> {t('common.receipt_image')}
+              </h5>
+              <button
+                className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                onClick={() => setShowImageLightbox(true)}
+                title={t('common.view_full_image')}
+              >
+                <FaExpandAlt size={12} /> {t('common.view_full_image')}
+              </button>
+            </div>
+            <div className="card-body p-0 text-center bg-dark" style={{ maxHeight: '320px', overflow: 'hidden' }}>
+              <img
+                src={receipt.imageUrl}
+                alt={receipt.fileName || 'Receipt'}
+                style={{ maxHeight: '320px', maxWidth: '100%', objectFit: 'contain', cursor: 'zoom-in' }}
+                onClick={() => setShowImageLightbox(true)}
+              />
+            </div>
+          </div>
+        )}
 
         {/* STATS ROW */}
         <div className="row mb-4 g-3">
@@ -623,6 +661,48 @@ function ReceiptDetail() {
         )}
 
       </div>
+
+      {/* IMAGE LIGHTBOX */}
+      {showImageLightbox && receipt?.imageUrl && (
+        <>
+          <div
+            className="modal-backdrop fade show"
+            style={{ zIndex: 1060 }}
+            onClick={() => setShowImageLightbox(false)}
+          />
+          <div
+            className="modal fade show d-flex align-items-center justify-content-center"
+            style={{ zIndex: 1065, display: 'flex !important' }}
+            tabIndex="-1"
+            onClick={() => setShowImageLightbox(false)}
+          >
+            <div
+              className="position-relative"
+              style={{ maxWidth: '95vw', maxHeight: '90vh' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="btn btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow"
+                style={{ zIndex: 10, width: '36px', height: '36px', padding: 0 }}
+                onClick={() => setShowImageLightbox(false)}
+              >
+                <FaTimes />
+              </button>
+              <img
+                src={receipt.imageUrl}
+                alt={receipt.fileName || 'Receipt'}
+                style={{
+                  maxWidth: '95vw',
+                  maxHeight: '90vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

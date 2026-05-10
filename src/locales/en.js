@@ -153,6 +153,8 @@ export const en = {
     scanned_receipt_badge: "Scanned Receipt",
     items_logged: "items logged",
     view_image: "View Image",
+    receipt_image: "Receipt Image",
+    view_full_image: "View Full Image",
     no_visits_found: "No visits found for this store.",
     receipt_not_found: "Receipt not found",
     back_to_receipts: "Back to Receipts",
@@ -334,6 +336,7 @@ export const en = {
     // Misc messages
     msg_must_login_upload: "You must be logged in to upload a receipt.",
     msg_analyzing_receipt: "Analyzing receipt {{current}} of {{total}}...",
+    msg_uploading_to_cloud: "Uploading receipt {{current}} of {{total}} to cloud...",
     msg_preparing_queue: "Preparing verification queue...",
     msg_remaining: "remaining",
     msg_cancel_all: "Cancel All",

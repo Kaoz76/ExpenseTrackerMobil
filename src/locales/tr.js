@@ -155,6 +155,8 @@ export const tr = {
     scanned_receipt_badge: "Taranan Fiş",
     items_logged: "ürün kaydedildi",
     view_image: "Görseli Gör",
+    receipt_image: "Fiş Görseli",
+    view_full_image: "Tam Boyut Gör",
     no_visits_found: "Bu mağaza için ziyaret bulunamadı.",
     receipt_not_found: "Fiş bulunamadı",
     back_to_receipts: "Fişlere Dön",
@@ -336,6 +338,7 @@ export const tr = {
     // Çeşitli mesajlar
     msg_must_login_upload: "Fiş yüklemek için giriş yapmalısınız.",
     msg_analyzing_receipt: "Fiş analiz ediliyor {{current}} / {{total}}...",
+    msg_uploading_to_cloud: "Fiş {{current}} / {{total}} buluta yükleniyor...",
     msg_preparing_queue: "Doğrulama kuyruğu hazırlanıyor...",
     msg_remaining: "kalan",
     msg_cancel_all: "Tümünü İptal Et",

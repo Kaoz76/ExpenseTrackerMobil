@@ -283,7 +283,7 @@ function Receipts() {
             {
               logger: m => {
                 if (m.status === 'recognizing text') {
-                  setUploadProgress(parseInt(m.progress * 50));
+                  setUploadProgress(parseInt(m.progress * 70));
                 }
               }
             }
@@ -296,9 +296,41 @@ function Receipts() {
         setError("Could not read text for some files, uploading anyway...");
       }
 
+      // 🔥 Upload image to Firebase Storage
+      let imageUrl = null;
+      let storagePath = null;
+      try {
+        setUploadProgress(75);
+        setStatusText(t('common.msg_uploading_to_cloud').replace('{{current}}', i + 1).replace('{{total}}', filesToProcess.length));
+        const timestamp = Date.now();
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
+        const storageRef = ref(storage, storagePath);
+
+        await new Promise((resolve, reject) => {
+          const uploadTask = uploadBytesResumable(storageRef, file);
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const pct = 75 + Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 20);
+              setUploadProgress(pct);
+            },
+            (err) => reject(err),
+            () => resolve()
+          );
+        });
+
+        imageUrl = await getDownloadURL(storageRef);
+        setUploadProgress(95);
+      } catch (storageError) {
+        console.error("Storage upload failed:", storageError);
+        // Continue without image — don't block saving
+      }
+
       results.push({
         userId: user.uid,
-        imageUrl: null,
+        imageUrl: imageUrl,
+        storagePath: storagePath,
         fileName: '',
         originalFileName: file.name,
         createdAt: Timestamp.now(),
@@ -391,15 +423,16 @@ function Receipts() {
 
       const newReceiptData = {
         userId: verifyData.userId,
-        imageUrl: null,
+        imageUrl: verifyData.imageUrl || null,
+        storagePath: verifyData.storagePath || null,
         fileName: verifyData.fileName.trim(),
         createdAt: verifyData.createdAt,
         title: verifyData.fileName.trim(),
         date: verifyData.date,
         isManual: verifyData.isManual,
         items: itemsToSave,
-        price: Number(verifiedPrice) || 0, // 🔥 Güvenlik
-        storeNameCleaned: cleanStoreName(verifyData.fileName) // 🔥 StoreDetails entegrasyonu!
+        price: Number(verifiedPrice) || 0,
+        storeNameCleaned: cleanStoreName(verifyData.fileName)
       };
 
       await addDoc(collection(db, "receipts"), newReceiptData);
@@ -428,6 +461,15 @@ function Receipts() {
       return;
     }
     try {
+      // 🔥 Also delete image from Firebase Storage if it exists
+      const receiptToDelete = receipts.find(r => r.id === receiptId);
+      if (receiptToDelete?.storagePath) {
+        try {
+          await deleteObject(ref(storage, receiptToDelete.storagePath));
+        } catch (storageErr) {
+          console.warn("Could not delete storage file:", storageErr);
+        }
+      }
       await deleteDoc(doc(db, "receipts", receiptId));
     } catch (err) {
       console.error("Error deleting document: ", err);
