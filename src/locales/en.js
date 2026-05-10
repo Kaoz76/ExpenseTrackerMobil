@@ -179,6 +179,7 @@ export const en = {
     expense_analysis: "Expense Analysis",
     real_time_insights: "Real-time insights from your database.",
     this_month: "This Month",
+    this_week: "This Week",
     last_3_months: "Last 3 Months",
     this_year: "This Year",
     all_time: "All Time",

@@ -181,6 +181,7 @@ export const tr = {
     expense_analysis: "Harcama Analizi",
     real_time_insights: "Veritabanınızdan gerçek zamanlı içgörüler.",
     this_month: "Bu Ay",
+    this_week: "Bu Hafta",
     last_3_months: "Son 3 Ay",
     this_year: "Bu Yıl",
     all_time: "Tüm Zamanlar",

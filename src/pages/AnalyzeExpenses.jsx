@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FaChevronDown, FaArrowUp, FaChartPie, FaCalendarAlt } from 'react-icons/fa';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -8,8 +8,15 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
+
+// Premium color palette for category bars
+const CHART_COLORS = [
+  '#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f97316',
+  '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
+  '#8b5cf6', '#d946ef'
+];
 
 function AnalyzeExpenses() {
   const { user } = useAuth();
@@ -24,8 +31,29 @@ function AnalyzeExpenses() {
   const [timeRange, setTimeRange] = useState('this_year');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // Detect dark mode for chart theming
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const el = document.documentElement;
+    const check = () => setIsDark(el.getAttribute('data-bs-theme') === 'dark');
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(el, { attributes: true, attributeFilter: ['data-bs-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
+  // Theme-aware chart styles
+  const chartTheme = useMemo(() => ({
+    tooltipBg: isDark ? '#1e293b' : '#ffffff',
+    tooltipBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    tooltipColor: isDark ? 'rgba(255,255,255,0.9)' : '#334155',
+    axisColor: isDark ? 'rgba(255,255,255,0.45)' : '#6c757d',
+    gridOpacity: isDark ? 0.06 : 0.1,
+  }), [isDark]);
+
   const getRangeLabel = () => {
     switch (timeRange) {
+      case 'this_week': return t('common.this_week');
       case 'this_month': return t('common.this_month');
       case 'last_3_months': return t('common.last_3_months');
       case 'this_year': return t('common.this_year');
@@ -41,7 +69,13 @@ function AnalyzeExpenses() {
       const now = new Date();
       let startDate = null;
 
-      if (timeRange === 'this_month') {
+      if (timeRange === 'this_week') {
+        startDate = new Date(now);
+        const dayOfWeek = startDate.getDay(); // 0=Sun, 1=Mon...
+        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Start from Monday
+        startDate.setDate(startDate.getDate() - diff);
+        startDate.setHours(0, 0, 0, 0);
+      } else if (timeRange === 'this_month') {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       } else if (timeRange === 'last_3_months') {
         startDate = new Date();
@@ -50,95 +84,173 @@ function AnalyzeExpenses() {
         startDate = new Date(now.getFullYear(), 0, 1);
       }
 
-      let q;
-      if (startDate) {
-        q = query(
-          collection(db, "receipts"),
-          where("userId", "==", user.uid),
-          where("createdAt", ">=", startDate),
-          orderBy("createdAt", "asc")
-        );
-      } else {
-        q = query(
-          collection(db, "receipts"),
-          where("userId", "==", user.uid),
-          orderBy("createdAt", "asc")
-        );
-      }
+      // Use daily grouping for short ranges, monthly for longer ones
+      const useDailyGrouping = (timeRange === 'this_week' || timeRange === 'this_month');
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      // --- 1) Receipts query (no composite index needed — client-side date filtering)
+      const receiptsQuery = query(
+        collection(db, "receipts"),
+        where("userId", "==", user.uid)
+      );
+
+      // --- 2) Subscriptions query ---
+      const subsQuery = query(
+        collection(db, "subscriptions"),
+        where("userId", "==", user.uid)
+      );
+
+      // Listen to both collections
+      let receiptsData = null;
+      let subsData = null;
+      let receiptsLoaded = false;
+      let subsLoaded = false;
+
+      const mergeAndUpdate = () => {
+        if (!receiptsLoaded || !subsLoaded) return;
+
         const monthlyMap = {};
         const categoryMap = {};
         let total = 0;
 
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          const price = Number(data.price) || 0;
-          total += price;
+        // Process receipts
+        if (receiptsData) {
+          receiptsData.forEach((doc) => {
+            const data = doc.data();
+            const price = Number(data.price) || 0;
 
-          let monthKey = "Unknown";
-          if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-            const date = data.createdAt.toDate();
+            // Client-side date filtering (avoids composite index requirement)
+            if (startDate && data.createdAt && typeof data.createdAt.toDate === 'function') {
+              const docDate = data.createdAt.toDate();
+              if (docDate < startDate) return; // Skip records outside selected range
+            }
 
-            // GELİŞTİRME 1: YYYY-MM formatında gruplayarak kronolojik sıralamayı garantiye alıyoruz
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            monthKey = `${year}-${month}`; // Örn: "2024-03"
+            total += price;
+
+            // Smart grouping key: daily for short ranges, monthly for longer
+            let groupKey = "Unknown";
+            if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+              const date = data.createdAt.toDate();
+              if (useDailyGrouping) {
+                // Group by day: "2026-05-10"
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                groupKey = `${year}-${month}-${day}`;
+              } else {
+                // Group by month: "2026-05"
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                groupKey = `${year}-${month}`;
+              }
+            }
+
+            if (!monthlyMap[groupKey]) monthlyMap[groupKey] = 0;
+            monthlyMap[groupKey] += price;
+
+            // Improved category detection: check items for type, regardless of isManual
+            if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+              let hasTypedItems = false;
+              data.items.forEach(item => {
+                const type = item.type || "";
+                const itemPrice = Number(item.price) || 0;
+                if (type.trim()) {
+                  hasTypedItems = true;
+                  if (!categoryMap[type]) categoryMap[type] = 0;
+                  categoryMap[type] += itemPrice;
+                }
+              });
+              // If no items had a type, categorize by source
+              if (!hasTypedItems) {
+                const catName = data.isManual ? "Manual Entry" : "Scanned";
+                if (!categoryMap[catName]) categoryMap[catName] = 0;
+                categoryMap[catName] += price;
+              }
+            } else {
+              const catName = data.isManual ? "Manual Entry" : "Scanned";
+              if (!categoryMap[catName]) categoryMap[catName] = 0;
+              categoryMap[catName] += price;
+            }
+          });
+        }
+
+        // Process subscriptions — add monthly cost to current month
+        if (subsData && subsData.length > 0) {
+          const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          let subsTotal = 0;
+
+          subsData.forEach(sub => {
+            const subPrice = Number(sub.price) || 0;
+            subsTotal += subPrice;
+          });
+
+          if (subsTotal > 0) {
+            // Add subscriptions to the total & monthly chart
+            total += subsTotal;
+            if (!monthlyMap[currentMonthKey]) monthlyMap[currentMonthKey] = 0;
+            monthlyMap[currentMonthKey] += subsTotal;
+
+            // Add as a category
+            const subsLabel = t('nav.subscriptions') || "Subscriptions";
+            if (!categoryMap[subsLabel]) categoryMap[subsLabel] = 0;
+            categoryMap[subsLabel] += subsTotal;
           }
+        }
 
-          if (!monthlyMap[monthKey]) monthlyMap[monthKey] = 0;
-          monthlyMap[monthKey] += price;
-
-          if (data.isManual && data.items && Array.isArray(data.items)) {
-            data.items.forEach(item => {
-              const type = item.type || "Other";
-              const itemPrice = Number(item.price) || 0;
-
-              if (!categoryMap[type]) categoryMap[type] = 0;
-              categoryMap[type] += itemPrice;
-            });
-          } else {
-            // Fiş taramalarında ürün alt detayı yoksa tek kalemde topla
-            if (!categoryMap["Scanned"]) categoryMap["Scanned"] = 0;
-            categoryMap["Scanned"] += price;
-          }
-        });
-
-        // GELİŞTİRME 1 (Devamı): Objeyi kronolojik sırala ve isimleri grafik için düzelt
+        // Format chart data with smart labels
         const formattedChartData = Object.keys(monthlyMap)
-          .sort() // "2024-03", "2024-04" formatında olduğu için kusursuz sıralanır
+          .sort()
           .map(key => {
             if (key === "Unknown") return { name: "Unknown", amount: monthlyMap[key] };
 
-            // "2024-03" -> "Mar 2024" dönüşümü
-            const [y, m] = key.split('-');
-            const dateObj = new Date(y, m - 1);
-            const displayMonth = dateObj.toLocaleString('default', { month: 'short', year: 'numeric' });
-
-            return {
-              name: displayMonth,
-              amount: monthlyMap[key]
-            };
+            if (useDailyGrouping) {
+              // "2026-05-10" → "10 May" or "May 10"
+              const [y, m, d] = key.split('-');
+              const dateObj = new Date(y, m - 1, d);
+              const displayDay = dateObj.toLocaleString('default', { day: 'numeric', month: 'short' });
+              return { name: displayDay, amount: monthlyMap[key] };
+            } else {
+              // "2026-05" → "May 2026"
+              const [y, m] = key.split('-');
+              const dateObj = new Date(y, m - 1);
+              const displayMonth = dateObj.toLocaleString('default', { month: 'short', year: 'numeric' });
+              return { name: displayMonth, amount: monthlyMap[key] };
+            }
           });
 
         const formattedCategoryData = Object.keys(categoryMap)
-          .map(key => ({
-            name: key,
-            amount: categoryMap[key]
-          }))
-          .sort((a, b) => b.amount - a.amount); // Geliştirme: Kategorileri en çok harcanandan en aza doğru sıraladık!
+          .map(key => ({ name: key, amount: categoryMap[key] }))
+          .sort((a, b) => b.amount - a.amount);
 
         setChartData(formattedChartData);
         setCategoryData(formattedCategoryData);
         setTotalSpent(total);
         setLoading(false);
+      };
 
+      const unsubReceipts = onSnapshot(receiptsQuery, (snapshot) => {
+        receiptsData = snapshot;
+        receiptsLoaded = true;
+        mergeAndUpdate();
       }, (error) => {
         console.error("Error analyzing expenses:", error);
-        setLoading(false);
+        receiptsLoaded = true;
+        mergeAndUpdate();
       });
 
-      return () => unsubscribe();
+      const unsubSubs = onSnapshot(subsQuery, (snapshot) => {
+        subsData = snapshot.docs.map(doc => doc.data());
+        subsLoaded = true;
+        mergeAndUpdate();
+      }, (error) => {
+        console.error("Error fetching subscriptions:", error);
+        subsLoaded = true;
+        mergeAndUpdate();
+      });
+
+      return () => {
+        unsubReceipts();
+        unsubSubs();
+      };
     } else {
       setChartData([]);
       setCategoryData([]);
@@ -178,6 +290,7 @@ function AnalyzeExpenses() {
 
                 <div className="card position-absolute end-0 mt-2 shadow-sm border-0" style={{ zIndex: 1000, minWidth: '150px' }}>
                   <div className="list-group list-group-flush">
+                    <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('this_week'); setIsDropdownOpen(false); }}>{t('common.this_week')}</button>
                     <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('this_month'); setIsDropdownOpen(false); }}>{t('common.this_month')}</button>
                     <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('last_3_months'); setIsDropdownOpen(false); }}>{t('common.last_3_months')}</button>
                     <button className="list-group-item list-group-item-action" onClick={() => { setTimeRange('this_year'); setIsDropdownOpen(false); }}>{t('common.this_year')}</button>
@@ -247,17 +360,26 @@ function AnalyzeExpenses() {
                         <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <defs>
                             <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
+                              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                              <stop offset="50%" stopColor="#a855f7" stopOpacity={0.15} />
                               <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                             </linearGradient>
                           </defs>
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6c757d' }} />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axisColor, fontSize: 12 }} />
                           <YAxis hide={true} />
-                          <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
+                          <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={chartTheme.gridOpacity} />
 
                           <Tooltip
-                            contentStyle={{ backgroundColor: 'var(--bs-body-bg)', borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                            itemStyle={{ color: 'var(--bs-body-color)' }}
+                            contentStyle={{
+                              backgroundColor: chartTheme.tooltipBg,
+                              borderRadius: '12px',
+                              border: `1px solid ${chartTheme.tooltipBorder}`,
+                              boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                              color: chartTheme.tooltipColor,
+                              padding: '10px 14px',
+                            }}
+                            itemStyle={{ color: chartTheme.tooltipColor }}
+                            labelStyle={{ color: chartTheme.axisColor, marginBottom: 4, fontWeight: 600 }}
                             formatter={(value) => [formatPrice(value), t('common.amount')]}
                           />
 
@@ -287,17 +409,26 @@ function AnalyzeExpenses() {
                       <ResponsiveContainer>
                         <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
                           <XAxis type="number" hide={true} />
-                          <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 12, fill: '#6c757d' }} />
+                          <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 12, fill: chartTheme.axisColor }} />
 
                           <Tooltip
-                            cursor={{ fill: 'transparent' }}
-                            contentStyle={{ borderRadius: '8px' }}
+                            cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}
+                            contentStyle={{
+                              backgroundColor: chartTheme.tooltipBg,
+                              borderRadius: '12px',
+                              border: `1px solid ${chartTheme.tooltipBorder}`,
+                              boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                              color: chartTheme.tooltipColor,
+                              padding: '10px 14px',
+                            }}
+                            itemStyle={{ color: chartTheme.tooltipColor }}
+                            labelStyle={{ color: chartTheme.axisColor, fontWeight: 600 }}
                             formatter={(value) => [formatPrice(value), t('common.amount')]}
                           />
 
-                          <Bar dataKey="amount" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={20}>
+                          <Bar dataKey="amount" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={22}>
                             {categoryData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#6366f1' : '#a855f7'} />
+                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                             ))}
                           </Bar>
                         </BarChart>
@@ -314,21 +445,35 @@ function AnalyzeExpenses() {
               <div className="card border-0 shadow-sm">
                 <div className="table-responsive">
                   <table className="table table-hover mb-0 align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th scope="col" className="ps-4 py-3 text-muted fw-normal">{t('common.category')}</th>
-                        <th scope="col" className="py-3 text-muted fw-normal text-end pe-4">{t('common.total_amount')}</th>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--bs-border-color)' }}>
+                        <th scope="col" className="ps-4 py-3 text-muted fw-normal small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.category')}</th>
+                        <th scope="col" className="py-3 text-muted fw-normal text-end small text-uppercase" style={{ letterSpacing: '0.05em' }}>%</th>
+                        <th scope="col" className="py-3 text-muted fw-normal text-end pe-4 small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.total_amount')}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {categoryData.map((item, index) => (
-                        <tr key={index}>
-                          <td className="ps-4 fw-bold">{item.name}</td>
-                          <td className="text-end pe-4 fw-medium">
-                            {formatPrice(item.amount)}
-                          </td>
-                        </tr>
-                      ))}
+                      {categoryData.map((item, index) => {
+                        const pct = totalSpent > 0 ? ((item.amount / totalSpent) * 100).toFixed(1) : '0.0';
+                        return (
+                          <tr key={index}>
+                            <td className="ps-4">
+                              <div className="d-flex align-items-center gap-2">
+                                <span style={{
+                                  width: 10, height: 10, borderRadius: '50%',
+                                  backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                                  display: 'inline-block', flexShrink: 0
+                                }}></span>
+                                <span className="fw-bold">{item.name}</span>
+                              </div>
+                            </td>
+                            <td className="text-end text-muted">{pct}%</td>
+                            <td className="text-end pe-4 fw-medium">
+                              {formatPrice(item.amount)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
