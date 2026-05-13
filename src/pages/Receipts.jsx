@@ -22,6 +22,37 @@ const cleanStoreName = (name) => {
   return trTitleCase(cleanName).trim();
 };
 
+// YAZIM HATALARINA KARŞI: Levenshtein Distance (Bulanık Eşleştirme) Algoritması
+const levenshteinDistance = (s, t) => {
+  if (!s.length) return t.length;
+  if (!t.length) return s.length;
+  const arr = [];
+  for (let i = 0; i <= t.length; i++) {
+    arr[i] = [i];
+    for (let j = 1; j <= s.length; j++) {
+      arr[i][j] = i === 0 ? j : Math.min(
+        arr[i - 1][j] + 1,
+        arr[i][j - 1] + 1,
+        arr[i - 1][j - 1] + (s[j - 1] === t[i - 1] ? 0 : 1)
+      );
+    }
+  }
+  return arr[t.length][s.length];
+};
+
+const isFuzzyMatch = (line, targetWords, maxDist = 2) => {
+  const words = line.replace(/[^a-z0-9ğüşöçığ]/gi, ' ').split(/\s+/).filter(w => w.length > 3);
+  for (let word of words) {
+    for (let target of targetWords) {
+      const allowedDist = target.length <= 5 ? 1 : maxDist;
+      if (levenshteinDistance(word, target) <= allowedDist) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 function Receipts() {
   const { user } = useAuth();
   const { formatPrice, currency } = useCurrency();
@@ -95,7 +126,10 @@ function Receipts() {
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
     const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
-    const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro)/i;
+    // Bulanık eşleştirme için aranacak anahtar kelimeler
+    const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'nakit', 'kredi'];
+    // Puan/Kazanç gibi sadakat programı değerlerini yanlışlıkla fiş tutarı saymamak için exclude listesi genişletildi
+    const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro|puan|point|kazanc|kazanç)/i;
     const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
 
     let possibleTotals = [];
@@ -109,13 +143,17 @@ function Receipts() {
         cleanStr = cleanStr.replace(',', '.');
       }
       const num = parseFloat(cleanStr);
-      return (!isNaN(num) && num > 0 && num < 50000) ? num : null;
+      // Sabit Limit (Hardcode) < 50000 kısıtlaması kaldırıldı
+      return (!isNaN(num) && num > 0) ? num : null;
     };
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      if (keywordRegex.test(line) && !excludeRegex.test(line)) {
+      // Yazım hatalarına (T0PLAM vb.) karşı Fuzzy Match kontrolü eklendi
+      const hasKeyword = keywordRegex.test(line) || isFuzzyMatch(line, fuzzyKeywords);
+
+      if (hasKeyword && !excludeRegex.test(line)) {
         let matches = line.match(priceRegex);
         if (matches) {
           matches.forEach(m => {
@@ -137,7 +175,7 @@ function Receipts() {
           }
         }
       }
-      else if (!keywordRegex.test(line) && !excludeRegex.test(line)) {
+      else if (!hasKeyword && !excludeRegex.test(line)) {
         let matches = line.match(priceRegex);
         if (matches && matches.length > 0) {
           const lastMatch = matches[matches.length - 1];
@@ -164,14 +202,38 @@ function Receipts() {
     }
 
     let finalTotal = 0;
+    const itemsSum = extractedItems.reduce((acc, item) => acc + item.price, 0);
+
     if (possibleTotals.length > 0) {
-      finalTotal = Math.max(...possibleTotals);
+      if (itemsSum > 0) {
+        // Math.max() tuzağını önlemek için, ürünlerin toplamına en yakın olan sayıyı seçiyoruz
+        let closest = possibleTotals[0];
+        let minDiff = Math.abs(possibleTotals[0] - itemsSum);
+        for (let i = 1; i < possibleTotals.length; i++) {
+          const diff = Math.abs(possibleTotals[i] - itemsSum);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = possibleTotals[i];
+          }
+        }
+        finalTotal = closest;
+      } else {
+        // Ürün okunamadıysa elimizdeki "Toplam" adaylarının en büyüğünü alıyoruz (puanlar dışlandığı için nispeten güvenli)
+        finalTotal = Math.max(...possibleTotals);
+      }
     } else {
-      const allMatches = normalizedText.match(priceRegex);
-      if (allMatches) {
-        const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null && num < 10000);
-        if (allNumbers.length > 0) {
-          finalTotal = Math.max(...allNumbers);
+      // Fallback Senaryosu (Anahtar kelime hiç bulunamazsa)
+      if (itemsSum > 0) {
+        // Ürün listesi varsa doğrudan toplamını al (Math.max tuzağından kaçınılır)
+        finalTotal = itemsSum;
+      } else {
+        const allMatches = normalizedText.match(priceRegex);
+        if (allMatches) {
+          // < 10000 fallback limiti kaldırıldı
+          const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null);
+          if (allNumbers.length > 0) {
+            finalTotal = Math.max(...allNumbers);
+          }
         }
       }
     }
