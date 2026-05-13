@@ -411,7 +411,7 @@ function ReceiptDetail() {
             <div className="p-3 bg-primary-subtle border-bottom">
               <h6 className="fw-bold mb-3 text-primary">{t('common.add_new_item')}</h6>
               <div className="row g-2 align-items-end">
-                <div className="col-md-3">
+                <div className="col-md-6">
                   <label className="form-label small fw-bold">{t('common.name_star')}</label>
                   <input
                     type="text"
@@ -421,7 +421,7 @@ function ReceiptDetail() {
                     onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                   />
                 </div>
-                <div className="col-md-2">
+                <div className="col-md-3">
                   <label className="form-label small fw-bold">{t('common.price')}</label>
                   <div className="input-group input-group-sm">
                     <span className="input-group-text">{currency?.symbol || '$'}</span>
@@ -435,37 +435,7 @@ function ReceiptDetail() {
                     />
                   </div>
                 </div>
-                <div className="col-md-2">
-                  <label className="form-label small fw-bold">{t('common.brand')}</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder={t('common.placeholder_brand_short')}
-                    value={newItem.brand}
-                    onChange={(e) => setNewItem({ ...newItem, brand: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-2">
-                  <label className="form-label small fw-bold">{t('common.type')}</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder={t('common.placeholder_category')}
-                    value={newItem.type}
-                    onChange={(e) => setNewItem({ ...newItem, type: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-1">
-                  <label className="form-label small fw-bold">{t('common.size')}</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder="1L"
-                    value={newItem.size}
-                    onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
-                  />
-                </div>
-                <div className="col-md-2 d-flex gap-1">
+                <div className="col-md-3 d-flex gap-1">
                   <button
                     className="btn btn-success btn-sm flex-grow-1"
                     onClick={handleAddItem}
@@ -493,9 +463,6 @@ function ReceiptDetail() {
                 <tr>
                   <th className="py-3 ps-4" style={{ width: '40px' }}>#</th>
                   <th className="py-3">{t('common.name')}</th>
-                  <th className="py-3">{t('common.brand')}</th>
-                  <th className="py-3">{t('common.type')}</th>
-                  <th className="py-3">{t('common.size')}</th>
                   <th className="py-3 text-end">{t('common.price')}</th>
                   <th className="py-3 text-center pe-4" style={{ width: '100px' }}>{t('common.actions')}</th>
                 </tr>
@@ -513,30 +480,6 @@ function ReceiptDetail() {
                             className="form-control form-control-sm"
                             value={item.name || ''}
                             onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={item.brand || ''}
-                            onChange={(e) => handleItemChange(idx, 'brand', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={item.type || ''}
-                            onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={item.size || ''}
-                            onChange={(e) => handleItemChange(idx, 'size', e.target.value)}
                           />
                         </td>
                         <td>
@@ -571,15 +514,6 @@ function ReceiptDetail() {
                     ) : (
                       <>
                         <td className="fw-bold">{item.name || '-'}</td>
-                        <td>{item.brand || '-'}</td>
-                        <td>
-                          {item.type ? (
-                            <span className="badge bg-secondary bg-opacity-10 text-body-emphasis border">
-                              {item.type}
-                            </span>
-                          ) : '-'}
-                        </td>
-                        <td>{item.size || '-'}</td>
                         <td className="text-end fw-bold text-primary">{formatPrice(item.price)}</td>
                         <td className="text-center pe-4">
                           <button
@@ -604,7 +538,7 @@ function ReceiptDetail() {
 
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="text-center py-5 text-body-secondary">
+                    <td colSpan="4" className="text-center py-5 text-body-secondary">
                       <FaShoppingCart size={32} className="mb-2 opacity-50" />
                       <div>{t('common.no_items_on_receipt')}</div>
                       <button
@@ -621,7 +555,7 @@ function ReceiptDetail() {
               {items.length > 0 && (
                 <tfoot className="table-secondary">
                   <tr>
-                    <td colSpan="5" className="text-end fw-bold py-3 ps-4">{t('common.items_total')}</td>
+                    <td colSpan="2" className="text-end fw-bold py-3 ps-4">{t('common.items_total')}</td>
                     <td className="text-end fw-bold fs-5 text-primary py-3">{formatPrice(itemsTotal)}</td>
                     <td></td>
                   </tr>

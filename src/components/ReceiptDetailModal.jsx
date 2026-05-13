@@ -57,10 +57,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
 
                   <thead className="table-secondary">
                     <tr>
-                      <th>Type</th>
-                      <th>Brand</th>
                       <th>Name</th>
-                      <th>Size</th>
                       <th className="text-end">Price</th>
                     </tr>
                   </thead>
@@ -70,10 +67,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
                     {hasItems ? (
                       receipt.items.map((item, index) => (
                         <tr key={index}>
-                          <td>{item.type || '-'}</td>
-                          <td>{item.brand || '-'}</td>
                           <td>{item.name || '-'}</td>
-                          <td>{item.size || '-'}</td>
                           <td className="text-end fw-bold text-primary">
                             {formatPrice(item.price)}
                           </td>
@@ -81,7 +75,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="5" className="text-center text-muted py-4">
+                        <td colSpan="2" className="text-center text-muted py-4">
                           No items detailed for this receipt.
                         </td>
                       </tr>
@@ -90,7 +84,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
 
                   <tfoot className="table-secondary">
                     <tr>
-                      <td colSpan="4" className="text-end fw-bold">Total</td>
+                      <td className="text-end fw-bold">Total</td>
                       <td className="text-end fw-bold fs-5 text-primary">
                         {formatPrice(receipt.price)}
                       </td>
