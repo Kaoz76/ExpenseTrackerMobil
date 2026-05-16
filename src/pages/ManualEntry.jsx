@@ -133,7 +133,7 @@ function ManualEntry() {
 
     for (let i = 0; i < products.length; i++) {
       const p = products[i];
-      if (!p.type.trim() || !p.brand.trim() || !String(p.price).trim()) {
+      if (!p.name.trim() || !String(p.price).trim()) {
         setError(t('common.msg_fill_required').replace('{{row}}', i + 1));
         return;
       }
@@ -227,10 +227,10 @@ function ManualEntry() {
                     <div key={product.id} className="card border-0 shadow-sm p-4 mb-3">
                       <div className="row g-3">
 
-                        {/* Type (Zorunlu) */}
+                        {/* Type (İsteğe Bağlı) */}
                         <div className="col-md-2">
                           <label className="form-label small text-muted">
-                            {t('common.type')}<span className="text-danger">*</span>
+                            {t('common.type')}
                           </label>
                           <input
                             type="text"
@@ -242,10 +242,10 @@ function ManualEntry() {
                           />
                         </div>
 
-                        {/* Brand (Zorunlu) */}
+                        {/* Brand (İsteğe Bağlı) */}
                         <div className="col-md-3">
                           <label className="form-label small text-muted">
-                            {t('common.brand')}<span className="text-danger">*</span>
+                            {t('common.brand')}
                           </label>
                           <input
                             type="text"
@@ -257,9 +257,11 @@ function ManualEntry() {
                           />
                         </div>
 
-                        {/* Name (İsteğe Bağlı) */}
+                        {/* Name (Zorunlu) */}
                         <div className="col-md-3">
-                          <label className="form-label small text-muted">{t('common.name')}</label>
+                          <label className="form-label small text-muted">
+                            {t('common.name')}<span className="text-danger">*</span>
+                          </label>
                           <input
                             type="text"
                             className="form-control"
