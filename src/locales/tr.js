@@ -60,6 +60,7 @@ export const tr = {
     click_to_upload: "Yüklemek için tıklayın",
     or_drag_drop: "veya sürükleyip bırakın",
     file_limits: "PNG, JPG veya PDF (MAKS. 10MB) - En fazla 10 dosya",
+    privacy_toggle_label: "Kişisel gizlilik için fotoğrafı buluta yükleme (Sadece veriler kaydedilir)",
     processing: "İşleniyor...",
     all_scanned_receipts: "Tüm Taranan Fişler",
     store_name: "Mağaza Adı",

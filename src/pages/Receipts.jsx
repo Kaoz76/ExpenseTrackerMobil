@@ -62,6 +62,7 @@ function Receipts() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState('');
+  const [privacyMode, setPrivacyMode] = useState(false);
 
   const [receipts, setReceipts] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(true);
@@ -361,32 +362,37 @@ function Receipts() {
       // 🔥 Upload image to Firebase Storage
       let imageUrl = null;
       let storagePath = null;
-      try {
-        setUploadProgress(75);
-        setStatusText(t('common.msg_uploading_to_cloud').replace('{{current}}', i + 1).replace('{{total}}', filesToProcess.length));
-        const timestamp = Date.now();
-        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
-        const storageRef = ref(storage, storagePath);
+      
+      if (!privacyMode) {
+        try {
+          setUploadProgress(75);
+          setStatusText(t('common.msg_uploading_to_cloud').replace('{{current}}', i + 1).replace('{{total}}', filesToProcess.length));
+          const timestamp = Date.now();
+          const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
+          const storageRef = ref(storage, storagePath);
 
-        await new Promise((resolve, reject) => {
-          const uploadTask = uploadBytesResumable(storageRef, file);
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const pct = 75 + Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 20);
-              setUploadProgress(pct);
-            },
-            (err) => reject(err),
-            () => resolve()
-          );
-        });
+          await new Promise((resolve, reject) => {
+            const uploadTask = uploadBytesResumable(storageRef, file);
+            uploadTask.on(
+              'state_changed',
+              (snapshot) => {
+                const pct = 75 + Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 20);
+                setUploadProgress(pct);
+              },
+              (err) => reject(err),
+              () => resolve()
+            );
+          });
 
-        imageUrl = await getDownloadURL(storageRef);
+          imageUrl = await getDownloadURL(storageRef);
+          setUploadProgress(95);
+        } catch (storageError) {
+          console.error("Storage upload failed:", storageError);
+          // Continue without image — don't block saving
+        }
+      } else {
         setUploadProgress(95);
-      } catch (storageError) {
-        console.error("Storage upload failed:", storageError);
-        // Continue without image — don't block saving
       }
 
       results.push({
@@ -420,7 +426,7 @@ function Receipts() {
       setStatusText('');
     }, 500);
 
-  }, [user]);
+  }, [user, privacyMode, t]);
 
   const moveToNextOrClose = (currentQueue) => {
     const updatedQueue = [...currentQueue];
@@ -582,6 +588,20 @@ function Receipts() {
                 <span className="dropzone-link-text">{t('common.click_to_upload')}</span> {t('common.or_drag_drop')}
               </p>
               <p className="text-muted small">{t('common.file_limits')}</p>
+            </div>
+
+            <div className="form-check mt-3 d-flex justify-content-center align-items-center">
+              <input 
+                className="form-check-input me-2 mt-0" 
+                type="checkbox" 
+                id="privacyModeCheckbox" 
+                checked={privacyMode} 
+                onChange={(e) => setPrivacyMode(e.target.checked)} 
+                style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+              />
+              <label className="form-check-label text-muted" htmlFor="privacyModeCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                {t('common.privacy_toggle_label')}
+              </label>
             </div>
           </div>
 
