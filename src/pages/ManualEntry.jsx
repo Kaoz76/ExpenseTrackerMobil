@@ -11,7 +11,7 @@ import { formatDateTime } from '../utils/dateFormatter';
 
 function ManualEntry() {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -217,103 +217,126 @@ function ManualEntry() {
             <div className="col-12 mb-4">
               <div className="card border-0 shadow-sm p-4">
                 <div className="mb-4">
-                  <h5 className="fw-bold mb-3">{t('common.store_info')}</h5>
-                  <label className="form-label text-muted">{t('common.store_name')}</label>
-                  <input type="text" className="form-control" placeholder={t('common.placeholder_store')} value={storeName} onChange={(e) => setStoreName(e.target.value)} disabled={isDisabled} />
+                  <h5 className="fw-bold mb-3 text-secondary">{t('common.store_info')}</h5>
+                  <label className="form-label small fw-bold text-secondary mb-1">
+                    {t('common.store_name')}<span className="text-danger ms-1">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    className="form-control form-control-lg bg-light" 
+                    placeholder={t('common.placeholder_store')} 
+                    value={storeName} 
+                    onChange={(e) => setStoreName(e.target.value)} 
+                    disabled={isDisabled} 
+                    style={{ fontSize: '1rem' }}
+                  />
                 </div>
                 <div className="mb-4">
                   <h5 className="fw-bold mb-3">{t('common.product_details')}</h5>
                   {products.map((product, index) => (
-                    <div key={product.id} className="card border-0 shadow-sm p-4 mb-3">
-                      <div className="row g-3">
-
-                        {/* Type (İsteğe Bağlı) */}
-                        <div className="col-md-2">
-                          <label className="form-label small text-muted">
-                            {t('common.type')}
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder={t('common.placeholder_dairy')}
-                            value={product.type}
-                            onChange={(e) => handleInputChange(product.id, 'type', e.target.value)}
+                    <div key={product.id} className="card border shadow-sm mb-4 rounded-4" style={{ overflow: 'hidden' }}>
+                      <div className="card-header bg-light border-bottom-0 pt-3 pb-2 px-4 d-flex justify-content-between align-items-center">
+                        <span className="fw-bold text-primary small text-uppercase" style={{ letterSpacing: '0.5px' }}>#{index + 1}</span>
+                        {products.length > 1 && (
+                          <button
+                            className="btn btn-sm btn-outline-danger border-0 rounded-circle p-2 d-flex align-items-center justify-content-center"
+                            onClick={() => removeProductRow(product.id)}
                             disabled={isDisabled}
-                          />
-                        </div>
-
-                        {/* Brand (İsteğe Bağlı) */}
-                        <div className="col-md-3">
-                          <label className="form-label small text-muted">
-                            {t('common.brand')}
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder={t('common.placeholder_brand')}
-                            value={product.brand}
-                            onChange={(e) => handleInputChange(product.id, 'brand', e.target.value)}
-                            disabled={isDisabled}
-                          />
-                        </div>
-
-                        {/* Name (Zorunlu) */}
-                        <div className="col-md-3">
-                          <label className="form-label small text-muted">
-                            {t('common.name')}<span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder={t('common.placeholder_product')}
-                            value={product.name}
-                            onChange={(e) => handleInputChange(product.id, 'name', e.target.value)}
-                            disabled={isDisabled}
-                          />
-                        </div>
-
-                        {/* Liter/Gram (İsteğe Bağlı) */}
-                        <div className="col-md-2">
-                          <label className="form-label small text-muted">{t('common.liter_gram')}</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder={t('common.placeholder_size')}
-                            value={product.size}
-                            onChange={(e) => handleInputChange(product.id, 'size', e.target.value)}
-                            disabled={isDisabled}
-                          />
-                        </div>
-
-                        {/* Price (Zorunlu) */}
-                        <div className="col-md-2">
-                          <label className="form-label small text-muted">
-                            {t('common.price')}<span className="text-danger">*</span>
-                          </label>
-                          <div className="d-flex align-items-center gap-2">
+                            title="Remove row"
+                            style={{ width: '32px', height: '32px' }}
+                          >
+                            <FaTrash size={14} />
+                          </button>
+                        )}
+                      </div>
+                      <div className="card-body p-4 pt-3">
+                        <div className="row g-3">
+                          
+                          {/* Name (Zorunlu) */}
+                          <div className="col-12 col-md-6">
+                            <label className="form-label small fw-bold text-secondary mb-1">
+                              {t('common.name')}<span className="text-danger ms-1">*</span>
+                            </label>
                             <input
-                              type="number"
-                              className="form-control"
-                              placeholder="0.00"
-                              value={product.price}
-                              onChange={(e) => handleInputChange(product.id, 'price', e.target.value)}
+                              type="text"
+                              className="form-control form-control-lg bg-light"
+                              placeholder={t('common.placeholder_product')}
+                              value={product.name}
+                              onChange={(e) => handleInputChange(product.id, 'name', e.target.value)}
                               disabled={isDisabled}
-                              step="0.01"
+                              style={{ fontSize: '1rem' }}
                             />
-                            {/* Silme butonu sadece birden fazla satır varsa görünür */}
-                            {products.length > 1 && (
-                              <button
-                                className="btn btn-outline-danger border-0"
-                                onClick={() => removeProductRow(product.id)}
-                                disabled={isDisabled}
-                                title="Remove row"
-                              >
-                                <FaTrash />
-                              </button>
-                            )}
                           </div>
-                        </div>
 
+                          {/* Price (Zorunlu) */}
+                          <div className="col-12 col-md-6">
+                            <label className="form-label small fw-bold text-secondary mb-1">
+                              {t('common.price')}<span className="text-danger ms-1">*</span>
+                            </label>
+                            <div className="input-group input-group-lg bg-light rounded border">
+                              <span className="input-group-text bg-transparent border-0 text-muted fw-bold pe-1">{currency?.symbol || '$'}</span>
+                              <input
+                                type="number"
+                                className="form-control border-0 bg-transparent ps-2"
+                                placeholder="0.00"
+                                value={product.price}
+                                onChange={(e) => handleInputChange(product.id, 'price', e.target.value)}
+                                disabled={isDisabled}
+                                step="0.01"
+                                style={{ fontSize: '1rem' }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Optional Fields Container */}
+                          <div className="col-12 mt-4">
+                            <div className="row g-3">
+                              {/* Type (İsteğe Bağlı) */}
+                              <div className="col-6 col-md-4">
+                                <label className="form-label small text-muted mb-1">
+                                  {t('common.type')}
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  placeholder={t('common.placeholder_dairy')}
+                                  value={product.type}
+                                  onChange={(e) => handleInputChange(product.id, 'type', e.target.value)}
+                                  disabled={isDisabled}
+                                />
+                              </div>
+
+                              {/* Brand (İsteğe Bağlı) */}
+                              <div className="col-6 col-md-4">
+                                <label className="form-label small text-muted mb-1">
+                                  {t('common.brand')}
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  placeholder={t('common.placeholder_brand')}
+                                  value={product.brand}
+                                  onChange={(e) => handleInputChange(product.id, 'brand', e.target.value)}
+                                  disabled={isDisabled}
+                                />
+                              </div>
+
+                              {/* Liter/Gram (İsteğe Bağlı) */}
+                              <div className="col-12 col-md-4">
+                                <label className="form-label small text-muted mb-1">{t('common.liter_gram')}</label>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  placeholder={t('common.placeholder_size')}
+                                  value={product.size}
+                                  onChange={(e) => handleInputChange(product.id, 'size', e.target.value)}
+                                  disabled={isDisabled}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          
+                        </div>
                       </div>
                     </div>
                   ))}
