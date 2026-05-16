@@ -157,11 +157,15 @@ function Products() {
                       <FaBoxOpen className="fs-3" />
                     </div>
                     <div>
-                      <h6 className="card-title fw-bold mb-1 text-truncate" style={{ maxWidth: '150px' }} title={product.name}>
-                        {product.name}
+                      <h6 className="card-title fw-bold mb-1 text-truncate" style={{ maxWidth: '150px' }} title={product.name === 'Unnamed Product' ? t('common.unnamed_product') : product.name}>
+                        {product.name === 'Unnamed Product' ? t('common.unnamed_product') : product.name}
                       </h6>
-                      <small className="text-muted d-block">{product.brand}</small>
-                      <span className="badge bg-secondary mt-1">{product.type}</span>
+                      <small className="text-muted d-block">
+                        {product.brand === 'Unknown Brand' ? t('common.unknown_brand') : product.brand}
+                      </small>
+                      <span className="badge bg-secondary mt-1">
+                        {product.type === 'Other' ? t('common.category_other') : product.type}
+                      </span>
                     </div>
                   </div>
 

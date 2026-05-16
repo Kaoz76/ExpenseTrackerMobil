@@ -17,7 +17,7 @@ import { trTitleCase, trToLower, cleanItemName, findBestProductMatch } from '../
 
 // 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
 const cleanStoreName = (name) => {
-  if (!name) return "Unknown Store";
+  if (!name) return ""; // Boş dönerse bileşen tarafında t('common.unknown_store') basılır
   let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
   return trTitleCase(cleanName).trim();
 };
