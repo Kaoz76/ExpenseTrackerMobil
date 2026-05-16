@@ -13,3 +13,16 @@ export const formatDateTime = (timestamp) => {
     hour: '2-digit', minute: '2-digit', second: '2-digit'
   });
 };
+
+/**
+ * Formats a Firebase Timestamp or JavaScript Date object into a readable date string without time.
+ * @param {Date|Object} timestamp - The date to format.
+ * @returns {string} Formatted date string (e.g., 10.03.2026).
+ */
+export const formatDate = (timestamp) => {
+  if (!timestamp) return '-';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return date.toLocaleDateString(navigator.language || 'tr-TR', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+};

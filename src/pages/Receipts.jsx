@@ -12,7 +12,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Tesseract from 'tesseract.js';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
-import { formatDateTime } from '../utils/dateFormatter';
+import { formatDateTime, formatDate } from '../utils/dateFormatter';
 import { trTitleCase, trToLower } from '../utils/stringUtils';
 
 // 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
@@ -631,7 +631,7 @@ function Receipts() {
               <div className="list-group list-group-flush">
                 <div className="list-group-item bg-body-tertiary text-body-secondary fw-bold small text-uppercase d-flex align-items-center">
                   <div style={{ flex: 2 }}>{t('common.store_name')}</div>
-                  <div style={{ flex: 1 }}>{t('common.date_time')}</div>
+                  <div style={{ flex: 1 }}>{t('common.date')}</div>
                   <div style={{ flex: 1, textAlign: 'right' }}>{t('common.total_price_ocr')}</div>
                   <div style={{ width: '40px' }}></div>
                 </div>
@@ -650,16 +650,9 @@ function Receipts() {
                         onClick={() => navigate(`/receipts/${receipt.id}`)}
                       >
                         <div style={{ flex: 2, minWidth: 0 }} className="d-flex align-items-center pe-2">
-                          <img
-                            src={receipt.imageUrl || 'https://placehold.co/60x60?text=Receipt'}
-                            alt={receipt.fileName}
-                            className="receipt-list-thumbnail me-3 flex-shrink-0"
-                            onError={(e) => { e.target.src = 'https://placehold.co/60x60?text=Error'; }}
-                            style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
-                          />
                           <span className="fw-bold text-truncate">{receipt.fileName}</span>
                         </div>
-                        <div style={{ flex: 1 }} className="text-muted small">{formatDateTime(receipt.createdAt)}</div>
+                        <div style={{ flex: 1 }} className="text-muted small">{formatDate(receipt.createdAt)}</div>
                         <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary">{formatPrice(receipt.price)}</div>
                         <div style={{ width: '50px', display: 'flex', justifyContent: 'flex-end' }}>
                           <button
