@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { Capacitor } from '@capacitor/core'; // 🔥 GELİŞTİRME 2: Platform kontrolü için eklendi
+import { Capacitor } from '@capacitor/core';
 import { useTheme } from '../context/ThemeContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -23,6 +23,7 @@ function Settings() {
   // Veri Sıfırlama State'i
   const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
+
 
   // BİLDİRİM VE SAAT STATE'LERİ
   const [reminderEnabled, setReminderEnabled] = useState(false);
@@ -239,6 +240,8 @@ function Settings() {
     }
   };
 
+
+
   return (
     <div className="dashboard-page-wrapper p-4">
       <div className="container-fluid">
@@ -440,6 +443,8 @@ function Settings() {
                 </div>
 
                 <hr className="my-4" />
+
+
 
                 <div>
                   <p className="text-danger fw-bold small d-flex align-items-center">

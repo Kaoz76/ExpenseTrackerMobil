@@ -267,7 +267,7 @@ function Dashboard() {
                     />
                   ) : (
                     <img
-                      src="/text-img.png"
+                      src="/empty_state.png"
                       alt="Manual Entry"
                       className="card-img-top"
                       style={{ height: '200px', objectFit: 'cover' }}

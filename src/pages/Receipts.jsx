@@ -6,14 +6,14 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, Timestamp, limit } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, Timestamp, limit, getDocs } from "firebase/firestore";
 import ImageModal from '../components/ImageModal';
 import { Link, useNavigate } from 'react-router-dom';
 import Tesseract from 'tesseract.js';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
 import { formatDateTime, formatDate } from '../utils/dateFormatter';
-import { trTitleCase, trToLower } from '../utils/stringUtils';
+import { trTitleCase, trToLower, cleanItemName, findBestProductMatch } from '../utils/stringUtils';
 
 // 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
 const cleanStoreName = (name) => {
@@ -63,6 +63,7 @@ function Receipts() {
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState('');
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [existingProductNames, setExistingProductNames] = useState([]);
 
   const [receipts, setReceipts] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(true);
@@ -118,6 +119,30 @@ function Receipts() {
       setLoadingReceipts(false);
     }
   }, [user, displayLimit]);
+
+  // 🔥 Mevcut ürün isimlerini çek (Fuzzy Match için)
+  useEffect(() => {
+    if (user) {
+      const q = query(
+        collection(db, "receipts"),
+        where("userId", "==", user.uid)
+      );
+      getDocs(q).then((snapshot) => {
+        const names = new Set();
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.items && Array.isArray(data.items)) {
+            data.items.forEach(item => {
+              if (item.name && item.name.trim().length > 2) {
+                names.add(item.name.trim());
+              }
+            });
+          }
+        });
+        setExistingProductNames([...names]);
+      }).catch(err => console.warn("Could not fetch existing products for fuzzy match:", err));
+    }
+  }, [user]);
 
   // OCR PRICE EXTRACTCTION ALGORITHM
   const extractDataFromText = (text) => {
@@ -186,7 +211,9 @@ function Receipts() {
             let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_-]/g, '').trim();
 
             if (namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
-              let formattedName = trTitleCase(namePart);
+              // 🔥 Seçenek 1: Metin Temizleme — çöp karakterleri, KDV kodlarını sil
+              let cleanedName = cleanItemName(namePart);
+              let formattedName = trTitleCase(cleanedName);
 
               if (/(indirim|ndirim|iskonto)/i.test(line)) {
                 parsedPrice = -Math.abs(parsedPrice);
@@ -395,6 +422,12 @@ function Receipts() {
         setUploadProgress(95);
       }
 
+      // 🔥 Seçenek 2: Bulanık Eşleştirme — OCR isimlerini mevcut ürünlerle karşılaştır
+      const matchedItems = (extractedData.items || []).map(item => {
+        const matchedName = findBestProductMatch(item.name, existingProductNames);
+        return { ...item, name: matchedName };
+      });
+
       results.push({
         userId: user.uid,
         imageUrl: imageUrl,
@@ -405,7 +438,7 @@ function Receipts() {
         title: '',
         date: new Date().toLocaleDateString(),
         isManual: false,
-        items: extractedData.items || [],
+        items: matchedItems,
         totalPrice: extractedData.total || 0
       });
     }
@@ -426,7 +459,7 @@ function Receipts() {
       setStatusText('');
     }, 500);
 
-  }, [user, privacyMode, t]);
+  }, [user, privacyMode, t, existingProductNames]);
 
   const moveToNextOrClose = (currentQueue) => {
     const updatedQueue = [...currentQueue];
