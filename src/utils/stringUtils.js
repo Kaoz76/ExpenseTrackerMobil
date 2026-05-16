@@ -2,6 +2,7 @@
  * Locale-aware string utilities
  * Automatically detects browser language for proper character conversion (especially Turkish i/I)
  */
+import { brandDictionary, commonMisreads } from '../data/brandDictionary';
 
 const getLocale = () => {
   // Use browser language if available, default to Turkish if not specified
@@ -145,5 +146,29 @@ export const findBestProductMatch = (ocrName, existingNames, maxDistanceRatio = 
   }
 
   return bestMatch || ocrName;
+};
+
+// ─── Otomatik Marka/Mağaza Düzeltme Sözlüğü ───────────────────────────────
+
+/**
+ * Yaygın OCR hatalarını (B yerine E, i yerine ı vb.) markalar özelinde düzeltir.
+ */
+export const brandAutoCorrect = (name) => {
+  if (!name || typeof name !== 'string') return name;
+
+  const corrections = brandDictionary;
+
+  const lowerName = name.toLowerCase();
+  
+  // Tam eşleşme kontrolü
+  if (corrections[lowerName]) return corrections[lowerName];
+
+  // Kelime bazlı kontrol (Regex ile toplu değişim)
+  let correctedName = name;
+  commonMisreads.forEach(({ wrong, right }) => {
+    correctedName = correctedName.replace(wrong, right);
+  });
+
+  return correctedName;
 };
 

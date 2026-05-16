@@ -108,6 +108,7 @@ export const en = {
     unknown_brand: "Unknown Brand",
     unnamed_product: "Unnamed Product",
     category_other: "Other",
+    unknown_store: "Unknown Store",
     manage_recurring: "Manage your recurring monthly expenses.",
     must_be_logged_in_subs: "You must be logged in to manage subscriptions.",
     add_new: "Add New",

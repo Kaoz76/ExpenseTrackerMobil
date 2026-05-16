@@ -108,6 +108,7 @@ export const tr = {
     unknown_brand: "Bilinmeyen Marka",
     unnamed_product: "İsimsiz Ürün",
     category_other: "Diğer",
+    unknown_store: "Bilinmeyen Mağaza",
     manage_recurring: "Aylık yinelenen harcamalarınızı yönetin.",
     must_be_logged_in_subs: "Abonelikleri yönetmek için giriş yapmalısınız.",
     add_new: "Yeni Ekle",

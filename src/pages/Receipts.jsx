@@ -13,13 +13,13 @@ import Tesseract from 'tesseract.js';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
 import { formatDateTime, formatDate } from '../utils/dateFormatter';
-import { trTitleCase, trToLower, cleanItemName, findBestProductMatch } from '../utils/stringUtils';
+import { trTitleCase, trToLower, cleanItemName, findBestProductMatch, brandAutoCorrect } from '../utils/stringUtils';
 
 // 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
 const cleanStoreName = (name) => {
   if (!name) return ""; // Boş dönerse bileşen tarafında t('common.unknown_store') basılır
   let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-  return trTitleCase(cleanName).trim();
+  return trTitleCase(brandAutoCorrect(cleanName)).trim();
 };
 
 // YAZIM HATALARINA KARŞI: Levenshtein Distance (Bulanık Eşleştirme) Algoritması
@@ -211,8 +211,9 @@ function Receipts() {
             let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_-]/g, '').trim();
 
             if (namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
-              // 🔥 Seçenek 1: Metin Temizleme — çöp karakterleri, KDV kodlarını sil
-              let cleanedName = cleanItemName(namePart);
+              // 🔥 Önce marka düzeltme sözlüğüne bak, sonra genel temizlik yap
+              let correctedName = brandAutoCorrect(namePart);
+              let cleanedName = cleanItemName(correctedName);
               let formattedName = trTitleCase(cleanedName);
 
               if (/(indirim|ndirim|iskonto)/i.test(line)) {
