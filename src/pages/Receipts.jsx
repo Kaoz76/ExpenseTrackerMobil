@@ -15,6 +15,54 @@ import { Ocr } from '@carviz/capacitor-ocr';
 import { formatDateTime, formatDate } from '../utils/dateFormatter';
 import { trTitleCase, trToLower, cleanItemName, findBestProductMatch, brandAutoCorrect } from '../utils/stringUtils';
 
+// 🔥 Client-side image resizing to speed up OCR and reduce memory/storage footprint
+const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      } else {
+        resolve(file);
+        return;
+      }
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          resolve(file);
+          return;
+        }
+        const resizedFile = new File([blob], file.name, {
+          type: 'image/jpeg',
+          lastModified: Date.now(),
+        });
+        resolve(resizedFile);
+      }, 'image/jpeg', 0.85);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+};
+
 // 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
 const cleanStoreName = (name) => {
   if (!name) return ""; // Boş dönerse bileşen tarafında t('common.unknown_store') basılır
@@ -286,7 +334,10 @@ function Receipts() {
     setUploadProgress(0);
     setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', '1').replace('{{total}}', filesToProcess.length));
 
-    const processFile = async (file) => {
+    const processFile = async (originalFile) => {
+      // 0. Resize Image to reduce memory footprint and speed up OCR
+      const file = await resizeImage(originalFile, 1500, 2000);
+
       // 1. Background Firebase Upload
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
       if (!privacyMode) {
