@@ -60,9 +60,9 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
                   <thead className="table-secondary">
                     <tr>
                       <th>{t('common.name')}</th>
-                      <th>{t('common.type')}</th>
-                      <th>{t('common.brand')}</th>
-                      <th>{t('common.size')}</th>
+                      <th className="d-none d-md-table-cell">{t('common.type')}</th>
+                      <th className="d-none d-md-table-cell">{t('common.brand')}</th>
+                      <th className="d-none d-md-table-cell">{t('common.size')}</th>
                       <th className="text-end">{t('common.price')}</th>
                     </tr>
                   </thead>
@@ -72,10 +72,15 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
                     {hasItems ? (
                       receipt.items.map((item, index) => (
                         <tr key={index}>
-                          <td>{item.name || '-'}</td>
-                          <td>{item.type || '-'}</td>
-                          <td>{item.brand || '-'}</td>
-                          <td>{item.size || '-'}</td>
+                          <td>
+                            <div className="fw-bold">{item.name || '-'}</div>
+                            <div className="d-md-none text-muted small mt-1">
+                              {[item.type, item.brand, item.size].filter(Boolean).join(' • ')}
+                            </div>
+                          </td>
+                          <td className="d-none d-md-table-cell">{item.type || '-'}</td>
+                          <td className="d-none d-md-table-cell">{item.brand || '-'}</td>
+                          <td className="d-none d-md-table-cell">{item.size || '-'}</td>
                           <td className="text-end fw-bold text-primary">
                             {formatPrice(item.price)}
                           </td>
@@ -92,7 +97,8 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
 
                   <tfoot className="table-secondary">
                     <tr>
-                      <td colSpan="4" className="text-end fw-bold">{t('common.total')}</td>
+                      <td colSpan="1" className="text-end fw-bold d-table-cell d-md-none">{t('common.total')}</td>
+                      <td colSpan="4" className="text-end fw-bold d-none d-md-table-cell">{t('common.total')}</td>
                       <td className="text-end fw-bold fs-5 text-primary">
                         {formatPrice(receipt.price)}
                       </td>

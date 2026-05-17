@@ -411,7 +411,7 @@ function ReceiptDetail() {
             <div className="p-3 bg-primary-subtle border-bottom">
               <h6 className="fw-bold mb-3 text-primary">{t('common.add_new_item')}</h6>
               <div className="row g-2 align-items-end">
-                <div className="col-md-6">
+                <div className="col-md-3">
                   <label className="form-label small fw-bold">{t('common.name_star')}</label>
                   <input
                     type="text"
@@ -421,7 +421,34 @@ function ReceiptDetail() {
                     onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                   />
                 </div>
-                <div className="col-md-3">
+                <div className="col-6 col-md-2">
+                  <label className="form-label small fw-bold">{t('common.type')}</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={newItem.type}
+                    onChange={(e) => setNewItem({ ...newItem, type: e.target.value })}
+                  />
+                </div>
+                <div className="col-6 col-md-2">
+                  <label className="form-label small fw-bold">{t('common.brand')}</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={newItem.brand}
+                    onChange={(e) => setNewItem({ ...newItem, brand: e.target.value })}
+                  />
+                </div>
+                <div className="col-6 col-md-2">
+                  <label className="form-label small fw-bold">{t('common.size')}</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={newItem.size}
+                    onChange={(e) => setNewItem({ ...newItem, size: e.target.value })}
+                  />
+                </div>
+                <div className="col-6 col-md-2">
                   <label className="form-label small fw-bold">{t('common.price')}</label>
                   <div className="input-group input-group-sm">
                     <span className="input-group-text">{currency?.symbol || '$'}</span>
@@ -435,20 +462,22 @@ function ReceiptDetail() {
                     />
                   </div>
                 </div>
-                <div className="col-md-3 d-flex gap-1">
+                <div className="col-12 col-md-1 d-flex gap-1 mt-2 mt-md-0">
                   <button
-                    className="btn btn-success btn-sm flex-grow-1"
+                    className="btn btn-success btn-sm flex-grow-1 px-1"
                     onClick={handleAddItem}
                     disabled={!newItem.name.trim()}
+                    title={t('common.add_action')}
                   >
-                    <FaCheck className="me-1" /> {t('common.add_action')}
+                    <FaCheck />
                   </button>
                   <button
-                    className="btn btn-outline-secondary btn-sm"
+                    className="btn btn-outline-secondary btn-sm px-1"
                     onClick={() => {
                       setShowAddForm(false);
                       setNewItem({ name: '', price: '', brand: '', type: '', size: '' });
                     }}
+                    title={t('common.cancel')}
                   >
                     <FaTimes />
                   </button>
@@ -463,6 +492,9 @@ function ReceiptDetail() {
                 <tr>
                   <th className="py-3 ps-4" style={{ width: '40px' }}>#</th>
                   <th className="py-3">{t('common.name')}</th>
+                  <th className="py-3 d-none d-md-table-cell">{t('common.type')}</th>
+                  <th className="py-3 d-none d-md-table-cell">{t('common.brand')}</th>
+                  <th className="py-3 d-none d-md-table-cell">{t('common.size')}</th>
                   <th className="py-3 text-end">{t('common.price')}</th>
                   <th className="py-3 text-center pe-4" style={{ width: '100px' }}>{t('common.actions')}</th>
                 </tr>
@@ -477,9 +509,57 @@ function ReceiptDetail() {
                         <td>
                           <input
                             type="text"
-                            className="form-control form-control-sm"
+                            className="form-control form-control-sm mb-1"
                             value={item.name || ''}
                             onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
+                            placeholder={t('common.name')}
+                          />
+                          <div className="d-md-none d-flex gap-1 mt-1">
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              placeholder={t('common.type')}
+                              value={item.type || ''}
+                              onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              placeholder={t('common.brand')}
+                              value={item.brand || ''}
+                              onChange={(e) => handleItemChange(idx, 'brand', e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              placeholder={t('common.size')}
+                              value={item.size || ''}
+                              onChange={(e) => handleItemChange(idx, 'size', e.target.value)}
+                            />
+                          </div>
+                        </td>
+                        <td className="d-none d-md-table-cell">
+                          <input
+                            type="text"
+                            className="form-control form-control-sm"
+                            value={item.type || ''}
+                            onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
+                          />
+                        </td>
+                        <td className="d-none d-md-table-cell">
+                          <input
+                            type="text"
+                            className="form-control form-control-sm"
+                            value={item.brand || ''}
+                            onChange={(e) => handleItemChange(idx, 'brand', e.target.value)}
+                          />
+                        </td>
+                        <td className="d-none d-md-table-cell">
+                          <input
+                            type="text"
+                            className="form-control form-control-sm"
+                            value={item.size || ''}
+                            onChange={(e) => handleItemChange(idx, 'size', e.target.value)}
                           />
                         </td>
                         <td>
@@ -496,7 +576,7 @@ function ReceiptDetail() {
                         </td>
                         <td className="text-center pe-4">
                           <button
-                            className="btn btn-sm btn-success me-1"
+                            className="btn btn-sm btn-success me-1 mb-1 mb-md-0"
                             onClick={() => setEditingItemIdx(null)}
                             title={t('common.done_editing')}
                           >
@@ -513,7 +593,15 @@ function ReceiptDetail() {
                       </>
                     ) : (
                       <>
-                        <td className="fw-bold">{item.name || '-'}</td>
+                        <td>
+                          <div className="fw-bold">{item.name || '-'}</div>
+                          <div className="d-md-none text-muted small mt-1">
+                            {[item.type, item.brand, item.size].filter(Boolean).join(' • ')}
+                          </div>
+                        </td>
+                        <td className="d-none d-md-table-cell text-muted">{item.type || '-'}</td>
+                        <td className="d-none d-md-table-cell text-muted">{item.brand || '-'}</td>
+                        <td className="d-none d-md-table-cell text-muted">{item.size || '-'}</td>
                         <td className="text-end fw-bold text-primary">{formatPrice(item.price)}</td>
                         <td className="text-center pe-4">
                           <button
@@ -538,7 +626,7 @@ function ReceiptDetail() {
 
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="text-center py-5 text-body-secondary">
+                    <td colSpan="7" className="text-center py-5 text-body-secondary">
                       <FaShoppingCart size={32} className="mb-2 opacity-50" />
                       <div>{t('common.no_items_on_receipt')}</div>
                       <button
@@ -555,7 +643,8 @@ function ReceiptDetail() {
               {items.length > 0 && (
                 <tfoot className="table-secondary">
                   <tr>
-                    <td colSpan="2" className="text-end fw-bold py-3 ps-4">{t('common.items_total')}</td>
+                    <td colSpan="2" className="text-end fw-bold py-3 ps-4 d-table-cell d-md-none">{t('common.items_total')}</td>
+                    <td colSpan="5" className="text-end fw-bold py-3 ps-4 d-none d-md-table-cell">{t('common.items_total')}</td>
                     <td className="text-end fw-bold fs-5 text-primary py-3">{formatPrice(itemsTotal)}</td>
                     <td></td>
                   </tr>

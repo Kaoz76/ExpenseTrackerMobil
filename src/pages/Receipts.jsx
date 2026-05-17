@@ -891,32 +891,63 @@ function Receipts() {
                         <div className="bg-white" style={{ maxHeight: '250px', overflowY: 'auto' }}>
                           <ul className="list-group list-group-flush">
                             {(verifyData.items || []).map((item, idx) => (
-                              <li key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-                                <button
-                                  className="btn btn-sm btn-outline-danger me-2 border-0"
-                                  onClick={() => handleRemoveItem(idx)}
-                                  title="Remove Item"
-                                >
-                                  <FaTrash size={12} />
-                                </button>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm me-2 text-secondary"
-                                  style={{ fontWeight: '500' }}
-                                  value={item.name}
-                                  onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
-                                  placeholder={t('common.item_name')}
-                                />
-                                <div className="input-group input-group-sm" style={{ width: '120px' }}>
-                                  <span className="input-group-text bg-light text-primary fw-bold border-end-0">{currency?.symbol || '$'}</span>
+                              <li key={idx} className="list-group-item d-flex flex-column py-2 px-3">
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <button
+                                    className="btn btn-sm btn-outline-danger me-2 border-0"
+                                    onClick={() => handleRemoveItem(idx)}
+                                    title="Remove Item"
+                                  >
+                                    <FaTrash size={12} />
+                                  </button>
                                   <input
-                                    type="number"
-                                    step="0.01"
-                                    className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0"
-                                    value={item.price}
-                                    onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
-                                    placeholder={t('common.price')}
+                                    type="text"
+                                    className="form-control form-control-sm me-2 text-secondary"
+                                    style={{ fontWeight: '500' }}
+                                    value={item.name}
+                                    onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
+                                    placeholder={t('common.item_name')}
                                   />
+                                  <div className="input-group input-group-sm" style={{ width: '120px' }}>
+                                    <span className="input-group-text bg-light text-primary fw-bold border-end-0">{currency?.symbol || '$'}</span>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0"
+                                      value={item.price}
+                                      onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
+                                      placeholder={t('common.price')}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="row g-2 ps-4 mt-1">
+                                  <div className="col-12 col-md-4">
+                                    <input
+                                      type="text"
+                                      className="form-control form-control-sm"
+                                      placeholder={t('common.type')}
+                                      value={item.type || ''}
+                                      onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="col-6 col-md-4">
+                                    <input
+                                      type="text"
+                                      className="form-control form-control-sm"
+                                      placeholder={t('common.brand')}
+                                      value={item.brand || ''}
+                                      onChange={(e) => handleItemChange(idx, 'brand', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="col-6 col-md-4">
+                                    <input
+                                      type="text"
+                                      className="form-control form-control-sm"
+                                      placeholder={t('common.size')}
+                                      value={item.size || ''}
+                                      onChange={(e) => handleItemChange(idx, 'size', e.target.value)}
+                                    />
+                                  </div>
                                 </div>
                               </li>
                             ))}
