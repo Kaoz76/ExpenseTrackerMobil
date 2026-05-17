@@ -6,6 +6,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { getCategoryInfo } from '../utils/categoryMap';
 
 import { trToLower } from '../utils/stringUtils';
 
@@ -147,14 +148,20 @@ function Products() {
 
         <div className="row">
           {/* 🔥 DÜZELTME: filteredProducts yerine optimize ettiğimiz filteredAndSortedProducts kullanıyoruz */}
-          {filteredAndSortedProducts.map((product) => (
+          {filteredAndSortedProducts.map((product) => {
+            const displayType = product.type === 'Other' ? t('common.category_other') : product.type;
+            const catInfo = getCategoryInfo(displayType);
+            return (
             <div key={product.id} className="col-md-6 col-lg-4 col-xl-3 mb-4">
               <div className="card shadow-sm h-100 border-0 card-hover-effect">
                 <div className="card-body d-flex flex-column">
 
                   <div className="d-flex align-items-start mb-3">
-                    <div className="bg-primary-subtle rounded p-3 me-3 text-primary">
-                      <FaBoxOpen className="fs-3" />
+                    <div 
+                      className="rounded p-3 me-3 d-flex align-items-center justify-content-center" 
+                      style={{ backgroundColor: `${catInfo.color}15`, fontSize: '1.5rem', width: '54px', height: '54px' }}
+                    >
+                      {catInfo.icon}
                     </div>
                     <div>
                       <h6 className="card-title fw-bold mb-1 text-truncate" style={{ maxWidth: '150px' }} title={product.name === 'Unnamed Product' ? t('common.unnamed_product') : product.name}>
@@ -163,8 +170,8 @@ function Products() {
                       <small className="text-muted d-block">
                         {product.brand === 'Unknown Brand' ? t('common.unknown_brand') : product.brand}
                       </small>
-                      <span className="badge bg-secondary mt-1">
-                        {product.type === 'Other' ? t('common.category_other') : product.type}
+                      <span className="badge mt-1" style={{ backgroundColor: `${catInfo.color}20`, color: catInfo.color }}>
+                        {displayType}
                       </span>
                     </div>
                   </div>
@@ -193,7 +200,7 @@ function Products() {
                 </div>
               </div>
             </div>
-          ))}
+          )})}
 
           {/* Arama Sonucu Bulunamazsa */}
           {!loading && products.length > 0 && filteredAndSortedProducts.length === 0 && (
