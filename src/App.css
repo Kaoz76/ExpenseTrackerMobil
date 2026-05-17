@@ -1310,3 +1310,22 @@ body::after {
     transform: none;
   }
 }
+
+/* ========================================
+   DESKTOP ZOOM FIX (PREVENT MOBILE LAYOUT ON PC ZOOM)
+   ======================================== */
+/* Eğer cihaz fare kullanan bir cihazsa (PC), ekran daralsa bile mobil sınıflarını devreye sokma */
+@media (pointer: fine) {
+  .d-md-none {
+    display: none !important;
+  }
+  .d-none.d-md-block {
+    display: block !important;
+  }
+  .d-none.d-md-flex {
+    display: flex !important;
+  }
+  .d-none.d-sm-inline {
+    display: inline !important;
+  }
+}

@@ -24,10 +24,25 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 
 function App() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const checkIsMobile = () => {
+    // 1. Klasik Mobil Tarayıcı Kontrolü
+    const isMobileUA = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // 2. Masaüstü/Dokunmatik Bilgisayar Ayrımı
+    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const hasMouse = window.matchMedia('(pointer: fine)').matches; // Cihazda bir fare/touchpad var mı?
+    
+    // Eğer cihaz dokunmatikse AMA faresi YOKSA, bu kesinlikle bir tablet veya telefondur.
+    // (Böylece dokunmatik ekranlı Windows bilgisayarlar mobil sanılmaz!)
+    const isPureTouchDevice = hasTouch && !hasMouse;
+
+    return window.innerWidth < 768 && (isMobileUA || isPureTouchDevice);
+  };
+
+  const [isMobile, setIsMobile] = useState(checkIsMobile());
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(checkIsMobile());
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
