@@ -486,15 +486,80 @@ function ReceiptDetail() {
             </div>
           )}
 
-          <div className="table-responsive">
+          {/* MOBILE LIST VIEW */}
+          <div className="d-md-none border rounded bg-light mb-3">
+            <div className="list-group list-group-flush">
+              {items.map((item, idx) => (
+                <div key={idx} className={`list-group-item bg-transparent py-3 ${editingItemIdx === idx ? 'border-primary' : ''}`}>
+                  {editingItemIdx === idx ? (
+                    <div className="d-flex flex-column gap-2">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span className="badge bg-secondary text-white">#{idx + 1}</span>
+                        <div>
+                          <button className="btn btn-sm btn-success me-1" onClick={() => setEditingItemIdx(null)}><FaCheck /></button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => handleRemoveItem(idx)}><FaTrash /></button>
+                        </div>
+                      </div>
+                      <input type="text" className="form-control form-control-sm" value={item.name || ''} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} placeholder={t('common.name')} />
+                      <div className="row g-2">
+                        <div className="col-12"><input type="text" className="form-control form-control-sm" placeholder={t('common.type')} value={item.type || ''} onChange={(e) => handleItemChange(idx, 'type', e.target.value)} /></div>
+                        <div className="col-6"><input type="text" className="form-control form-control-sm" placeholder={t('common.brand')} value={item.brand || ''} onChange={(e) => handleItemChange(idx, 'brand', e.target.value)} /></div>
+                        <div className="col-6"><input type="text" className="form-control form-control-sm" placeholder={t('common.size')} value={item.size || ''} onChange={(e) => handleItemChange(idx, 'size', e.target.value)} /></div>
+                      </div>
+                      <div className="input-group input-group-sm mt-1">
+                        <span className="input-group-text">{currency?.symbol || '$'}</span>
+                        <input type="number" step="0.01" className="form-control form-control-sm text-end" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value)} placeholder={t('common.price')} />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div className="pe-2">
+                        <div className="fw-bold text-wrap" style={{ wordBreak: 'break-word' }}>
+                          <span className="text-muted small me-2">#{idx + 1}</span>{item.name || '-'}
+                        </div>
+                        <div className="text-muted small mt-1 text-wrap" style={{ wordBreak: 'break-word', lineHeight: '1.2' }}>
+                          {[item.type, item.brand, item.size].filter(Boolean).join(' • ')}
+                        </div>
+                      </div>
+                      <div className="d-flex flex-column align-items-end">
+                        <div className="fw-bold text-primary mb-2" style={{ whiteSpace: 'nowrap' }}>{formatPrice(item.price)}</div>
+                        <div>
+                          <button className="btn btn-sm btn-outline-primary border-0 me-1" onClick={() => setEditingItemIdx(idx)}><FaPen size={12}/></button>
+                          <button className="btn btn-sm btn-outline-danger border-0" onClick={() => handleRemoveItem(idx)}><FaTrash size={12}/></button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {items.length === 0 && (
+                <div className="text-center py-4 text-muted">
+                  <FaShoppingCart size={32} className="mb-2 opacity-50" />
+                  <div>{t('common.no_items_on_receipt')}</div>
+                  <button className="btn btn-sm btn-primary mt-2" onClick={() => setShowAddForm(true)}>
+                    <FaPlus className="me-1" /> {t('common.add_first_item')}
+                  </button>
+                </div>
+              )}
+            </div>
+            {items.length > 0 && (
+              <div className="d-flex justify-content-between align-items-center p-3 border-top bg-white rounded-bottom">
+                <span className="fw-bold">{t('common.items_total')}</span>
+                <span className="fw-bold fs-5 text-primary">{formatPrice(itemsTotal)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* DESKTOP TABLE VIEW */}
+          <div className="d-none d-md-block table-responsive">
             <table className="table table-hover mb-0 align-middle">
               <thead className="table-secondary">
                 <tr>
                   <th className="py-3 ps-4" style={{ width: '40px' }}>#</th>
                   <th className="py-3">{t('common.name')}</th>
-                  <th className="py-3 d-none d-md-table-cell">{t('common.type')}</th>
-                  <th className="py-3 d-none d-md-table-cell">{t('common.brand')}</th>
-                  <th className="py-3 d-none d-md-table-cell">{t('common.size')}</th>
+                  <th className="py-3">{t('common.type')}</th>
+                  <th className="py-3">{t('common.brand')}</th>
+                  <th className="py-3">{t('common.size')}</th>
                   <th className="py-3 text-end">{t('common.price')}</th>
                   <th className="py-3 text-center pe-4" style={{ width: '100px' }}>{t('common.actions')}</th>
                 </tr>
@@ -507,117 +572,38 @@ function ReceiptDetail() {
                     {editingItemIdx === idx ? (
                       <>
                         <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm mb-1"
-                            value={item.name || ''}
-                            onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
-                            placeholder={t('common.name')}
-                          />
-                          <div className="d-md-none d-flex gap-1 mt-1">
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder={t('common.type')}
-                              value={item.type || ''}
-                              onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
-                            />
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder={t('common.brand')}
-                              value={item.brand || ''}
-                              onChange={(e) => handleItemChange(idx, 'brand', e.target.value)}
-                            />
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder={t('common.size')}
-                              value={item.size || ''}
-                              onChange={(e) => handleItemChange(idx, 'size', e.target.value)}
-                            />
-                          </div>
+                          <input type="text" className="form-control form-control-sm" value={item.name || ''} onChange={(e) => handleItemChange(idx, 'name', e.target.value)} />
                         </td>
-                        <td className="d-none d-md-table-cell">
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={item.type || ''}
-                            onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
-                          />
+                        <td>
+                          <input type="text" className="form-control form-control-sm" value={item.type || ''} onChange={(e) => handleItemChange(idx, 'type', e.target.value)} />
                         </td>
-                        <td className="d-none d-md-table-cell">
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={item.brand || ''}
-                            onChange={(e) => handleItemChange(idx, 'brand', e.target.value)}
-                          />
+                        <td>
+                          <input type="text" className="form-control form-control-sm" value={item.brand || ''} onChange={(e) => handleItemChange(idx, 'brand', e.target.value)} />
                         </td>
-                        <td className="d-none d-md-table-cell">
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={item.size || ''}
-                            onChange={(e) => handleItemChange(idx, 'size', e.target.value)}
-                          />
+                        <td>
+                          <input type="text" className="form-control form-control-sm" value={item.size || ''} onChange={(e) => handleItemChange(idx, 'size', e.target.value)} />
                         </td>
                         <td>
                           <div className="input-group input-group-sm">
                             <span className="input-group-text">{currency?.symbol || '$'}</span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="form-control form-control-sm text-end"
-                              value={item.price}
-                              onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
-                            />
+                            <input type="number" step="0.01" className="form-control form-control-sm text-end" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value)} />
                           </div>
                         </td>
                         <td className="text-center pe-4">
-                          <button
-                            className="btn btn-sm btn-success me-1 mb-1 mb-md-0"
-                            onClick={() => setEditingItemIdx(null)}
-                            title={t('common.done_editing')}
-                          >
-                            <FaCheck size={12} />
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => handleRemoveItem(idx)}
-                            title={t('common.delete_item')}
-                          >
-                            <FaTrash size={12} />
-                          </button>
+                          <button className="btn btn-sm btn-success me-1" onClick={() => setEditingItemIdx(null)} title={t('common.done_editing')}><FaCheck size={12} /></button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => handleRemoveItem(idx)} title={t('common.delete_item')}><FaTrash size={12} /></button>
                         </td>
                       </>
                     ) : (
                       <>
-                        <td>
-                          <div className="fw-bold">{item.name || '-'}</div>
-                          <div className="d-md-none text-muted small mt-1">
-                            {[item.type, item.brand, item.size].filter(Boolean).join(' • ')}
-                          </div>
-                        </td>
-                        <td className="d-none d-md-table-cell text-muted">{item.type || '-'}</td>
-                        <td className="d-none d-md-table-cell text-muted">{item.brand || '-'}</td>
-                        <td className="d-none d-md-table-cell text-muted">{item.size || '-'}</td>
+                        <td className="fw-bold">{item.name || '-'}</td>
+                        <td className="text-muted">{item.type || '-'}</td>
+                        <td className="text-muted">{item.brand || '-'}</td>
+                        <td className="text-muted">{item.size || '-'}</td>
                         <td className="text-end fw-bold text-primary">{formatPrice(item.price)}</td>
                         <td className="text-center pe-4">
-                          <button
-                            className="btn btn-sm btn-outline-primary me-1 border-0"
-                            onClick={() => setEditingItemIdx(idx)}
-                            title={t('common.edit_item')}
-                          >
-                            <FaPen size={12} />
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger border-0"
-                            onClick={() => handleRemoveItem(idx)}
-                            title={t('common.delete_item')}
-                          >
-                            <FaTrash size={12} />
-                          </button>
+                          <button className="btn btn-sm btn-outline-primary me-1 border-0" onClick={() => setEditingItemIdx(idx)} title={t('common.edit_item')}><FaPen size={12} /></button>
+                          <button className="btn btn-sm btn-outline-danger border-0" onClick={() => handleRemoveItem(idx)} title={t('common.delete_item')}><FaTrash size={12} /></button>
                         </td>
                       </>
                     )}
@@ -629,10 +615,7 @@ function ReceiptDetail() {
                     <td colSpan="7" className="text-center py-5 text-body-secondary">
                       <FaShoppingCart size={32} className="mb-2 opacity-50" />
                       <div>{t('common.no_items_on_receipt')}</div>
-                      <button
-                        className="btn btn-sm btn-primary mt-2"
-                        onClick={() => setShowAddForm(true)}
-                      >
+                      <button className="btn btn-sm btn-primary mt-2" onClick={() => setShowAddForm(true)}>
                         <FaPlus className="me-1" /> {t('common.add_first_item')}
                       </button>
                     </td>
@@ -643,8 +626,7 @@ function ReceiptDetail() {
               {items.length > 0 && (
                 <tfoot className="table-secondary">
                   <tr>
-                    <td colSpan="2" className="text-end fw-bold py-3 ps-4 d-table-cell d-md-none">{t('common.items_total')}</td>
-                    <td colSpan="5" className="text-end fw-bold py-3 ps-4 d-none d-md-table-cell">{t('common.items_total')}</td>
+                    <td colSpan="5" className="text-end fw-bold py-3 ps-4">{t('common.items_total')}</td>
                     <td className="text-end fw-bold fs-5 text-primary py-3">{formatPrice(itemsTotal)}</td>
                     <td></td>
                   </tr>
