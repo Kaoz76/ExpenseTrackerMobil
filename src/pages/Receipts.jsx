@@ -381,42 +381,76 @@ function Receipts() {
                     return;
                   }
 
-                  let lineGroups = [];
+                  const getCenter = (item) => {
+                    const tl = item.topLeft || [0,0];
+                    const br = item.bottomRight || [0,0];
+                    return { x: (tl[0] + br[0]) / 2, y: (tl[1] + br[1]) / 2 };
+                  };
+
+                  const getHeight = (item) => {
+                    const tl = item.topLeft || [0,0];
+                    const bl = item.bottomLeft || [0,0];
+                    return Math.abs(bl[1] - tl[1]);
+                  };
+
+                  // Calculate median slope to correctly sort items top-to-bottom despite skew
+                  let slopes = [];
+                  detections.forEach(item => {
+                    if (item.topLeft && item.topRight) {
+                      let dx = item.topRight[0] - item.topLeft[0];
+                      let dy = item.topRight[1] - item.topLeft[1];
+                      if (Math.abs(dx) > 0.0001) slopes.push(dy / dx);
+                    }
+                  });
+                  slopes.sort((a, b) => a - b);
+                  let medianSlope = slopes.length > 0 ? slopes[Math.floor(slopes.length / 2)] : 0;
+
+                  // Sort items by their projected Y-intercept (where X=0) to ensure strict top-to-bottom order
                   detections.sort((a, b) => {
-                    let aY = a.topLeft ? a.topLeft[1] : 0;
-                    let bY = b.topLeft ? b.topLeft[1] : 0;
-                    return bY - aY;
+                    let cA = getCenter(a);
+                    let cB = getCenter(b);
+                    return (cA.y - medianSlope * cA.x) - (cB.y - medianSlope * cB.x);
                   });
 
-                  detections.forEach(item => {
-                    let top = item.topLeft ? item.topLeft[1] : 0;
-                    let bottom = (item.bottomLeft && typeof item.bottomLeft[1] !== 'undefined') ? item.bottomLeft[1] : top + 0.02;
+                  let lineGroups = [];
 
-                    if (top > bottom) { let temp = top; top = bottom; bottom = temp; }
-                    let height = bottom - top;
-                    if (height < 0.001) { bottom = top + 0.02; height = 0.02; }
+                  detections.forEach(item => {
+                    let center = getCenter(item);
+                    let height = getHeight(item);
+                    if (height < 0.001) height = 0.02;
 
                     let added = false;
                     for (let group of lineGroups) {
-                      let overlapTop = Math.max(group.top, top);
-                      let overlapBottom = Math.min(group.bottom, bottom);
-                      let overlapHeight = overlapBottom - overlapTop;
-
-                      if (overlapHeight > Math.min(height, group.height) * 0.3) {
+                      // Project expected Y using the group's initial vector slope
+                      let projectedY = group.startY + group.slope * (center.x - group.startX);
+                      
+                      // If the item's center is close to the projected line vector, add it!
+                      if (Math.abs(center.y - projectedY) < height * 0.6) {
                         group.items.push(item);
+                        // Optional: Could update group.startX/Y to gracefully curve along the receipt, 
+                        // but sticking to the origin slope is mathematically cleaner for most receipts.
                         added = true;
                         break;
                       }
                     }
 
                     if (!added) {
-                      lineGroups.push({ top: top, bottom: bottom, height: height, items: [item] });
+                      // Calculate the angle between topLeft and topRight for this specific word
+                      let dx = (item.topRight && item.topLeft) ? (item.topRight[0] - item.topLeft[0]) : 0;
+                      let dy = (item.topRight && item.topLeft) ? (item.topRight[1] - item.topLeft[1]) : 0;
+                      let itemSlope = Math.abs(dx) > 0.0001 ? dy / dx : medianSlope;
+
+                      lineGroups.push({
+                        startX: center.x,
+                        startY: center.y,
+                        slope: itemSlope,
+                        items: [item]
+                      });
                     }
                   });
 
-                  lineGroups.sort((a, b) => b.top - a.top);
                   const fullText = lineGroups.map(group => {
-                    group.items.sort((a, b) => a.topLeft[0] - b.topLeft[0]);
+                    group.items.sort((a, b) => getCenter(a).x - getCenter(b).x);
                     return group.items.map(i => i.text).join('   ');
                   }).join('\n');
 
