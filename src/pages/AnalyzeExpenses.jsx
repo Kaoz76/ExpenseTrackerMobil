@@ -10,13 +10,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-
-// Premium color palette for category bars
-const CHART_COLORS = [
-  '#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f97316',
-  '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
-  '#8b5cf6', '#d946ef'
-];
+import { getCategoryInfo } from '../utils/categoryMap';
 
 function AnalyzeExpenses() {
   const { user } = useAuth();
@@ -498,7 +492,7 @@ function AnalyzeExpenses() {
 
                           <Bar dataKey="amount" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={22}>
                             {categoryData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                              <Cell key={`cell-${index}`} fill={getCategoryInfo(entry.name).color} />
                             ))}
                           </Bar>
                         </BarChart>
@@ -530,10 +524,13 @@ function AnalyzeExpenses() {
                             <td className="ps-4">
                               <div className="d-flex align-items-center gap-2">
                                 <span style={{
-                                  width: 10, height: 10, borderRadius: '50%',
-                                  backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
-                                  display: 'inline-block', flexShrink: 0
-                                }}></span>
+                                  width: 32, height: 32, borderRadius: '8px',
+                                  backgroundColor: `${getCategoryInfo(item.name).color}15`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                  fontSize: '1rem'
+                                }}>
+                                  {getCategoryInfo(item.name).icon}
+                                </span>
                                 <span className="fw-bold">{item.name}</span>
                               </div>
                             </td>
