@@ -1,24 +1,26 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-
-// 1. Geliştirme: Rotaları, Faviconları ve Sayfa Başlıklarını bir Obje'de topluyoruz.
-// (Bunu component dışına yazıyoruz ki her sayfa değişiminde yeniden bellekte oluşmasın)
-const routeConfig = {
-  '/receipts': { icon: '/scans-favicon.png', title: 'Scans' },
-  '/texts': { icon: '/texts-favicon.png', title: 'Add Entry' },
-  '/products': { icon: '/products-favicon.png', title: 'Products' },
-  '/stores': { icon: '/stores-favicon.png', title: 'Stores' },
-  '/analyze': { icon: '/analyze-expenses-favicon.png', title: 'Analyze' },
-  '/reports': { icon: '/view-reports-favicon.png', title: 'Reports' },
-  '/settings': { icon: '/settings-favicon.png', title: 'Settings' },
-  '/login': { icon: '/login-favicon.png', title: 'Login' },
-  '/signup': { icon: '/signup-favicon.png', title: 'Sign Up' },
-  '/dashboard': { icon: '/dashboard-favicon.png', title: 'Dashboard' },
-  '/': { icon: '/dashboard-favicon.png', title: 'Dashboard' },
-};
+import { useLanguage } from '../context/LanguageContext';
 
 function DynamicFavicon() {
   const location = useLocation();
+  const { t } = useLanguage();
+
+  // Rotaları, Faviconları ve Sayfa Başlıklarını useMemo ile tanımlıyoruz ki 't' fonksiyonuna erişebilsin
+  const routeConfig = useMemo(() => ({
+    '/receipts': { icon: '/scans-favicon.png', title: t('nav.receipts') || 'Scans' },
+    '/texts': { icon: '/texts-favicon.png', title: t('nav.manual_entry') || 'Add Entry' },
+    '/products': { icon: '/products-favicon.png', title: t('nav.products') || 'Products' },
+    '/stores': { icon: '/stores-favicon.png', title: t('nav.stores') || 'Stores' },
+    '/subscriptions': { icon: '/dashboard-favicon.png', title: t('nav.subscriptions') || 'Subscriptions' },
+    '/analyze': { icon: '/analyze-expenses-favicon.png', title: t('nav.analyze') || 'Analyze' },
+    '/reports': { icon: '/view-reports-favicon.png', title: t('nav.reports') || 'Reports' },
+    '/settings': { icon: '/settings-favicon.png', title: t('nav.settings') || 'Settings' },
+    '/login': { icon: '/login-favicon.png', title: t('common.log_in') || 'Login' },
+    '/signup': { icon: '/signup-favicon.png', title: t('common.sign_up') || 'Sign Up' },
+    '/dashboard': { icon: '/dashboard-favicon.png', title: t('nav.dashboard') || 'Dashboard' },
+    '/': { icon: '/dashboard-favicon.png', title: t('nav.home') || 'Home' },
+  }), [t]);
 
   useEffect(() => {
     // Mevcut favicon elementini bul veya yoksa oluştur
@@ -26,24 +28,26 @@ function DynamicFavicon() {
     if (!link) {
       link = document.createElement('link');
       link.rel = 'icon';
-      document.head.appendChild(link); // getElementsByTagName yerine daha modern olan document.head kullandık
+      document.head.appendChild(link);
     }
 
     const path = location.pathname.toLowerCase();
 
     // URL'deki ana dizini alıyoruz (örn: "/settings/profile" gelse bile "/settings" kısmını yakalar)
-    const baseRoute = '/' + path.split('/')[1];
+    const baseRoute = path === '/' ? '/' : '/' + path.split('/')[1];
 
-    // Eşleşen rotayı objeden çek, yoksa varsayılan olarak Dashboard ayarlarını kullan
-    const currentConfig = routeConfig[baseRoute] || routeConfig['/'];
+    // Eşleşen rotayı objeden çek, yoksa varsayılan olarak Home/Dashboard ayarlarını kullan
+    const currentConfig = routeConfig[baseRoute] || { icon: '/dashboard-favicon.png', title: 'Expense Tracker' };
 
     // Favicon'u güncelle
     link.href = currentConfig.icon;
 
-    // 2. Geliştirme: Tarayıcı sekme başlığını (Title) dinamik olarak güncelle
-    document.title = `${currentConfig.title} - Expense Tracker`;
+    // Tarayıcı sekme başlığını (Title) dinamik ve çevirili olarak güncelle
+    document.title = baseRoute === '/'
+      ? 'Expense Tracker'
+      : `${currentConfig.title} - Expense Tracker`;
 
-  }, [location]);
+  }, [location, routeConfig]);
 
   return null;
 }
