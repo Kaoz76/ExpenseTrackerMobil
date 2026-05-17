@@ -26,3 +26,8 @@ dist-ssr
 
 # Firebase konfigürasyonunu gizle
 src/firebase.js
+
+# Environment variables (API keys)
+.env
+.env.local
+.env.*.local

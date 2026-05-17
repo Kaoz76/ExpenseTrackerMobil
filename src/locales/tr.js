@@ -372,6 +372,9 @@ export const tr = {
     msg_notification_title: "Harcama Takipçisi",
     msg_notification_body: "Günlük harcamalarınızı kaydetmeyi unutmayın! 💰",
 
+    // Yapay Zeka Zenginleştirme
+    msg_ai_enriching: "Yapay zeka markaları, türleri ve boyutları tespit ediyor...",
+
     // Yer tutucular
     placeholder_store: "örn. Migros",
     placeholder_dairy: "örn. Süt Ürünleri",

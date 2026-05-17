@@ -372,6 +372,9 @@ export const en = {
     msg_notification_title: "Expense Tracker",
     msg_notification_body: "Don't forget to log your daily expenses! 💰",
 
+    // AI Enrichment
+    msg_ai_enriching: "AI is detecting brands, types & sizes...",
+
     // Placeholders
     placeholder_store: "e.g., Walmart",
     placeholder_dairy: "e.g., Dairy",

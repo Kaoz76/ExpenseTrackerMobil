@@ -14,6 +14,7 @@ import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
 import { formatDateTime, formatDate } from '../utils/dateFormatter';
 import { trTitleCase, trToLower, cleanItemName, findBestProductMatch, brandAutoCorrect } from '../utils/stringUtils';
+import { enrichItemsWithGemini } from '../services/geminiService';
 
 // 🔥 Client-side image resizing to speed up OCR and reduce memory/storage footprint
 const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
@@ -492,6 +493,15 @@ function Receipts() {
         return { ...item, name: matchedName };
       });
 
+      // 🤖 AI Enrichment: Use Gemini 2.5 Flash-Lite to detect brand, type, and size
+      let enrichedItems = matchedItems;
+      try {
+        setStatusText(t('common.msg_ai_enriching'));
+        enrichedItems = await enrichItemsWithGemini(matchedItems, '');
+      } catch (aiError) {
+        console.warn('AI enrichment failed, using raw OCR items:', aiError);
+      }
+
       return {
         userId: user.uid,
         uploadPromise, // Save the background upload promise to await it during final save
@@ -502,7 +512,7 @@ function Receipts() {
         title: '',
         date: new Date().toLocaleDateString(),
         isManual: false,
-        items: matchedItems,
+        items: enrichedItems,
         totalPrice: extractedData.total || 0
       };
     };
