@@ -130,3 +130,27 @@ export const getCategoryInfo = (categoryName) => {
     color: colorPool[colorIndex] // Hash tabanlı rastgele ama tutarlı renk
   };
 };
+
+// Türkçe kategori isimleri
+export const suggestedCategoriesTR = [
+  'Market', 'Gıda', 'Yemek', 'Kafe', 'Restoran', 
+  'Giyim', 'Ayakkabı', 'Moda',
+  'Elektronik', 'Teknoloji', 'Yazılım',
+  'Akaryakıt', 'Ulaşım', 'Taksi',
+  'Ev', 'Mobilya', 'Kira', 'Fatura',
+  'Sağlık', 'Eczane', 'Kozmetik',
+  'Eğlence', 'Abonelik', 'Oyun', 'Hobi',
+  'Eğitim', 'Kitap', 'Kırtasiye', 'Diğer'
+].sort();
+
+// İngilizce kategori isimleri
+export const suggestedCategoriesEN = [
+  'Grocery', 'Food', 'Dining', 'Cafe', 'Restaurant', 
+  'Clothing', 'Shoes', 'Fashion',
+  'Electronics', 'Technology', 'Software',
+  'Fuel', 'Transport', 'Taxi',
+  'Home', 'Furniture', 'Rent', 'Bills',
+  'Health', 'Pharmacy', 'Cosmetics',
+  'Entertainment', 'Subscription', 'Gaming', 'Hobby',
+  'Education', 'Books', 'Stationery', 'Other'
+].sort();

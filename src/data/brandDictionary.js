@@ -514,6 +514,9 @@ export const brandDictionary = {
   'di̇gi̇turk': 'Digiturk'
 };
 
+// Benzersiz doğru marka isimleri listesi (Otomatik tamamlama için)
+export const suggestedBrands = [...new Set(Object.values(brandDictionary))].sort();
+
 /**
  * Kelime bazlı değişimler için regex listesi.
  * Marka ismin içinde bir yerde geçiyorsa yakalar.

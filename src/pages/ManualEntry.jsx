@@ -8,11 +8,15 @@ import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt, FaArrowDown 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
 import { formatDateTime } from '../utils/dateFormatter';
+import { suggestedCategoriesTR, suggestedCategoriesEN } from '../utils/categoryMap';
+import { suggestedBrands } from '../data/brandDictionary';
 
 function ManualEntry() {
   const { user } = useAuth();
   const { formatPrice, currency } = useCurrency();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+
+  const suggestedCategories = language === 'tr' ? suggestedCategoriesTR : suggestedCategoriesEN;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -142,7 +146,13 @@ function ManualEntry() {
     setLoading(true);
 
     try {
-      const totalAmount = products.reduce((acc, curr) => acc + parseFloat(curr.price || 0), 0);
+      const formattedProducts = products.map(p => ({
+        ...p,
+        type: p.type ? p.type.trim().charAt(0).toUpperCase() + p.type.trim().slice(1).toLowerCase() : '',
+        brand: p.brand ? p.brand.trim().charAt(0).toUpperCase() + p.brand.trim().slice(1) : ''
+      }));
+
+      const totalAmount = formattedProducts.reduce((acc, curr) => acc + parseFloat(curr.price || 0), 0);
 
       const newEntryData = {
         userId: user.uid,
@@ -153,7 +163,7 @@ function ManualEntry() {
         date: new Date().toLocaleDateString(),
         createdAt: Timestamp.now(),
         price: totalAmount,
-        items: products
+        items: formattedProducts
       };
 
       await addDoc(collection(db, "receipts"), newEntryData);
@@ -212,6 +222,19 @@ function ManualEntry() {
           )}
           {error && <div className="alert alert-danger">{error}</div>}
           {success && <div className="alert alert-success">{success}</div>}
+
+          {/* Otomatik Tamamlama Listeleri */}
+          <datalist id="category-suggestions">
+            {suggestedCategories.map((category, index) => (
+              <option key={`cat-${index}`} value={category} />
+            ))}
+          </datalist>
+
+          <datalist id="brand-suggestions">
+            {suggestedBrands.map((brand, index) => (
+              <option key={`brand-${index}`} value={brand} />
+            ))}
+          </datalist>
 
           <div className="row">
             <div className="col-12 mb-4">
@@ -298,6 +321,7 @@ function ManualEntry() {
                                 </label>
                                 <input
                                   type="text"
+                                  list="category-suggestions"
                                   className="form-control form-control-sm"
                                   placeholder={t('common.placeholder_dairy')}
                                   value={product.type}
@@ -313,6 +337,7 @@ function ManualEntry() {
                                 </label>
                                 <input
                                   type="text"
+                                  list="brand-suggestions"
                                   className="form-control form-control-sm"
                                   placeholder={t('common.placeholder_brand')}
                                   value={product.brand}
