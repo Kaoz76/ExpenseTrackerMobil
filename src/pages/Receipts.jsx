@@ -283,16 +283,31 @@ function Receipts() {
 
     setIsUploading(true);
     setError('');
+    setUploadProgress(0);
+    setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', '1').replace('{{total}}', filesToProcess.length));
 
-    let results = [];
+    const processFile = async (file) => {
+      // 1. Background Firebase Upload
+      let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
+      if (!privacyMode) {
+        uploadPromise = (async () => {
+          try {
+            const timestamp = Date.now();
+            const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
+            const storageRef = ref(storage, storagePath);
+            await uploadBytesResumable(storageRef, file);
+            const imageUrl = await getDownloadURL(storageRef);
+            return { storagePath, imageUrl };
+          } catch (err) {
+            console.error("Storage upload failed:", err);
+            return { storagePath: null, imageUrl: null };
+          }
+        })();
+      }
 
-    for (let i = 0; i < filesToProcess.length; i++) {
-      const file = filesToProcess[i];
-      setUploadProgress(0);
-      setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', i + 1).replace('{{total}}', filesToProcess.length));
-
+      // 2. OCR Analysis
       let extractedData = { total: 0, items: [] };
-
       try {
         if (Capacitor.isNativePlatform()) {
           const reader = new FileReader();
@@ -374,7 +389,7 @@ function Receipts() {
             {
               logger: m => {
                 if (m.status === 'recognizing text') {
-                  setUploadProgress(parseInt(m.progress * 70));
+                  setUploadProgress(parseInt(m.progress * 100)); // Update progress (approximate, max 100)
                 }
               }
             }
@@ -384,55 +399,18 @@ function Receipts() {
         }
       } catch (ocrError) {
         console.error("OCR Failed Details:", ocrError);
-        setError("Could not read text for some files, uploading anyway...");
+        setError("Could not read text for some files, showing results anyway...");
       }
 
-      // 🔥 Upload image to Firebase Storage
-      let imageUrl = null;
-      let storagePath = null;
-      
-      if (!privacyMode) {
-        try {
-          setUploadProgress(75);
-          setStatusText(t('common.msg_uploading_to_cloud').replace('{{current}}', i + 1).replace('{{total}}', filesToProcess.length));
-          const timestamp = Date.now();
-          const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
-          const storageRef = ref(storage, storagePath);
-
-          await new Promise((resolve, reject) => {
-            const uploadTask = uploadBytesResumable(storageRef, file);
-            uploadTask.on(
-              'state_changed',
-              (snapshot) => {
-                const pct = 75 + Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 20);
-                setUploadProgress(pct);
-              },
-              (err) => reject(err),
-              () => resolve()
-            );
-          });
-
-          imageUrl = await getDownloadURL(storageRef);
-          setUploadProgress(95);
-        } catch (storageError) {
-          console.error("Storage upload failed:", storageError);
-          // Continue without image — don't block saving
-        }
-      } else {
-        setUploadProgress(95);
-      }
-
-      // 🔥 Seçenek 2: Bulanık Eşleştirme — OCR isimlerini mevcut ürünlerle karşılaştır
       const matchedItems = (extractedData.items || []).map(item => {
         const matchedName = findBestProductMatch(item.name, existingProductNames);
         return { ...item, name: matchedName };
       });
 
-      results.push({
+      return {
         userId: user.uid,
-        imageUrl: imageUrl,
-        storagePath: storagePath,
+        uploadPromise, // Save the background upload promise to await it during final save
+        tempImageUrl: URL.createObjectURL(file), // Provide a local object URL for immediate display
         fileName: '',
         originalFileName: file.name,
         createdAt: Timestamp.now(),
@@ -441,24 +419,34 @@ function Receipts() {
         isManual: false,
         items: matchedItems,
         totalPrice: extractedData.total || 0
-      });
-    }
+      };
+    };
 
-    setUploadProgress(100);
-    setStatusText(t('common.msg_preparing_queue'));
+    try {
+      // Run OCR on all images concurrently
+      const results = await Promise.all(filesToProcess.map(processFile));
 
-    setTimeout(() => {
-      setProcessedScans(results);
-      if (results.length > 0) {
-        setShowItems(false);
-        setVerifyData(results[0]);
-        setVerifiedPrice(results[0].totalPrice);
-        setShowVerifyModal(true);
-      }
+      setUploadProgress(100);
+      setStatusText(t('common.msg_preparing_queue'));
+
+      setTimeout(() => {
+        setProcessedScans(results);
+        if (results.length > 0) {
+          setShowItems(false);
+          setVerifyData(results[0]);
+          setVerifiedPrice(results[0].totalPrice);
+          setShowVerifyModal(true);
+        }
+        setIsUploading(false);
+        setUploadProgress(0);
+        setStatusText('');
+      }, 500);
+
+    } catch (err) {
+      console.error(err);
       setIsUploading(false);
-      setUploadProgress(0);
-      setStatusText('');
-    }, 500);
+      setError("An error occurred while processing the files.");
+    }
 
   }, [user, privacyMode, t, existingProductNames]);
 
@@ -523,10 +511,13 @@ function Receipts() {
         price: parseFloat(item.price) || 0
       }));
 
+      // 🔥 Wait for the background upload to finish before saving to Firestore
+      const uploadResult = verifyData.uploadPromise ? await verifyData.uploadPromise : { imageUrl: null, storagePath: null };
+
       const newReceiptData = {
         userId: verifyData.userId,
-        imageUrl: verifyData.imageUrl || null,
-        storagePath: verifyData.storagePath || null,
+        imageUrl: uploadResult.imageUrl || null,
+        storagePath: uploadResult.storagePath || null,
         fileName: verifyData.fileName.trim(),
         createdAt: verifyData.createdAt,
         title: verifyData.fileName.trim(),
@@ -538,6 +529,11 @@ function Receipts() {
       };
 
       await addDoc(collection(db, "receipts"), newReceiptData);
+      
+      if (verifyData.tempImageUrl) {
+        URL.revokeObjectURL(verifyData.tempImageUrl);
+      }
+
       moveToNextOrClose(processedScans);
 
     } catch (e) {
@@ -547,10 +543,18 @@ function Receipts() {
   };
 
   const handleCancelSave = () => {
+    if (verifyData?.tempImageUrl) {
+      URL.revokeObjectURL(verifyData.tempImageUrl);
+    }
     moveToNextOrClose(processedScans);
   };
 
   const handleCloseAll = () => {
+    processedScans.forEach(scan => {
+      if (scan.tempImageUrl) {
+        URL.revokeObjectURL(scan.tempImageUrl);
+      }
+    });
     setProcessedScans([]);
     setShowVerifyModal(false);
     setVerifyData(null);
@@ -742,10 +746,10 @@ function Receipts() {
                 </div>
 
                 <div className="modal-body p-4">
-                  {verifyData?.imageUrl && (
+                  {verifyData?.tempImageUrl && (
                     <div className="mb-4 text-center">
                       <img
-                        src={verifyData.imageUrl}
+                        src={verifyData.tempImageUrl}
                         alt="Scanned Receipt"
                         style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', border: '1px solid #dee2e6' }}
                       />
