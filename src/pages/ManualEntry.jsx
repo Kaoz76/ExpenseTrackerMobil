@@ -149,7 +149,8 @@ function ManualEntry() {
       const formattedProducts = products.map(p => ({
         ...p,
         type: p.type ? p.type.trim().charAt(0).toUpperCase() + p.type.trim().slice(1).toLowerCase() : '',
-        brand: p.brand ? p.brand.trim().charAt(0).toUpperCase() + p.brand.trim().slice(1) : ''
+        brand: p.brand ? p.brand.trim().charAt(0).toUpperCase() + p.brand.trim().slice(1) : '',
+        price: Math.abs(parseFloat(p.price || 0)) // Negatif değerlerin her ihtimale karşı mutlak değerini al
       }));
 
       const totalAmount = formattedProducts.reduce((acc, curr) => acc + parseFloat(curr.price || 0), 0);
@@ -303,9 +304,15 @@ function ManualEntry() {
                                 className="form-control border-0 bg-transparent ps-2"
                                 placeholder="0.00"
                                 value={product.price}
-                                onChange={(e) => handleInputChange(product.id, 'price', e.target.value)}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val >= 0 || val === '') {
+                                    handleInputChange(product.id, 'price', val);
+                                  }
+                                }}
                                 disabled={isDisabled}
                                 step="0.01"
+                                min="0"
                                 style={{ fontSize: '1rem' }}
                               />
                             </div>
