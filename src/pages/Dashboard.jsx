@@ -207,7 +207,7 @@ function Dashboard() {
                 <FaPlus className="me-2" /> {t('common.new_scan')}
               </Link>
               <Link to="/texts" className="btn btn-pulse btn-pulse-secondary flex-fill flex-md-grow-0 px-4 py-2">
-                <FaEdit className="me-2" /> {t('common.new_text')}
+                <FaEdit className="me-2" /> {t('nav.manual_entry')}
               </Link>
             </div>
           )}
@@ -263,7 +263,7 @@ function Dashboard() {
                       alt={scan.fileName}
                       className="card-img-top"
                       style={{ height: '200px', objectFit: 'cover' }}
-                      onError={(e) => { e.target.src = 'https://placehold.co/600x400?text=No+Image'; }}
+                      onError={(e) => { e.target.src = '/empty_state.png'; }}
                     />
                   ) : (
                     <img

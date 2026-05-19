@@ -310,6 +310,7 @@ function ManualEntry() {
                                     handleInputChange(product.id, 'price', val);
                                   }
                                 }}
+                                onKeyDown={(e) => { if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault(); }}
                                 disabled={isDisabled}
                                 step="0.01"
                                 min="0"

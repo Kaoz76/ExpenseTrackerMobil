@@ -68,13 +68,13 @@ function BottomNav() {
               gap: '4px'
             }}
           >
-            <NavLink to="/products" className="btn btn-sm btn-light text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
+            <NavLink to="/products" className="btn btn-sm btn-outline-secondary text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
               <FaBox className="me-2 text-primary" /> {t('nav.products')}
             </NavLink>
-            <NavLink to="/stores" className="btn btn-sm btn-light text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
+            <NavLink to="/stores" className="btn btn-sm btn-outline-secondary text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
               <FaStore className="me-2 text-primary" /> {t('nav.stores')}
             </NavLink>
-            <NavLink to="/subscriptions" className="btn btn-sm btn-light text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
+            <NavLink to="/subscriptions" className="btn btn-sm btn-outline-secondary text-start d-flex align-items-center" onClick={() => setShowMenu(false)}>
               <FaSync className="me-2 text-primary" /> {t('nav.subscriptions')}
             </NavLink>
             

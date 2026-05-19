@@ -38,8 +38,19 @@ export const CurrencyProvider = ({ children }) => {
 
           if (docSnap.exists() && docSnap.data().currency) {
             const dbCurrency = docSnap.data().currency;
-            setCurrency(dbCurrency);
-            localStorage.setItem('app_currency', JSON.stringify(dbCurrency));
+            // Güvenli parse: string olarak kaydedilmişse veya eksik alanları varsa CURRENCY_MAP'ten çöz
+            let resolvedCurrency;
+            if (typeof dbCurrency === 'string') {
+              // Eski format: sadece kod string olarak kayıtlıysa
+              resolvedCurrency = CURRENCY_MAP[dbCurrency] || CURRENCY_MAP['USD'];
+            } else if (dbCurrency.code && CURRENCY_MAP[dbCurrency.code]) {
+              // Doğru format ama eksik alan olabilir — haritadan tam objeyi al
+              resolvedCurrency = CURRENCY_MAP[dbCurrency.code];
+            } else {
+              resolvedCurrency = CURRENCY_MAP['USD'];
+            }
+            setCurrency(resolvedCurrency);
+            localStorage.setItem('app_currency', JSON.stringify(resolvedCurrency));
           }
         } catch (error) {
           console.error("Error fetching currency preference:", error);

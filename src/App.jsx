@@ -56,7 +56,7 @@ function App() {
       <Navbar />
 
       {/* Capacitor "Safe Area" destekli mobil boşluk mantığı mükemmel çalışıyor */}
-      <main style={{ paddingBottom: isMobile ? 'calc(70px + env(safe-area-inset-bottom))' : '0' }}>
+      <main style={{ paddingBottom: isMobile ? 'calc(85px + env(safe-area-inset-bottom))' : '0' }}>
         <Routes>
           {/* 🔥 Kök dizin (/) mobil uygulamada Dashboard'a yönlendirilir, web'de Landing gösterilir */}
           <Route path="/" element={isMobile ? <Navigate to="/dashboard" replace /> : <Landing />} />

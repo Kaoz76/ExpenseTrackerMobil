@@ -314,6 +314,7 @@ function Settings() {
                       placeholder={t('common.placeholder_budget')}
                       value={budgetInput}
                       onChange={(e) => setBudgetInput(e.target.value)}
+                      onKeyDown={(e) => { if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault(); }}
                     />
                       <button
                         className="btn btn-primary"

@@ -1104,7 +1104,6 @@ body::after {
   transition: 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.nav-link-animated:focus:after,
 .nav-link-animated:hover:after,
 .nav-link-animated.active:after {
   width: 100%;
