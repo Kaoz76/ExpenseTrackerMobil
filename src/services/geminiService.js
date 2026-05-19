@@ -12,9 +12,10 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
  * 
  * @param {Array<{name: string, price: number}>} items - OCR-parsed items with name and price
  * @param {string} storeName - Optional store name for better context
+ * @param {string} language - The user language setting (e.g., 'en', 'tr')
  * @returns {Promise<Array<{name: string, price: number, brand: string, type: string, size: string}>>}
  */
-export const enrichItemsWithGemini = async (items, storeName = '') => {
+export const enrichItemsWithGemini = async (items, storeName = '', language = 'en') => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
@@ -34,8 +35,14 @@ export const enrichItemsWithGemini = async (items, storeName = '') => {
   // Build the prompt with item list
   const itemList = items.map((item, i) => `${i + 1}. "${item.name}" — ${item.price}`).join('\n');
 
+  const langInstruction = language === 'tr' 
+    ? 'IMPORTANT: You must respond in Turkish. Type categories must be in Turkish using generalized terms (e.g., "Süt Ürünü", "Atıştırmalık", "İçecek", "Temizlik", "Et", "Fırın", "Manav", "Kişisel Bakım", "Dondurulmuş"). Do NOT use specific types like "Peynir" or "Elma", use the general category instead.'
+    : 'IMPORTANT: You must respond in English. Type categories must be in English using generalized terms (e.g., "Dairy", "Snack", "Beverage", "Cleaning", "Meat", "Bakery", "Produce", "Personal Care", "Frozen"). Do NOT use specific types like "Cheese" or "Apple", use the general category instead.';
+
   const prompt = `You are a product data extraction assistant for grocery/retail receipt items.
-Given the following list of product names parsed from a receipt${storeName ? ` at "${storeName}"` : ''}, detect the **brand**, **type** (product category like "Dairy", "Snack", "Beverage", "Cleaning", "Meat", "Bakery", "Produce", "Frozen", "Personal Care", etc.), and **size** (weight/volume like "1L", "500g", "200ml", "1kg", etc.) for each item.
+Given the following list of product names parsed from a receipt${storeName ? ` at "${storeName}"` : ''}, detect the **brand**, **type** (product category), and **size** (weight/volume like "1L", "500g", "200ml", "1kg", etc.) for each item.
+
+${langInstruction}
 
 Items:
 ${itemList}
@@ -44,7 +51,7 @@ Rules:
 - If the brand is embedded in the product name (e.g., "Ülker Çikolata"), extract it.
 - If size/weight info is in the name (e.g., "Süt 1L"), extract it.
 - If you cannot determine a field, return an empty string "".
-- Product types should be short category labels (1-2 words max).
+- Product types should be generalized category labels, NOT specific product names.
 - Respond ONLY with a valid JSON array, no markdown, no explanation.
 - Each element must have: {"index": <number>, "brand": "<string>", "type": "<string>", "size": "<string>"}
 - The index is 1-based matching the item number above.

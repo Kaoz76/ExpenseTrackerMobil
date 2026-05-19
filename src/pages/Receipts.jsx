@@ -105,7 +105,7 @@ const isFuzzyMatch = (line, targetWords, maxDist = 2) => {
 function Receipts() {
   const { user } = useAuth();
   const { formatPrice, currency } = useCurrency();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -497,7 +497,7 @@ function Receipts() {
       let enrichedItems = matchedItems;
       try {
         setStatusText(t('common.msg_ai_enriching'));
-        enrichedItems = await enrichItemsWithGemini(matchedItems, '');
+        enrichedItems = await enrichItemsWithGemini(matchedItems, '', language);
       } catch (aiError) {
         console.warn('AI enrichment failed, using raw OCR items:', aiError);
       }
