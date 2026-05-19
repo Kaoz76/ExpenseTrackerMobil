@@ -61,6 +61,7 @@ export const tr = {
     or_drag_drop: "veya sürükleyip bırakın",
     file_limits: "PNG, JPG veya PDF (MAKS. 10MB) - En fazla 10 dosya",
     privacy_toggle_label: "Kişisel gizlilik için fotoğrafı buluta yükleme (Sadece veriler kaydedilir)",
+    analyze_with_llm: "Fiş detaylarını yapay zeka ile analiz et (Marka, Kategori, Boyut)",
     processing: "İşleniyor...",
     all_scanned_receipts: "Tüm Taranan Fişler",
     store_name: "Mağaza Adı",

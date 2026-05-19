@@ -112,6 +112,7 @@ function Receipts() {
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState('');
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [shouldAnalyzeWithLLM, setShouldAnalyzeWithLLM] = useState(true);
   const [existingProductNames, setExistingProductNames] = useState([]);
 
   const [receipts, setReceipts] = useState([]);
@@ -200,16 +201,23 @@ function Receipts() {
     const normalizedText = trToLower(text.replace(/\r/g, '\n'));
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
+    // 1. Setup regexes outside the loop
     const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
-    // Bulanık eşleştirme için aranacak anahtar kelimeler
     const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'nakit', 'kredi'];
-    // Puan/Kazanç gibi sadakat programı değerlerini yanlışlıkla fiş tutarı saymamak için exclude listesi genişletildi
-    const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|kg x|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro|puan|point|kazanc|kazanç)/i;
+
+    // EXCLUSION: Catches taxes, change, points (will be completely skipped)
+    const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro|puan|point|kazanc|kazanç)/i;
+
+    // MULTIPLIER: Expanded to catch "3,995 KG x", "3,995 KG *", or "3,995 KG TL/KG"
+    const multiplierRegex = /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX*]|tl\/(?:kg|gr|kc)|tg|[\d.,]+(?:\s*tg)?)/i;
     const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
 
     let possibleTotals = [];
     let extractedItems = [];
-
+    
+    // DEBUG: Log the parsed lines to see the OCR output structure
+    console.log("OCR Extracted Lines:", lines);
+    
     const cleanAndParseNumber = (valStr) => {
       let cleanStr = valStr.replace(/[^0-9.,]/g, '');
       if (cleanStr.includes(',') && cleanStr.includes('.')) {
@@ -218,17 +226,40 @@ function Receipts() {
         cleanStr = cleanStr.replace(',', '.');
       }
       const num = parseFloat(cleanStr);
-      // Sabit Limit (Hardcode) < 50000 kısıtlaması kaldırıldı
       return (!isNaN(num) && num > 0) ? num : null;
     };
+
+    let previousOrphanedText = "";
+    let previousOrphanedSize = "";
+    let pendingPrice = null; // NEW: Holds prices that arrive before their text
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // Yazım hatalarına (T0PLAM vb.) karşı Fuzzy Match kontrolü eklendi
+      // A. Check for Multiplier Line (Extract Size & Skip)
+      const multiMatch = line.match(multiplierRegex);
+      if (multiMatch) {
+        const extractedSize = multiMatch[1] + ' ' + multiMatch[2].toUpperCase().replace('KC', 'KG');
+        
+        // Retroactive stitch: If the item was just parsed on the previous line, attach it backward
+        if (extractedItems.length > 0 && !extractedItems[extractedItems.length - 1].size) {
+           extractedItems[extractedItems.length - 1].size = extractedSize;
+        } else {
+           // Forward stitch: Save it for the next valid item
+           previousOrphanedSize = extractedSize;
+        }
+        continue; 
+      }
+
+      // B. Check for Exclusions (Skip immediately)
+      if (excludeRegex.test(line)) {
+        continue; 
+      }
+
       const hasKeyword = keywordRegex.test(line) || isFuzzyMatch(line, fuzzyKeywords);
 
-      if (hasKeyword && !excludeRegex.test(line)) {
+      // C. Process Totals
+      if (hasKeyword) {
         let matches = line.match(priceRegex);
         if (matches) {
           matches.forEach(m => {
@@ -236,7 +267,6 @@ function Receipts() {
             if (parsed) possibleTotals.push(parsed);
           });
         }
-
         if (i + 1 < lines.length) {
           const nextLine = lines[i + 1];
           if (!excludeRegex.test(nextLine)) {
@@ -249,18 +279,33 @@ function Receipts() {
             }
           }
         }
-      }
-      else if (!hasKeyword && !excludeRegex.test(line)) {
+      } 
+      // D. Process Items
+      else {
         let matches = line.match(priceRegex);
         if (matches && matches.length > 0) {
           const lastMatch = matches[matches.length - 1];
           let parsedPrice = cleanAndParseNumber(lastMatch);
 
           if (parsedPrice) {
-            let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_-]/g, '').trim();
+            let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_-]/g, ' ').trim();
+            namePart = namePart.replace(/%?\s*\d*\s*x?$/i, '').trim();
 
-            if (namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
-              // 🔥 Önce marka düzeltme sözlüğüne bak, sonra genel temizlik yap
+            let isGarbageName = namePart.length === 0 || namePart.length <= 4 || /^[%xX\d\s]+$/.test(namePart);
+
+            if (isGarbageName) {
+              if (previousOrphanedText) {
+                // Forward Stitch (Text came first)
+                namePart = namePart.length === 0 ? previousOrphanedText : previousOrphanedText + ' ' + namePart;
+                isGarbageName = false;
+              } else {
+                // Reverse Stitch (Price came first) - Save it and wait for the text line
+                pendingPrice = parsedPrice;
+                continue; // Skip pushing for now
+              }
+            }
+
+            if (!isGarbageName && namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
               let correctedName = brandAutoCorrect(namePart);
               let cleanedName = cleanItemName(correctedName);
               let formattedName = trTitleCase(cleanedName);
@@ -271,8 +316,34 @@ function Receipts() {
 
               extractedItems.push({
                 name: formattedName,
-                price: parsedPrice
+                price: parsedPrice,
+                size: previousOrphanedSize
               });
+
+              // Reset states after successful extraction
+              previousOrphanedText = "";
+              previousOrphanedSize = "";
+            }
+          }
+        } else {
+          // E. Orphaned Text Capture
+          if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]{3,}/.test(line)) {
+            if (pendingPrice !== null) {
+              // We have a waiting price, and we just found its text!
+              let correctedName = brandAutoCorrect(line);
+              let cleanedName = cleanItemName(correctedName);
+              let formattedName = trTitleCase(cleanedName);
+              
+              extractedItems.push({
+                name: formattedName,
+                price: pendingPrice,
+                size: previousOrphanedSize
+              });
+              
+              pendingPrice = null;
+              previousOrphanedSize = "";
+            } else {
+              previousOrphanedText = line;
             }
           }
         }
@@ -495,11 +566,13 @@ function Receipts() {
 
       // 🤖 AI Enrichment: Use Gemini 2.5 Flash-Lite to detect brand, type, and size
       let enrichedItems = matchedItems;
-      try {
-        setStatusText(t('common.msg_ai_enriching'));
-        enrichedItems = await enrichItemsWithGemini(matchedItems, '', language);
-      } catch (aiError) {
-        console.warn('AI enrichment failed, using raw OCR items:', aiError);
+      if (shouldAnalyzeWithLLM) {
+        try {
+          setStatusText(t('common.msg_ai_enriching'));
+          enrichedItems = await enrichItemsWithGemini(matchedItems, '', language);
+        } catch (aiError) {
+          console.warn('AI enrichment failed, using raw OCR items:', aiError);
+        }
       }
 
       return {
@@ -543,7 +616,7 @@ function Receipts() {
       setError("An error occurred while processing the files.");
     }
 
-  }, [user, privacyMode, t, existingProductNames]);
+  }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames]);
 
   const moveToNextOrClose = (currentQueue) => {
     const updatedQueue = [...currentQueue];
@@ -734,6 +807,20 @@ function Receipts() {
               />
               <label className="form-check-label text-muted" htmlFor="privacyModeCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
                 {t('common.privacy_toggle_label')}
+              </label>
+            </div>
+
+            <div className="form-check mt-2 d-flex justify-content-center align-items-center">
+              <input 
+                className="form-check-input me-2 mt-0" 
+                type="checkbox" 
+                id="analyzeWithLLMCheckbox" 
+                checked={shouldAnalyzeWithLLM} 
+                onChange={(e) => setShouldAnalyzeWithLLM(e.target.checked)} 
+                style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+              />
+              <label className="form-check-label text-muted" htmlFor="analyzeWithLLMCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                {t('common.analyze_with_llm')}
               </label>
             </div>
           </div>

@@ -97,16 +97,13 @@ export const enrichItemsWithGemini = async (items, storeName = '', language = 'e
 
   // Build the prompt helper variables
   const itemList = items.map((item, i) => `${i + 1}. "${item.name}" — ${item.price}`).join('\n');
-  const categoriesList = language === 'tr' ? suggestedCategoriesTR : suggestedCategoriesEN;
-  const categoriesStr = categoriesList.map(c => `"${c}"`).join(', ');
-
   const langInstruction = language === 'tr' 
-    ? `IMPORTANT: You must respond in Turkish. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Market", "Gıda" or "Diğer".`
-    : `IMPORTANT: You must respond in English. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Grocery", "Food" or "Other".`;
+    ? `IMPORTANT: You must respond in Turkish. Type categories must be in Turkish using generalized product types (e.g., "Süt Ürünü", "Atıştırmalık", "İçecek", "Temizlik", "Et", "Fırın", "Manav", "Kişisel Bakım", "Dondurulmuş"). Do NOT use specific types like "Peynir" or "Elma", use the general category instead.`
+    : `IMPORTANT: You must respond in English. Type categories must be in English using generalized product types (e.g., "Dairy", "Snack", "Beverage", "Cleaning", "Meat", "Bakery", "Produce", "Personal Care", "Frozen"). Do NOT use specific types like "Cheese" or "Apple", use the general category instead.`;
 
   const exampleResponse = language === 'tr'
-    ? `[{"index":1,"brand":"Ülker","type":"Market","size":""},{"index":2,"brand":"Sütaş","type":"Gıda","size":"1L"}]`
-    : `[{"index":1,"brand":"Ülker","type":"Grocery","size":""},{"index":2,"brand":"Sütaş","type":"Food","size":"1L"}]`;
+    ? `[{"index":1,"brand":"Ülker","type":"Atıştırmalık","size":""},{"index":2,"brand":"Sütaş","type":"Süt Ürünü","size":"1L"}]`
+    : `[{"index":1,"brand":"Ülker","type":"Snack","size":""},{"index":2,"brand":"Sütaş","type":"Dairy","size":"1L"}]`;
 
   // Build system instructions for Gemini prompt caching
   const systemInstructionText = `You are a product data extraction assistant for grocery/retail receipt items.
@@ -199,16 +196,14 @@ JSON:`;
     return items.map((item, idx) => {
       const enrichment = enrichedData.find(e => e.index === idx + 1);
       if (enrichment) {
-        // Safe case-insensitive matching for category/type to match app categories exactly
         const rawType = (enrichment.type || '').trim();
-        const matchedType = categoriesList.find(
-          c => c.toLowerCase() === rawType.toLowerCase()
-        ) || item.type || (language === 'tr' ? 'Diğer' : 'Other');
+        // Capitalize the first letter of each word
+        const formattedType = rawType.replace(/\b\w/g, l => l.toUpperCase());
 
         return {
           ...item,
           brand: (enrichment.brand || item.brand || '').trim(),
-          type: matchedType,
+          type: formattedType || item.type || '',
           size: (enrichment.size || item.size || '').trim(),
         };
       }

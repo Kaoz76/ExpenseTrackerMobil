@@ -61,6 +61,7 @@ export const en = {
     or_drag_drop: "or drag and drop",
     file_limits: "PNG, JPG or PDF (MAX. 10MB) - Up to 10 files",
     privacy_toggle_label: "Don't upload photo to cloud for privacy (Only data is saved)",
+    analyze_with_llm: "Analyze receipt details with AI (Brand, Type, Size)",
     processing: "Processing...",
     all_scanned_receipts: "All Scanned Receipts",
     store_name: "Store Name",
