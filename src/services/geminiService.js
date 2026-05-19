@@ -4,8 +4,71 @@
  * Enriches OCR-parsed receipt items with AI-detected brand, type, and size.
  * Uses the Gemini REST API directly (no SDK dependency needed).
  */
+import { suggestedCategoriesTR, suggestedCategoriesEN } from '../utils/categoryMap';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+
+/**
+ * Helper function to parse JSON from LLM output with extra resilience against syntax issues,
+ * trailing commas, missing brackets, or half-cut-off responses.
+ * 
+ * @param {string} text - Raw string output from LLM
+ * @returns {Array<Object>} Parsed items array
+ */
+const parseResilientJson = (text) => {
+  if (!text) return [];
+
+  // 1. Clean markdown formatting
+  let cleanText = text.replace(/^```json?\s*/i, '').replace(/```\s*$/i, '').trim();
+
+  // 2. Clean trailing commas in objects and arrays (e.g. {a: 1,} or [1,])
+  cleanText = cleanText.replace(/,\s*([\]}])/g, '$1');
+
+  // 3. Try standard JSON parsing
+  try {
+    const result = JSON.parse(cleanText);
+    if (Array.isArray(result)) return result;
+    if (result && typeof result === 'object') return [result];
+  } catch (err) {
+    console.warn('Standard JSON.parse failed, attempting resilient recovery...', err);
+  }
+
+  // 4. Fallback recovery: extract individual {...} JSON objects using regex
+  const list = [];
+  const objectMatches = cleanText.match(/\{[^{}]+\}/g);
+  if (objectMatches) {
+    for (const match of objectMatches) {
+      try {
+        // Clean trailing commas of the individual object
+        const cleanMatch = match.replace(/,\s*([\]}])/g, '$1');
+        const parsedObj = JSON.parse(cleanMatch);
+        if (parsedObj && typeof parsedObj === 'object') {
+          list.push(parsedObj);
+        }
+      } catch (parseError) {
+        // Regex field level extraction as the absolute last resort for corrupt individual objects
+        try {
+          const indexMatch = match.match(/"index"\s*:\s*(\d+)/);
+          const brandMatch = match.match(/"brand"\s*:\s*"([^"]*)"/);
+          const typeMatch = match.match(/"type"\s*:\s*"([^"]*)"/);
+          const sizeMatch = match.match(/"size"\s*:\s*"([^"]*)"/);
+          if (indexMatch) {
+            list.push({
+              index: parseInt(indexMatch[1], 10),
+              brand: brandMatch ? brandMatch[1] : '',
+              type: typeMatch ? typeMatch[1] : '',
+              size: sizeMatch ? sizeMatch[1] : ''
+            });
+          }
+        } catch (regexError) {
+          console.error('Failed to extract fields from corrupt item object:', match, regexError);
+        }
+      }
+    }
+  }
+
+  return list;
+};
 
 /**
  * Calls Gemini 2.5 Flash-Lite to detect brand, type, and size for each parsed item.
@@ -32,34 +95,41 @@ export const enrichItemsWithGemini = async (items, storeName = '', language = 'e
     return [];
   }
 
-  // Build the prompt with item list
+  // Build the prompt helper variables
   const itemList = items.map((item, i) => `${i + 1}. "${item.name}" — ${item.price}`).join('\n');
+  const categoriesList = language === 'tr' ? suggestedCategoriesTR : suggestedCategoriesEN;
+  const categoriesStr = categoriesList.map(c => `"${c}"`).join(', ');
 
   const langInstruction = language === 'tr' 
-    ? 'IMPORTANT: You must respond in Turkish. Type categories must be in Turkish using generalized terms (e.g., "Süt Ürünü", "Atıştırmalık", "İçecek", "Temizlik", "Et", "Fırın", "Manav", "Kişisel Bakım", "Dondurulmuş"). Do NOT use specific types like "Peynir" or "Elma", use the general category instead.'
-    : 'IMPORTANT: You must respond in English. Type categories must be in English using generalized terms (e.g., "Dairy", "Snack", "Beverage", "Cleaning", "Meat", "Bakery", "Produce", "Personal Care", "Frozen"). Do NOT use specific types like "Cheese" or "Apple", use the general category instead.';
+    ? `IMPORTANT: You must respond in Turkish. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Market", "Gıda" or "Diğer".`
+    : `IMPORTANT: You must respond in English. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Grocery", "Food" or "Other".`;
 
-  const prompt = `You are a product data extraction assistant for grocery/retail receipt items.
-Given the following list of product names parsed from a receipt${storeName ? ` at "${storeName}"` : ''}, detect the **brand**, **type** (product category), and **size** (weight/volume like "1L", "500g", "200ml", "1kg", etc.) for each item.
+  const exampleResponse = language === 'tr'
+    ? `[{"index":1,"brand":"Ülker","type":"Market","size":""},{"index":2,"brand":"Sütaş","type":"Gıda","size":"1L"}]`
+    : `[{"index":1,"brand":"Ülker","type":"Grocery","size":""},{"index":2,"brand":"Sütaş","type":"Food","size":"1L"}]`;
+
+  // Build system instructions for Gemini prompt caching
+  const systemInstructionText = `You are a product data extraction assistant for grocery/retail receipt items.
+Given a list of product names parsed from a receipt${storeName ? ` at "${storeName}"` : ''}, detect the brand, type (product category), and size (weight/volume) for each item.
 
 ${langInstruction}
 
-Items:
-${itemList}
-
 Rules:
-- If the brand is embedded in the product name (e.g., "Ülker Çikolata"), extract it.
-- If size/weight info is in the name (e.g., "Süt 1L"), extract it.
+- The "type" field must EXACTLY match one of the predefined categories listed above.
+- If the brand is embedded in the product name (e.g., "Ülker Çikolata"), extract it. Brands must be returned in Title Case (e.g., "Ülker", "Sütaş", "Coca-Cola" instead of "ÜLKER" or "sutas").
+- For private-label items from chain stores (e.g., BİM's "Dost" or "Saban", A101's "Birşah"), extract the private-label brand name (e.g., "Dost", "Birşah", "Saban") as the brand. If it's a generic store brand like "Migros Süt", use "Migros".
+- Normalize the "size" field using standard lowercase units: "g" for grams, "ml" for milliliters, "L" for liters, "kg" for kilograms. Remove any spaces between the number and unit (e.g., "500g", "250ml", "1L", "1.5kg" instead of "500 GR", "250 ml", "1 lt").
 - If you cannot determine a field, return an empty string "".
-- Product types should be generalized category labels, NOT specific product names.
 - Respond ONLY with a valid JSON array, no markdown, no explanation.
 - Each element must have: {"index": <number>, "brand": "<string>", "type": "<string>", "size": "<string>"}
 - The index is 1-based matching the item number above.
 
 Example response:
-[{"index":1,"brand":"Ülker","type":"Snack","size":""},{"index":2,"brand":"Sütaş","type":"Dairy","size":"1L"}]
+${exampleResponse}
 
 JSON:`;
+
+  const userContent = `Items:\n${itemList}`;
 
   try {
     const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
@@ -70,9 +140,14 @@ JSON:`;
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: prompt,
+            text: userContent,
           }],
         }],
+        systemInstruction: {
+          parts: [{
+            text: systemInstructionText,
+          }],
+        },
         generationConfig: {
           temperature: 0.1,
           maxOutputTokens: 2048,
@@ -107,13 +182,11 @@ JSON:`;
       }));
     }
 
-    // Parse the JSON response (strip any markdown wrapping if present)
-    let enrichedData;
-    try {
-      const cleanJson = generatedText.replace(/^```json?\s*/i, '').replace(/```\s*$/i, '').trim();
-      enrichedData = JSON.parse(cleanJson);
-    } catch (parseError) {
-      console.error('Failed to parse Gemini response:', parseError, generatedText);
+    // Resiliently parse the JSON response
+    const enrichedData = parseResilientJson(generatedText);
+
+    if (!enrichedData || enrichedData.length === 0) {
+      console.warn('Failed to recover any enriched items from Gemini response:', generatedText);
       return items.map(item => ({
         ...item,
         brand: item.brand || '',
@@ -126,10 +199,16 @@ JSON:`;
     return items.map((item, idx) => {
       const enrichment = enrichedData.find(e => e.index === idx + 1);
       if (enrichment) {
+        // Safe case-insensitive matching for category/type to match app categories exactly
+        const rawType = (enrichment.type || '').trim();
+        const matchedType = categoriesList.find(
+          c => c.toLowerCase() === rawType.toLowerCase()
+        ) || item.type || (language === 'tr' ? 'Diğer' : 'Other');
+
         return {
           ...item,
           brand: (enrichment.brand || item.brand || '').trim(),
-          type: (enrichment.type || item.type || '').trim(),
+          type: matchedType,
           size: (enrichment.size || item.size || '').trim(),
         };
       }
