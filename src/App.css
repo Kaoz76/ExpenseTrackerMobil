@@ -709,6 +709,23 @@ body::after {
   color: #ea5358;
 }
 
+/* Mobilde Quick Link kartlarını kompakt yap */
+@media (max-width: 576px) {
+  .magic-link-card {
+    min-height: 75px;
+    padding: 2px;
+    border-radius: 0.75rem;
+  }
+  .magic-link-info {
+    padding: 0.5rem 0.3rem;
+    border-radius: 0.6rem;
+  }
+  .magic-link-title {
+    font-size: 0.7rem;
+    letter-spacing: 0;
+  }
+}
+
 /* ========================================
    BUTON ANİMASYONLARI
    ======================================== */
