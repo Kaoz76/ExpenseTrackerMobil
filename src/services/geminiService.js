@@ -112,7 +112,8 @@ Use these guidelines to choose the correct category:
 - "Kozmetik" (Cosmetics): Makyaj, cilt bakımı, parfüm, şampuan, saç bakım ürünleri, kişisel bakım ürünleri.
 - "Yemek" (Dining): Prepared meals, hot food, fast food, takeaways, or restaurant orders (e.g., pizza, burgers, kebab, sushi, cooked dishes, soup).
 - "Kafe" (Cafe): Coffee, tea cups, pastries, cookies, or hot/cold cafe-purchased beverages.
-- "Restoran" (Restaurant): Sit-down dining bills or restaurant invoices.`
+- "Restoran" (Restaurant): Sit-down dining bills or restaurant invoices.
+- "Vergiler" (Taxes): Sales tax, state tax, KDV, VAT, or local tax line items.`
     : `IMPORTANT: You must respond in English. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Grocery", "Food" or "Other".
 
 Use these guidelines to choose the correct category:
@@ -125,7 +126,8 @@ Use these guidelines to choose the correct category:
 - "Cosmetics": Makeup, skincare, perfume, shampoo, hair care, personal care products.
 - "Dining": Prepared meals, hot food, fast food, takeaways, or restaurant orders (e.g., pizza, burgers, kebab, sushi, cooked dishes, soup).
 - "Cafe": Coffee, tea cups, pastries, cookies, or hot/cold cafe-purchased beverages.
-- "Restaurant": Sit-down dining bills or restaurant invoices.`;
+- "Restaurant": Sit-down dining bills or restaurant invoices.
+- "Taxes": Sales tax, state tax, VAT, KDV, or local tax line items.`;
 
   const exampleResponse = language === 'tr'
     ? `[{"index":1,"brand":"Ülker","type":"Gıda"},{"index":2,"brand":"Ariel","type":"Market"},{"index":3,"brand":"Marlboro","type":"Alkol & Tütün"},{"index":4,"brand":"Royal Canin","type":"Evcil Hayvan"}]`
@@ -141,7 +143,8 @@ Rules:
 - The "type" field must EXACTLY match one of the predefined categories listed above.
 - For alcohol and tobacco products, set the category to "Alkol & Tütün" (or "Alcohol & Tobacco").
 - Plastic bags ("POŞET", "PLASTIC BAG") or bottle/can deposits ("DEPOZİTO", "DEPOSIT") must have category set to "Diğer" (or "Other") and brand left empty "".
-- If the item name is an OCR reading error, gibberish (e.g., "12839127", "AJSHDK"), or represents receipt metadata like a total or tax line ("TOPLAM", "KDV", "TOTAL", "TAX", "SUBTOTAL"), set the category to "Diğer" (or "Other") and brand to empty "".
+- If the item name represents tax line items ("KDV", "TAX", "SALES TAX"), set the category to "Vergiler" (or "Taxes") and brand to empty "".
+- If the item name is an OCR reading error, gibberish (e.g., "12839127", "AJSHDK"), or represents receipt metadata like a total line ("TOPLAM", "TOTAL", "SUBTOTAL"), set the category to "Diğer" (or "Other") and brand to empty "".
 - If the brand is embedded in the product name (e.g., "Ülker Çikolata"), extract it. Brands must be returned in Title Case (e.g., "Ülker", "Sütaş", "Coca-Cola" instead of "ÜLKER" or "sutas").
 - For private-label items from chain stores (e.g., BİM's "Dost" or "Saban", A101's "Birşah"), extract the private-label brand name (e.g., "Dost", "Birşah", "Saban") as the brand. If it's a generic store brand like "Migros Süt", use "Migros".
 - If you cannot determine a field, return an empty string "".

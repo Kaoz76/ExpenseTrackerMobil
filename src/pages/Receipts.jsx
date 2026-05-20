@@ -205,13 +205,44 @@ function Receipts() {
     const normalizedText = trToLower(text.replace(/\r/g, '\n'));
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
+    // Currency detection from OCR text
+    let detectedCurrency = null;
+    let tryCount = (normalizedText.match(/\b(tl|try|₺|türk\s*lirası|turk\s*lirasi)\b/g) || []).length;
+    let usdCount = (normalizedText.match(/\b(usd|dollar|\$)\b/g) || []).length;
+    let eurCount = (normalizedText.match(/\b(eur|euro|€)\b/g) || []).length;
+    let gbpCount = (normalizedText.match(/\b(gbp|pound|£)\b/g) || []).length;
+
+    // Check symbols without boundaries too (since OCR sometimes stitches symbols to numbers like $12.34 or 12.34TL or ₺50)
+    tryCount += (normalizedText.match(/[₺]/g) || []).length;
+    tryCount += (normalizedText.match(/\b\d+[.,]\d{2}tl\b/gi) || []).length;
+    usdCount += (normalizedText.match(/[\$]/g) || []).length;
+    eurCount += (normalizedText.match(/[€]/g) || []).length;
+    gbpCount += (normalizedText.match(/[£]/g) || []).length;
+
+    if (tryCount > 0 || usdCount > 0 || eurCount > 0 || gbpCount > 0) {
+      const maxCount = Math.max(tryCount, usdCount, eurCount, gbpCount);
+      if (maxCount === tryCount) detectedCurrency = 'TRY';
+      else if (maxCount === usdCount) detectedCurrency = 'USD';
+      else if (maxCount === eurCount) detectedCurrency = 'EUR';
+      else if (maxCount === gbpCount) detectedCurrency = 'GBP';
+    }
+
+    const finalCurrency = detectedCurrency || currency?.code || 'USD';
+
     for (let line of lines) {
       if (/[Vv][Aa][Tt]|gbp|£|gross|net|tax\s*invoice/i.test(line)) ukTaxScore++;
       if (/\b(sales\s*tax|state\s*tax|usd|\$)\b/i.test(line)) usTaxScore++;
     }
 
-    // Determine tax system context: Turkish KDV and UK VAT are both tax-inclusive.
-    const isUSStyleTax = (language !== 'tr') && (ukTaxScore <= usTaxScore);
+    // Determine tax system context: USD uses US-style tax-exclusive; GBP/EUR/TRY use tax-inclusive.
+    let isUSStyleTax = false;
+    if (finalCurrency === 'USD') {
+      isUSStyleTax = true;
+    } else if (finalCurrency === 'GBP' || finalCurrency === 'EUR' || finalCurrency === 'TRY') {
+      isUSStyleTax = false;
+    } else {
+      isUSStyleTax = (language !== 'tr') && (ukTaxScore <= usTaxScore);
+    }
 
     // 1. Setup regexes outside the loop
     const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
@@ -463,7 +494,7 @@ function Receipts() {
       }
     }
 
-    return { total: finalTotal, items: extractedItems };
+    return { total: finalTotal, items: extractedItems, currency: finalCurrency };
   };
 
   // DOSYA YÜKLEME VE OCR
@@ -662,7 +693,8 @@ function Receipts() {
         date: new Date().toLocaleDateString(),
         isManual: false,
         items: enrichedItems,
-        totalPrice: extractedData.total || 0
+        totalPrice: extractedData.total || 0,
+        currency: extractedData.currency || currency?.code || 'USD'
       };
     };
 

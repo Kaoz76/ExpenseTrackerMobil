@@ -104,6 +104,12 @@ const categoryDictionary = {
   'sigara': { icon: '🚬', color: '#64748b' },
   'cigarette': { icon: '🚬', color: '#64748b' },
 
+  // Vergiler
+  'vergiler': { icon: '💸', color: '#f43f5e' },
+  'taxes': { icon: '💸', color: '#f43f5e' },
+  'vergi': { icon: '💸', color: '#f43f5e' },
+  'tax': { icon: '💸', color: '#f43f5e' },
+
   // Diğer ve Bilinmeyen
   'diğer': { icon: '📦', color: '#94a3b8' },
   'other': { icon: '📦', color: '#94a3b8' },
@@ -165,7 +171,7 @@ export const suggestedCategoriesTR = [
   'Sağlık', 'Eczane', 'Kozmetik',
   'Eğlence', 'Abonelik', 'Oyun', 'Hobi',
   'Eğitim', 'Kitap', 'Kırtasiye',
-  'Alkol & Tütün', 'Evcil Hayvan', 'Bebek', 'Spor', 'Diğer'
+  'Alkol & Tütün', 'Evcil Hayvan', 'Bebek', 'Spor', 'Vergiler', 'Diğer'
 ].sort();
 
 // İngilizce kategori isimleri
@@ -178,7 +184,7 @@ export const suggestedCategoriesEN = [
   'Health', 'Pharmacy', 'Cosmetics',
   'Entertainment', 'Subscription', 'Gaming', 'Hobby',
   'Education', 'Books', 'Stationery',
-  'Alcohol & Tobacco', 'Pet', 'Baby', 'Sports', 'Other'
+  'Alcohol & Tobacco', 'Pet', 'Baby', 'Sports', 'Taxes', 'Other'
 ].sort();
 
 // TR ↔ EN Kategori Çeviri Haritası
@@ -216,6 +222,7 @@ export const categoryTranslationMap = {
   'Evcil Hayvan': 'Pet',
   'Bebek': 'Baby',
   'Spor': 'Sports',
+  'Vergiler': 'Taxes',
   'Diğer': 'Other',
   // EN -> TR
   'Grocery': 'Market',
@@ -250,5 +257,53 @@ export const categoryTranslationMap = {
   'Pet': 'Evcil Hayvan',
   'Baby': 'Bebek',
   'Sports': 'Spor',
+  'Taxes': 'Vergiler',
   'Other': 'Diğer',
+};
+
+/**
+ * Normalizes and localizes any category name based on target language.
+ * Always resolves Alcohol & Tobacco and Alkol & Tütün to the same category.
+ */
+export const localizeCategory = (categoryName, lang = 'en') => {
+  if (!categoryName) return lang === 'tr' ? 'Diğer' : 'Other';
+
+  const trimmed = categoryName.trim();
+
+  // Special Check for Alcohol & Tobacco variants
+  const isAlcoholTobacco = /^(alcohol\s*&\s*tobacco|alkol\s*&\s*tütün|alkol|tütün|alcohol|tobacco)$/i.test(trimmed);
+  if (isAlcoholTobacco) {
+    return lang === 'tr' ? 'Alkol & Tütün' : 'Alcohol & Tobacco';
+  }
+
+  // Check if it matches exactly
+  if (lang === 'tr') {
+    if (suggestedCategoriesTR.includes(trimmed)) {
+      return trimmed;
+    }
+    if (categoryTranslationMap[trimmed]) {
+      return categoryTranslationMap[trimmed];
+    }
+  } else {
+    if (suggestedCategoriesEN.includes(trimmed)) {
+      return trimmed;
+    }
+    if (categoryTranslationMap[trimmed]) {
+      return categoryTranslationMap[trimmed];
+    }
+  }
+
+  // Case-insensitive lookup
+  const lower = trimmed.toLowerCase();
+  for (const [tr, en] of Object.entries(categoryTranslationMap)) {
+    if (tr.toLowerCase() === lower) {
+      return lang === 'tr' ? tr : en;
+    }
+    if (en.toLowerCase() === lower) {
+      return lang === 'tr' ? tr : en;
+    }
+  }
+
+  // Fallback to title case
+  return trimmed;
 };

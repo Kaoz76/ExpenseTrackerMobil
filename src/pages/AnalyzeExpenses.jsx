@@ -10,7 +10,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { getCategoryInfo } from '../utils/categoryMap';
+import { getCategoryInfo, localizeCategory } from '../utils/categoryMap';
 
 function AnalyzeExpenses() {
   const { user } = useAuth();
@@ -193,18 +193,25 @@ function AnalyzeExpenses() {
                 const itemPrice = convertPrice(rawItemPrice, data.currency || currency.code || 'USD', currency.code);
                 if (type.trim()) {
                   hasTypedItems = true;
-                  if (!categoryMap[type]) categoryMap[type] = 0;
-                  categoryMap[type] += itemPrice;
+                  const localizedType = localizeCategory(type, language);
+                  if (!categoryMap[localizedType]) categoryMap[localizedType] = 0;
+                  categoryMap[localizedType] += itemPrice;
                 }
               });
               // If no items had a type, categorize by source
               if (!hasTypedItems) {
-                const catName = data.isManual ? "Manual Entry" : "Scanned";
+                const catLabel = data.isManual 
+                  ? (language === 'tr' ? 'Manuel Giriş' : 'Manual Entry') 
+                  : (language === 'tr' ? 'Taranmış' : 'Scanned');
+                const catName = localizeCategory(catLabel, language);
                 if (!categoryMap[catName]) categoryMap[catName] = 0;
                 categoryMap[catName] += price;
               }
             } else {
-              const catName = data.isManual ? "Manual Entry" : "Scanned";
+              const catLabel = data.isManual 
+                ? (language === 'tr' ? 'Manuel Giriş' : 'Manual Entry') 
+                : (language === 'tr' ? 'Taranmış' : 'Scanned');
+              const catName = localizeCategory(catLabel, language);
               if (!categoryMap[catName]) categoryMap[catName] = 0;
               categoryMap[catName] += price;
             }
@@ -247,8 +254,9 @@ function AnalyzeExpenses() {
 
             // Add as a category
             const subsLabel = t('nav.subscriptions') || "Subscriptions";
-            if (!categoryMap[subsLabel]) categoryMap[subsLabel] = 0;
-            categoryMap[subsLabel] += subsTotal;
+            const localizedSubsLabel = localizeCategory(subsLabel, language);
+            if (!categoryMap[localizedSubsLabel]) categoryMap[localizedSubsLabel] = 0;
+            categoryMap[localizedSubsLabel] += subsTotal;
           }
         }
 

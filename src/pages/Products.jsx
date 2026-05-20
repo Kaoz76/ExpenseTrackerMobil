@@ -6,14 +6,14 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { getCategoryInfo } from '../utils/categoryMap';
+import { getCategoryInfo, localizeCategory } from '../utils/categoryMap';
 
 import { trToLower } from '../utils/stringUtils';
 
 function Products() {
   const { user } = useAuth();
   const { formatPrice, currency } = useCurrency();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,7 +53,7 @@ function Products() {
                   id: uniqueKey,
                   name: safeName,
                   brand: safeBrand,
-                  type: item.type || 'Other',
+                  type: localizeCategory(item.type || 'Other', language),
                   latestPrice: Number(item.price) || 0,
                   latestPriceCurrency: data.currency || currency?.code || 'USD',
                   latestDate: data.date,
@@ -82,7 +82,7 @@ function Products() {
       setProducts([]);
       setLoading(false);
     }
-  }, [user, currency?.code]);
+  }, [user, currency?.code, language]);
 
   // 🔥 DÜZELTME 2 & 3: useMemo ile performans artışı, çökme koruması ve historyCount'a göre sıralama
   const filteredAndSortedProducts = useMemo(() => {
@@ -151,7 +151,9 @@ function Products() {
         <div className="row">
           {/* 🔥 DÜZELTME: filteredProducts yerine optimize ettiğimiz filteredAndSortedProducts kullanıyoruz */}
           {filteredAndSortedProducts.map((product) => {
-            const displayType = product.type === 'Other' ? t('common.category_other') : product.type;
+            const displayType = product.type === 'Other' || product.type === 'Diğer'
+              ? t('common.category_other')
+              : localizeCategory(product.type, language);
             const catInfo = getCategoryInfo(displayType);
             return (
             <div key={product.id} className="col-md-6 col-lg-4 col-xl-3 mb-4">

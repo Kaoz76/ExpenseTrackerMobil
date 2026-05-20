@@ -8,7 +8,7 @@ import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt, FaArrowDown 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
 import { formatDateTime } from '../utils/dateFormatter';
-import { suggestedCategoriesTR, suggestedCategoriesEN } from '../utils/categoryMap';
+import { suggestedCategoriesTR, suggestedCategoriesEN, localizeCategory } from '../utils/categoryMap';
 import { suggestedBrands } from '../data/brandDictionary';
 
 function ManualEntry() {
@@ -155,7 +155,7 @@ function ManualEntry() {
     try {
       const formattedProducts = products.map(p => ({
         ...p,
-        type: p.type ? p.type.trim().charAt(0).toUpperCase() + p.type.trim().slice(1).toLowerCase() : '',
+        type: p.type ? localizeCategory(p.type, language) : '',
         brand: p.brand ? p.brand.trim().charAt(0).toUpperCase() + p.brand.trim().slice(1) : '',
         price: Math.abs(parseFloat(p.price || 0)) // Negatif değerlerin her ihtimale karşı mutlak değerini al
       }));
