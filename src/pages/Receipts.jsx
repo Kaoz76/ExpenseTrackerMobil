@@ -236,6 +236,23 @@ function Receipts() {
 
     let possibleTotals = [];
     let extractedItems = [];
+    let previousOrphanedText = "";
+    let previousOrphanedSize = "";
+    let pendingPrice = null;
+
+    // PRE-PASS: Find and isolate weight information globally first
+    let globalCachedSize = "";
+    
+    // Extract a global weight if a multiplier line exists anywhere in the text
+    for (let line of lines) {
+      const multiMatch = line.match(multiplierRegex);
+      if (multiMatch) {
+        let val = multiMatch[1].replace(',', '.');
+        let unit = multiMatch[2].toUpperCase().replace('KC', 'KG');
+        globalCachedSize = `${val} ${unit}`;
+        break;
+      }
+    }
 
     // DEBUG: Log the parsed lines to see the OCR output structure
     console.log("OCR Extracted Lines:", lines);
@@ -251,37 +268,23 @@ function Receipts() {
       return (!isNaN(num) && num > 0) ? num : null;
     };
 
-    let previousOrphanedText = "";
-    let previousOrphanedSize = "";
-    let pendingPrice = null; // NEW: Holds prices that arrive before their text
-
+    // MAIN PASS: Process prices and structural items
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // A. Check for Multiplier Line (Extract Size & Skip)
-      const multiMatch = line.match(multiplierRegex);
-      if (multiMatch) {
-        const rawSize = multiMatch[1] + multiMatch[2];
-        const extractedSize = normalizeSize(rawSize);
-
-        // Retroactive stitch: If the item was just parsed on the previous line, attach it backward
-        if (extractedItems.length > 0) {
-          extractedItems[extractedItems.length - 1].size = extractedSize;
-        } else {
-          // Forward stitch: Save it for the next valid item
-          previousOrphanedSize = extractedSize;
-        }
+      // Skip multiplier lines completely now that we cached the size
+      if (multiplierRegex.test(line)) {
         continue;
       }
 
-      // B. Check for Exclusions (Skip immediately)
+      // Skip tax and point exclusions
       if (excludeRegex.test(line)) {
         continue;
       }
 
       const hasKeyword = keywordRegex.test(line) || isFuzzyMatch(line, fuzzyKeywords);
 
-      // C. Process Totals
+      // Process Totals
       if (hasKeyword) {
         let matches = line.match(priceRegex);
         if (matches) {
@@ -290,124 +293,110 @@ function Receipts() {
             if (parsed) possibleTotals.push(parsed);
           });
         }
-        if (i + 1 < lines.length) {
-          const nextLine = lines[i + 1];
-          if (!excludeRegex.test(nextLine)) {
-            let nextLineMatches = nextLine.match(priceRegex);
-            if (nextLineMatches) {
-              nextLineMatches.forEach(m => {
-                const parsed = cleanAndParseNumber(m);
-                if (parsed) possibleTotals.push(parsed);
-              });
+        continue;
+      }
+
+      // Process Items
+      let matches = line.match(priceRegex);
+      if (matches && matches.length > 0) {
+        const lastMatch = matches[matches.length - 1];
+        let parsedPrice = cleanAndParseNumber(lastMatch);
+
+        if (parsedPrice) {
+          // FIX: Detect if the raw match string or the immediate prefix contains a negative sign
+          const isDiscountLine = /(indirim|ndirim|iskonto)/i.test(line) || lastMatch.includes('-');
+          if (isDiscountLine) {
+            parsedPrice = -Math.abs(parsedPrice);
+          }
+
+          let namePart = line.substring(0, line.lastIndexOf(lastMatch)).trim();
+          
+          // Check if line name is pure OCR junk/percentages
+          let isGarbageName = namePart.length === 0 || namePart.length <= 4 || /^[%xX\d\s*#-]+$/.test(namePart);
+
+          if (isGarbageName) {
+            if (previousOrphanedText) {
+              namePart = previousOrphanedText;
+              isGarbageName = false;
+            } else {
+              pendingPrice = parsedPrice;
+              continue;
             }
+          }
+
+          if (!isGarbageName && namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
+            // 1. Extract inline size if present
+            let itemSize = "";
+            const sizeMatch = namePart.match(itemSizeRegex);
+            if (sizeMatch) {
+              itemSize = normalizeSize(sizeMatch[0]);
+              namePart = namePart.replace(sizeMatch[0], '').trim();
+            }
+
+            // 2. IMPROVED SANITIZATION: Aggressively target percent/multiplier tokens anywhere in the string
+            let cleaned = namePart
+              .replace(/%\s*\d{1,2}\b/g, '')      // Clear "%1", "% 1"
+              .replace(/\b[xX\s*#-]+\d+\b/g, '')  // Clear "x1", "*1"
+              .replace(/\b\d+\s*[xX]\b/g, '')     // Clear "1x"
+              .replace(/[*#]/g, ' ')               // Strip stray OCR characters
+              .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '') // Strip trailing units
+              .replace(/\s+/g, ' ')               // Collapse multiple spaces
+              .trim();
+
+            let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
+            
+            // Match cached size if this is our weighed item (e.g. Patates)
+            let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
+
+            extractedItems.push({
+              name: formattedName,
+              price: parsedPrice,
+              size: finalSize || previousOrphanedSize
+            });
+
+            previousOrphanedText = "";
+            if (finalSize === globalCachedSize) globalCachedSize = ""; // Consume it
           }
         }
-      }
-      // D. Process Items
-      else {
-        let matches = line.match(priceRegex);
-        if (matches && matches.length > 0) {
-          const lastMatch = matches[matches.length - 1];
-          let parsedPrice = cleanAndParseNumber(lastMatch);
-
-          if (parsedPrice) {
-            let namePart = line.substring(0, line.lastIndexOf(lastMatch)).replace(/[*_-]/g, ' ').trim();
-            namePart = namePart.replace(/%?\s*\d*\s*x?$/i, '').trim();
-
-            let isGarbageName = namePart.length === 0 || namePart.length <= 4 || /^[%xX\d\s]+$/.test(namePart);
-
-            if (isGarbageName) {
-              if (previousOrphanedText) {
-                // Forward Stitch (Text came first)
-                namePart = namePart.length === 0 ? previousOrphanedText : previousOrphanedText + ' ' + namePart;
-                isGarbageName = false;
-              } else {
-                // Reverse Stitch (Price came first) - Save it and wait for the text line
-                pendingPrice = parsedPrice;
-                continue; // Skip pushing for now
-              }
+      } else {
+        // Orphaned Text Capture (Backward stitching link)
+        if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]{3,}/.test(line)) {
+          if (pendingPrice !== null) {
+            let itemPrice = pendingPrice;
+            const isDiscountLine = /(indirim|ndirim|iskonto)/i.test(line);
+            if (isDiscountLine) {
+              itemPrice = -Math.abs(itemPrice);
             }
 
-            if (!isGarbageName && namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
-              // 1. Extract and strip size
-              let nameWithoutSize = namePart;
-              let itemSize = previousOrphanedSize || "";
-
-              const sizeMatch = namePart.match(itemSizeRegex);
-              if (sizeMatch) {
-                if (!itemSize) {
-                  itemSize = normalizeSize(sizeMatch[0]);
-                }
-                nameWithoutSize = namePart.replace(sizeMatch[0], '').trim();
-              }
-
-              // 2. Strip trailing weight/unit indicators (e.g. "KG", "GR", "ADET" at the end of the string)
-              nameWithoutSize = nameWithoutSize.replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b\s*$/i, '').trim();
-
-              // 3. Strip KDV percentages (%1, %8, %18) and multipliers (x1, X1, etc.)
-              nameWithoutSize = nameWithoutSize.replace(/[%*]\s?\d{1,2}/g, '');
-              nameWithoutSize = nameWithoutSize.replace(/\b[xX]\s?\d+\b/g, '');
-              nameWithoutSize = nameWithoutSize.replace(/\b\d+\s?[xX]\b/g, '');
-
-              let correctedName = brandAutoCorrect(nameWithoutSize);
-              let cleanedName = cleanItemName(correctedName);
-              let formattedName = trTitleCase(cleanedName);
-
-              if (/(indirim|ndirim|iskonto)/i.test(line)) {
-                parsedPrice = -Math.abs(parsedPrice);
-              }
-
-              extractedItems.push({
-                name: formattedName,
-                price: parsedPrice,
-                size: itemSize
-              });
-
-              // Reset states after successful extraction
-              previousOrphanedText = "";
-              previousOrphanedSize = "";
+            let itemSize = "";
+            const sizeMatch = line.match(itemSizeRegex);
+            if (sizeMatch) {
+              itemSize = normalizeSize(sizeMatch[0]);
             }
-          }
-        } else {
-          // E. Orphaned Text Capture
-          if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]{3,}/.test(line)) {
-            if (pendingPrice !== null) {
-              // We have a waiting price, and we just found its text!
-              // 1. Extract and strip size
-              let nameWithoutSize = line;
-              let itemSize = previousOrphanedSize || "";
 
-              const sizeMatch = line.match(itemSizeRegex);
-              if (sizeMatch) {
-                if (!itemSize) {
-                  itemSize = normalizeSize(sizeMatch[0]);
-                }
-                nameWithoutSize = line.replace(sizeMatch[0], '').trim();
-              }
+            // IMPROVED SANITIZATION: Aggressively target percent/multiplier tokens anywhere in the string
+            let cleaned = line
+              .replace(/%\s*\d{1,2}\b/g, '')      // Clear "%1", "% 1"
+              .replace(/\b[xX\s*#-]+\d+\b/g, '')  // Clear "x1", "*1"
+              .replace(/\b\d+\s*[xX]\b/g, '')     // Clear "1x"
+              .replace(/[*#]/g, ' ')               // Strip stray OCR characters
+              .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '') // Strip trailing units
+              .replace(/\s+/g, ' ')               // Collapse multiple spaces
+              .trim();
 
-              // 2. Strip trailing weight/unit indicators
-              nameWithoutSize = nameWithoutSize.replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b\s*$/i, '').trim();
+            let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
+            let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
-              // 3. Strip KDV percentages and multipliers
-              nameWithoutSize = nameWithoutSize.replace(/[%*]\s?\d{1,2}/g, '');
-              nameWithoutSize = nameWithoutSize.replace(/\b[xX]\s?\d+\b/g, '');
-              nameWithoutSize = nameWithoutSize.replace(/\b\d+\s?[xX]\b/g, '');
+            extractedItems.push({
+              name: formattedName,
+              price: itemPrice,
+              size: finalSize
+            });
 
-              let correctedName = brandAutoCorrect(nameWithoutSize);
-              let cleanedName = cleanItemName(correctedName);
-              let formattedName = trTitleCase(cleanedName);
-
-              extractedItems.push({
-                name: formattedName,
-                price: pendingPrice,
-                size: itemSize
-              });
-
-              pendingPrice = null;
-              previousOrphanedSize = "";
-            } else {
-              previousOrphanedText = line;
-            }
+            pendingPrice = null;
+            if (finalSize === globalCachedSize) globalCachedSize = "";
+          } else {
+            previousOrphanedText = line;
           }
         }
       }
