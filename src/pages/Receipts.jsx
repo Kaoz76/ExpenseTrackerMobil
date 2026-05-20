@@ -212,6 +212,28 @@ function Receipts() {
     const multiplierRegex = /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX*]|tl\/(?:kg|gr|kc)|tg|[\d.,]+(?:\s*tg)?)/i;
     const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
 
+    // SIZE extraction regex
+    const itemSizeRegex = /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b/i;
+
+    // Helper to normalize sizes
+    const normalizeSize = (rawSize) => {
+      if (!rawSize) return "";
+      const match = rawSize.match(/^(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)$/i);
+      if (!match) return rawSize.trim().toUpperCase().replace('KC', 'KG');
+      
+      let val = match[1].replace(',', '.');
+      let unit = match[2].toLowerCase();
+      
+      if (unit === 'gr') unit = 'g';
+      if (unit === 'lt') unit = 'l';
+      if (unit === 'kc') unit = 'kg';
+      if (unit === 'ad') unit = 'adet';
+      if (unit === 'l') {
+        return `${val}L`;
+      }
+      return `${val}${unit}`;
+    };
+
     let possibleTotals = [];
     let extractedItems = [];
     
@@ -239,10 +261,11 @@ function Receipts() {
       // A. Check for Multiplier Line (Extract Size & Skip)
       const multiMatch = line.match(multiplierRegex);
       if (multiMatch) {
-        const extractedSize = multiMatch[1] + ' ' + multiMatch[2].toUpperCase().replace('KC', 'KG');
+        const rawSize = multiMatch[1] + multiMatch[2];
+        const extractedSize = normalizeSize(rawSize);
         
         // Retroactive stitch: If the item was just parsed on the previous line, attach it backward
-        if (extractedItems.length > 0 && !extractedItems[extractedItems.length - 1].size) {
+        if (extractedItems.length > 0) {
            extractedItems[extractedItems.length - 1].size = extractedSize;
         } else {
            // Forward stitch: Save it for the next valid item
@@ -314,10 +337,19 @@ function Receipts() {
                 parsedPrice = -Math.abs(parsedPrice);
               }
 
+              // Extract size from namePart if previousOrphanedSize is empty
+              let itemSize = previousOrphanedSize || "";
+              if (!itemSize) {
+                const sizeMatch = namePart.match(itemSizeRegex);
+                if (sizeMatch) {
+                  itemSize = normalizeSize(sizeMatch[0]);
+                }
+              }
+
               extractedItems.push({
                 name: formattedName,
                 price: parsedPrice,
-                size: previousOrphanedSize
+                size: itemSize
               });
 
               // Reset states after successful extraction
@@ -334,10 +366,19 @@ function Receipts() {
               let cleanedName = cleanItemName(correctedName);
               let formattedName = trTitleCase(cleanedName);
               
+              // Extract size from line if previousOrphanedSize is empty
+              let itemSize = previousOrphanedSize || "";
+              if (!itemSize) {
+                const sizeMatch = line.match(itemSizeRegex);
+                if (sizeMatch) {
+                  itemSize = normalizeSize(sizeMatch[0]);
+                }
+              }
+
               extractedItems.push({
                 name: formattedName,
                 price: pendingPrice,
-                size: previousOrphanedSize
+                size: itemSize
               });
               
               pendingPrice = null;

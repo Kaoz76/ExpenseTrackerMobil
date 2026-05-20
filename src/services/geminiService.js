@@ -5,8 +5,7 @@
  * Uses the Gemini REST API directly (no SDK dependency needed).
  */
 import { suggestedCategoriesTR, suggestedCategoriesEN } from '../utils/categoryMap';
-
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+import { trTitleCase } from '../utils/stringUtils';
 
 /**
  * Helper function to parse JSON from LLM output with extra resilience against syntax issues,
@@ -102,23 +101,21 @@ export const enrichItemsWithGemini = async (items, storeName = '', language = 'e
     : `IMPORTANT: You must respond in English. Type categories must be in English using generalized product types (e.g., "Dairy", "Snack", "Beverage", "Cleaning", "Meat", "Bakery", "Produce", "Personal Care", "Frozen"). Do NOT use specific types like "Cheese" or "Apple", use the general category instead.`;
 
   const exampleResponse = language === 'tr'
-    ? `[{"index":1,"brand":"Ülker","type":"Atıştırmalık","size":""},{"index":2,"brand":"Sütaş","type":"Süt Ürünü","size":"1L"}]`
-    : `[{"index":1,"brand":"Ülker","type":"Snack","size":""},{"index":2,"brand":"Sütaş","type":"Dairy","size":"1L"}]`;
+    ? `[{"index":1,"brand":"Ülker","type":"Atıştırmalık"},{"index":2,"brand":"Sütaş","type":"Süt Ürünü"}]`
+    : `[{"index":1,"brand":"Ülker","type":"Snack"},{"index":2,"brand":"Sütaş","type":"Dairy"}]`;
 
   // Build system instructions for Gemini prompt caching
   const systemInstructionText = `You are a product data extraction assistant for grocery/retail receipt items.
-Given a list of product names parsed from a receipt${storeName ? ` at "${storeName}"` : ''}, detect the brand, type (product category), and size (weight/volume) for each item.
+Given a list of product names parsed from a receipt${storeName ? ` at "${storeName}"` : ''}, detect the brand and type (product category) for each item.
 
 ${langInstruction}
 
 Rules:
-- The "type" field must EXACTLY match one of the predefined categories listed above.
 - If the brand is embedded in the product name (e.g., "Ülker Çikolata"), extract it. Brands must be returned in Title Case (e.g., "Ülker", "Sütaş", "Coca-Cola" instead of "ÜLKER" or "sutas").
 - For private-label items from chain stores (e.g., BİM's "Dost" or "Saban", A101's "Birşah"), extract the private-label brand name (e.g., "Dost", "Birşah", "Saban") as the brand. If it's a generic store brand like "Migros Süt", use "Migros".
-- Normalize the "size" field using standard lowercase units: "g" for grams, "ml" for milliliters, "L" for liters, "kg" for kilograms. Remove any spaces between the number and unit (e.g., "500g", "250ml", "1L", "1.5kg" instead of "500 GR", "250 ml", "1 lt").
 - If you cannot determine a field, return an empty string "".
 - Respond ONLY with a valid JSON array, no markdown, no explanation.
-- Each element must have: {"index": <number>, "brand": "<string>", "type": "<string>", "size": "<string>"}
+- Each element must have: {"index": <number>, "brand": "<string>", "type": "<string>"}
 - The index is 1-based matching the item number above.
 
 Example response:
@@ -128,44 +125,89 @@ JSON:`;
 
   const userContent = `Items:\n${itemList}`;
 
-  try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: userContent,
-          }],
-        }],
-        systemInstruction: {
-          parts: [{
-            text: systemInstructionText,
-          }],
-        },
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 2048,
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
+  const models = [
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-1.5-flash'
+  ];
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('Gemini API error:', response.status, errorBody);
-      return items.map(item => ({
-        ...item,
-        brand: item.brand || '',
-        type: item.type || '',
-        size: item.size || '',
-      }));
+  let lastError = null;
+  let data = null;
+
+  for (const model of models) {
+    let attempts = 0;
+    const maxAttempts = 2; // Try up to 2 times per model for transient errors (503, 429)
+    
+    while (attempts < maxAttempts) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: userContent,
+              }],
+            }],
+            systemInstruction: {
+              parts: [{
+                text: systemInstructionText,
+              }],
+            },
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 2048,
+              responseMimeType: 'application/json',
+            },
+          }),
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          break; // Break the attempt loop
+        }
+
+        const errorBody = await response.text();
+        lastError = { status: response.status, body: errorBody };
+        console.warn(`Gemini API error (model: ${model}, status: ${response.status}):`, errorBody);
+
+        if (response.status === 503 || response.status === 429) {
+          attempts++;
+          if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          }
+        }
+        break; // Stop trying this model if it's a non-retriable error
+      } catch (fetchErr) {
+        lastError = fetchErr;
+        console.warn(`Network/fetch failed for Gemini API (model: ${model}):`, fetchErr);
+        attempts++;
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     }
 
-    const data = await response.json();
+    if (data) {
+      break; // Successfully got data, stop trying other models
+    }
+  }
 
+  if (!data) {
+    console.error('All Gemini API models failed. Last error:', lastError);
+    return items.map(item => ({
+      ...item,
+      brand: item.brand || '',
+      type: item.type || '',
+      size: item.size || '',
+    }));
+  }
+
+  try {
     // Extract the generated text from Gemini's response structure
     const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -197,14 +239,12 @@ JSON:`;
       const enrichment = enrichedData.find(e => e.index === idx + 1);
       if (enrichment) {
         const rawType = (enrichment.type || '').trim();
-        // Capitalize the first letter of each word
-        const formattedType = rawType.replace(/\b\w/g, l => l.toUpperCase());
+        const rawBrand = (enrichment.brand || item.brand || '').trim();
 
         return {
           ...item,
-          brand: (enrichment.brand || item.brand || '').trim(),
-          type: formattedType || item.type || '',
-          size: (enrichment.size || item.size || '').trim(),
+          brand: trTitleCase(rawBrand),
+          type: trTitleCase(rawType) || item.type || '',
         };
       }
       return {
