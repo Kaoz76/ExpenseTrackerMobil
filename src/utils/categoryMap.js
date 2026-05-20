@@ -80,6 +80,16 @@ const categoryDictionary = {
   'kırtasiye': { icon: '✏️', color: '#0284c7' },
   'stationery': { icon: '✏️', color: '#0284c7' },
 
+  // Alkol ve Tütün
+  'alkol & tütün': { icon: '🍺', color: '#ef4444' },
+  'alcohol & tobacco': { icon: '🍺', color: '#ef4444' },
+  'alkol': { icon: '🍺', color: '#ef4444' },
+  'alcohol': { icon: '🍺', color: '#ef4444' },
+  'tütün': { icon: '🚬', color: '#64748b' },
+  'tobacco': { icon: '🚬', color: '#64748b' },
+  'sigara': { icon: '🚬', color: '#64748b' },
+  'cigarette': { icon: '🚬', color: '#64748b' },
+
   // Diğer ve Bilinmeyen
   'diğer': { icon: '📦', color: '#94a3b8' },
   'other': { icon: '📦', color: '#94a3b8' },
@@ -140,7 +150,7 @@ export const suggestedCategoriesTR = [
   'Ev', 'Mobilya', 'Kira', 'Fatura',
   'Sağlık', 'Eczane', 'Kozmetik',
   'Eğlence', 'Abonelik', 'Oyun', 'Hobi',
-  'Eğitim', 'Kitap', 'Kırtasiye', 'Diğer'
+  'Eğitim', 'Kitap', 'Kırtasiye', 'Alkol & Tütün', 'Diğer'
 ].sort();
 
 // İngilizce kategori isimleri
@@ -152,5 +162,5 @@ export const suggestedCategoriesEN = [
   'Home', 'Furniture', 'Rent', 'Bills',
   'Health', 'Pharmacy', 'Cosmetics',
   'Entertainment', 'Subscription', 'Gaming', 'Hobby',
-  'Education', 'Books', 'Stationery', 'Other'
+  'Education', 'Books', 'Stationery', 'Alcohol & Tobacco', 'Other'
 ].sort();

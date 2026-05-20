@@ -100,12 +100,28 @@ export const enrichItemsWithGemini = async (items, storeName = '', language = 'e
   const categoriesStr = categoriesList.map(c => `"${c}"`).join(', ');
 
   const langInstruction = language === 'tr' 
-    ? `IMPORTANT: You must respond in Turkish. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Market", "Gıda" or "Diğer".`
-    : `IMPORTANT: You must respond in English. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Grocery", "Food" or "Other".`;
+    ? `IMPORTANT: You must respond in Turkish. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Market", "Gıda" or "Diğer".
+
+Use these guidelines to choose the correct category:
+- "Gıda" (Food): All edible or drinkable food items, ingredients, staples, dairy, bakery items, water, or packaged grocery foodstuffs (e.g., milk, cheese, eggs, bread, water, pasta, rice, tea bags, meat, fruits, vegetables, snacks, soda, chocolate).
+- "Market" (Grocery): ONLY non-food supermarket items (e.g., cleaning supplies, laundry detergent, dish soap, trash bags, shampoo, body wash, toilet paper, paper towels, personal care, toothpaste).
+- "Alkol & Tütün" (Alcohol & Tobacco): Her türlü alkollü içecek (bira, şarap, rakı, viski vb.) ve tütün/sigara ürünleri (sigaralar, sarmalık tütün vb.).
+- "Yemek" (Dining): Prepared meals, hot food, fast food, takeaways, or restaurant orders (e.g., pizza, burgers, kebab, sushi, cooked dishes, soup).
+- "Kafe" (Cafe): Coffee, tea cups, pastries, cookies, or hot/cold cafe-purchased beverages.
+- "Restoran" (Restaurant): Sit-down dining bills or restaurant invoices.`
+    : `IMPORTANT: You must respond in English. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Grocery", "Food" or "Other".
+
+Use these guidelines to choose the correct category:
+- "Food": All edible or drinkable food items, ingredients, staples, dairy, bakery items, water, or packaged grocery foodstuffs (e.g., milk, cheese, eggs, bread, water, pasta, rice, tea bags, meat, fruits, vegetables, snacks, soda, chocolate).
+- "Grocery": ONLY non-food supermarket items (e.g., cleaning supplies, laundry detergent, dish soap, trash bags, shampoo, body wash, toilet paper, paper towels, personal care, toothpaste).
+- "Alcohol & Tobacco": All alcoholic beverages (beer, wine, liquor) and tobacco/cigarette products.
+- "Dining": Prepared meals, hot food, fast food, takeaways, or restaurant orders (e.g., pizza, burgers, kebab, sushi, cooked dishes, soup).
+- "Cafe": Coffee, tea cups, pastries, cookies, or hot/cold cafe-purchased beverages.
+- "Restaurant": Sit-down dining bills or restaurant invoices.`;
 
   const exampleResponse = language === 'tr'
-    ? `[{"index":1,"brand":"Ülker","type":"Market"},{"index":2,"brand":"Sütaş","type":"Gıda"}]`
-    : `[{"index":1,"brand":"Ülker","type":"Grocery"},{"index":2,"brand":"Sütaş","type":"Food"}]`;
+    ? `[{"index":1,"brand":"Ülker","type":"Gıda"},{"index":2,"brand":"Ariel","type":"Market"},{"index":3,"brand":"Marlboro","type":"Alkol & Tütün"}]`
+    : `[{"index":1,"brand":"Ülker","type":"Food"},{"index":2,"brand":"Ariel","type":"Grocery"},{"index":3,"brand":"Marlboro","type":"Alcohol & Tobacco"}]`;
 
   // Build system instructions for Gemini prompt caching
   const systemInstructionText = `You are a product data extraction assistant for grocery/retail receipt items.
@@ -115,6 +131,9 @@ ${langInstruction}
 
 Rules:
 - The "type" field must EXACTLY match one of the predefined categories listed above.
+- For alcohol and tobacco products, set the category to "Alkol & Tütün" (or "Alcohol & Tobacco").
+- Plastic bags ("POŞET", "PLASTIC BAG") or bottle/can deposits ("DEPOZİTO", "DEPOSIT") must have category set to "Diğer" (or "Other") and brand left empty "".
+- If the item name is an OCR reading error, gibberish (e.g., "12839127", "AJSHDK"), or represents receipt metadata like a total or tax line ("TOPLAM", "KDV", "TOTAL", "TAX", "SUBTOTAL"), set the category to "Diğer" (or "Other") and brand to empty "".
 - If the brand is embedded in the product name (e.g., "Ülker Çikolata"), extract it. Brands must be returned in Title Case (e.g., "Ülker", "Sütaş", "Coca-Cola" instead of "ÜLKER" or "sutas").
 - For private-label items from chain stores (e.g., BİM's "Dost" or "Saban", A101's "Birşah"), extract the private-label brand name (e.g., "Dost", "Birşah", "Saban") as the brand. If it's a generic store brand like "Migros Süt", use "Migros".
 - If you cannot determine a field, return an empty string "".
