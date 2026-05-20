@@ -96,13 +96,16 @@ export const enrichItemsWithGemini = async (items, storeName = '', language = 'e
 
   // Build the prompt helper variables
   const itemList = items.map((item, i) => `${i + 1}. "${item.name}" — ${item.price}`).join('\n');
+  const categoriesList = language === 'tr' ? suggestedCategoriesTR : suggestedCategoriesEN;
+  const categoriesStr = categoriesList.map(c => `"${c}"`).join(', ');
+
   const langInstruction = language === 'tr' 
-    ? `IMPORTANT: You must respond in Turkish. Type categories must be in Turkish using generalized product types (e.g., "Süt Ürünü", "Atıştırmalık", "İçecek", "Temizlik", "Et", "Fırın", "Manav", "Kişisel Bakım", "Dondurulmuş"). Do NOT use specific types like "Peynir" or "Elma", use the general category instead.`
-    : `IMPORTANT: You must respond in English. Type categories must be in English using generalized product types (e.g., "Dairy", "Snack", "Beverage", "Cleaning", "Meat", "Bakery", "Produce", "Personal Care", "Frozen"). Do NOT use specific types like "Cheese" or "Apple", use the general category instead.`;
+    ? `IMPORTANT: You must respond in Turkish. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Market", "Gıda" or "Diğer".`
+    : `IMPORTANT: You must respond in English. The "type" field must be EXACTLY one of these categories: ${categoriesStr}. Do NOT create new categories. If unsure, use "Grocery", "Food" or "Other".`;
 
   const exampleResponse = language === 'tr'
-    ? `[{"index":1,"brand":"Ülker","type":"Atıştırmalık"},{"index":2,"brand":"Sütaş","type":"Süt Ürünü"}]`
-    : `[{"index":1,"brand":"Ülker","type":"Snack"},{"index":2,"brand":"Sütaş","type":"Dairy"}]`;
+    ? `[{"index":1,"brand":"Ülker","type":"Market"},{"index":2,"brand":"Sütaş","type":"Gıda"}]`
+    : `[{"index":1,"brand":"Ülker","type":"Grocery"},{"index":2,"brand":"Sütaş","type":"Food"}]`;
 
   // Build system instructions for Gemini prompt caching
   const systemInstructionText = `You are a product data extraction assistant for grocery/retail receipt items.
@@ -111,6 +114,7 @@ Given a list of product names parsed from a receipt${storeName ? ` at "${storeNa
 ${langInstruction}
 
 Rules:
+- The "type" field must EXACTLY match one of the predefined categories listed above.
 - If the brand is embedded in the product name (e.g., "Ülker Çikolata"), extract it. Brands must be returned in Title Case (e.g., "Ülker", "Sütaş", "Coca-Cola" instead of "ÜLKER" or "sutas").
 - For private-label items from chain stores (e.g., BİM's "Dost" or "Saban", A101's "Birşah"), extract the private-label brand name (e.g., "Dost", "Birşah", "Saban") as the brand. If it's a generic store brand like "Migros Süt", use "Migros".
 - If you cannot determine a field, return an empty string "".
@@ -241,10 +245,15 @@ JSON:`;
         const rawType = (enrichment.type || '').trim();
         const rawBrand = (enrichment.brand || item.brand || '').trim();
 
+        // Safe case-insensitive matching for category/type to match app categories exactly
+        const matchedType = categoriesList.find(
+          c => c.toLowerCase() === rawType.toLowerCase()
+        ) || item.type || (language === 'tr' ? 'Diğer' : 'Other');
+
         return {
           ...item,
           brand: trTitleCase(rawBrand),
-          type: trTitleCase(rawType) || item.type || '',
+          type: matchedType,
         };
       }
       return {
