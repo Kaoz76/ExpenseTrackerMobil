@@ -28,7 +28,7 @@ const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
     img.onload = () => {
       URL.revokeObjectURL(url);
       let { width, height } = img;
-      
+
       if (width > maxWidth || height > maxHeight) {
         const ratio = Math.min(maxWidth / width, maxHeight / height);
         width = Math.round(width * ratio);
@@ -37,13 +37,13 @@ const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
         resolve(file);
         return;
       }
-      
+
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
-      
+
       canvas.toBlob((blob) => {
         if (!blob) {
           resolve(file);
@@ -220,10 +220,10 @@ function Receipts() {
       if (!rawSize) return "";
       const match = rawSize.match(/^(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)$/i);
       if (!match) return rawSize.trim().toUpperCase().replace('KC', 'KG');
-      
+
       let val = match[1].replace(',', '.');
       let unit = match[2].toLowerCase();
-      
+
       if (unit === 'gr') unit = 'g';
       if (unit === 'lt') unit = 'l';
       if (unit === 'kc') unit = 'kg';
@@ -236,10 +236,10 @@ function Receipts() {
 
     let possibleTotals = [];
     let extractedItems = [];
-    
+
     // DEBUG: Log the parsed lines to see the OCR output structure
     console.log("OCR Extracted Lines:", lines);
-    
+
     const cleanAndParseNumber = (valStr) => {
       let cleanStr = valStr.replace(/[^0-9.,]/g, '');
       if (cleanStr.includes(',') && cleanStr.includes('.')) {
@@ -263,20 +263,20 @@ function Receipts() {
       if (multiMatch) {
         const rawSize = multiMatch[1] + multiMatch[2];
         const extractedSize = normalizeSize(rawSize);
-        
+
         // Retroactive stitch: If the item was just parsed on the previous line, attach it backward
         if (extractedItems.length > 0) {
-           extractedItems[extractedItems.length - 1].size = extractedSize;
+          extractedItems[extractedItems.length - 1].size = extractedSize;
         } else {
-           // Forward stitch: Save it for the next valid item
-           previousOrphanedSize = extractedSize;
+          // Forward stitch: Save it for the next valid item
+          previousOrphanedSize = extractedSize;
         }
-        continue; 
+        continue;
       }
 
       // B. Check for Exclusions (Skip immediately)
       if (excludeRegex.test(line)) {
-        continue; 
+        continue;
       }
 
       const hasKeyword = keywordRegex.test(line) || isFuzzyMatch(line, fuzzyKeywords);
@@ -302,7 +302,7 @@ function Receipts() {
             }
           }
         }
-      } 
+      }
       // D. Process Items
       else {
         let matches = line.match(priceRegex);
@@ -329,21 +329,32 @@ function Receipts() {
             }
 
             if (!isGarbageName && namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
-              let correctedName = brandAutoCorrect(namePart);
+              // 1. Extract and strip size
+              let nameWithoutSize = namePart;
+              let itemSize = previousOrphanedSize || "";
+
+              const sizeMatch = namePart.match(itemSizeRegex);
+              if (sizeMatch) {
+                if (!itemSize) {
+                  itemSize = normalizeSize(sizeMatch[0]);
+                }
+                nameWithoutSize = namePart.replace(sizeMatch[0], '').trim();
+              }
+
+              // 2. Strip trailing weight/unit indicators (e.g. "KG", "GR", "ADET" at the end of the string)
+              nameWithoutSize = nameWithoutSize.replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b\s*$/i, '').trim();
+
+              // 3. Strip KDV percentages (%1, %8, %18) and multipliers (x1, X1, etc.)
+              nameWithoutSize = nameWithoutSize.replace(/[%*]\s?\d{1,2}/g, '');
+              nameWithoutSize = nameWithoutSize.replace(/\b[xX]\s?\d+\b/g, '');
+              nameWithoutSize = nameWithoutSize.replace(/\b\d+\s?[xX]\b/g, '');
+
+              let correctedName = brandAutoCorrect(nameWithoutSize);
               let cleanedName = cleanItemName(correctedName);
               let formattedName = trTitleCase(cleanedName);
 
               if (/(indirim|ndirim|iskonto)/i.test(line)) {
                 parsedPrice = -Math.abs(parsedPrice);
-              }
-
-              // Extract size from namePart if previousOrphanedSize is empty
-              let itemSize = previousOrphanedSize || "";
-              if (!itemSize) {
-                const sizeMatch = namePart.match(itemSizeRegex);
-                if (sizeMatch) {
-                  itemSize = normalizeSize(sizeMatch[0]);
-                }
               }
 
               extractedItems.push({
@@ -362,25 +373,36 @@ function Receipts() {
           if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]{3,}/.test(line)) {
             if (pendingPrice !== null) {
               // We have a waiting price, and we just found its text!
-              let correctedName = brandAutoCorrect(line);
-              let cleanedName = cleanItemName(correctedName);
-              let formattedName = trTitleCase(cleanedName);
-              
-              // Extract size from line if previousOrphanedSize is empty
+              // 1. Extract and strip size
+              let nameWithoutSize = line;
               let itemSize = previousOrphanedSize || "";
-              if (!itemSize) {
-                const sizeMatch = line.match(itemSizeRegex);
-                if (sizeMatch) {
+
+              const sizeMatch = line.match(itemSizeRegex);
+              if (sizeMatch) {
+                if (!itemSize) {
                   itemSize = normalizeSize(sizeMatch[0]);
                 }
+                nameWithoutSize = line.replace(sizeMatch[0], '').trim();
               }
+
+              // 2. Strip trailing weight/unit indicators
+              nameWithoutSize = nameWithoutSize.replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b\s*$/i, '').trim();
+
+              // 3. Strip KDV percentages and multipliers
+              nameWithoutSize = nameWithoutSize.replace(/[%*]\s?\d{1,2}/g, '');
+              nameWithoutSize = nameWithoutSize.replace(/\b[xX]\s?\d+\b/g, '');
+              nameWithoutSize = nameWithoutSize.replace(/\b\d+\s?[xX]\b/g, '');
+
+              let correctedName = brandAutoCorrect(nameWithoutSize);
+              let cleanedName = cleanItemName(correctedName);
+              let formattedName = trTitleCase(cleanedName);
 
               extractedItems.push({
                 name: formattedName,
                 price: pendingPrice,
                 size: itemSize
               });
-              
+
               pendingPrice = null;
               previousOrphanedSize = "";
             } else {
@@ -495,14 +517,14 @@ function Receipts() {
                   }
 
                   const getCenter = (item) => {
-                    const tl = item.topLeft || [0,0];
-                    const br = item.bottomRight || [0,0];
+                    const tl = item.topLeft || [0, 0];
+                    const br = item.bottomRight || [0, 0];
                     return { x: (tl[0] + br[0]) / 2, y: (tl[1] + br[1]) / 2 };
                   };
 
                   const getHeight = (item) => {
-                    const tl = item.topLeft || [0,0];
-                    const bl = item.bottomLeft || [0,0];
+                    const tl = item.topLeft || [0, 0];
+                    const bl = item.bottomLeft || [0, 0];
                     return Math.abs(bl[1] - tl[1]);
                   };
 
@@ -536,7 +558,7 @@ function Receipts() {
                     for (let group of lineGroups) {
                       // Project expected Y using the group's initial vector slope
                       let projectedY = group.startY + group.slope * (center.x - group.startX);
-                      
+
                       // If the item's center is close to the projected line vector, add it!
                       if (Math.abs(center.y - projectedY) < height * 0.6) {
                         group.items.push(item);
@@ -738,7 +760,7 @@ function Receipts() {
       };
 
       await addDoc(collection(db, "receipts"), newReceiptData);
-      
+
       if (verifyData.tempImageUrl) {
         URL.revokeObjectURL(verifyData.tempImageUrl);
       }
@@ -838,12 +860,12 @@ function Receipts() {
             </div>
 
             <div className="form-check mt-3 d-flex justify-content-center align-items-center">
-              <input 
-                className="form-check-input me-2 mt-0" 
-                type="checkbox" 
-                id="privacyModeCheckbox" 
-                checked={privacyMode} 
-                onChange={(e) => setPrivacyMode(e.target.checked)} 
+              <input
+                className="form-check-input me-2 mt-0"
+                type="checkbox"
+                id="privacyModeCheckbox"
+                checked={privacyMode}
+                onChange={(e) => setPrivacyMode(e.target.checked)}
                 style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
               />
               <label className="form-check-label text-muted" htmlFor="privacyModeCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
@@ -852,12 +874,12 @@ function Receipts() {
             </div>
 
             <div className="form-check mt-2 d-flex justify-content-center align-items-center">
-              <input 
-                className="form-check-input me-2 mt-0" 
-                type="checkbox" 
-                id="analyzeWithLLMCheckbox" 
-                checked={shouldAnalyzeWithLLM} 
-                onChange={(e) => setShouldAnalyzeWithLLM(e.target.checked)} 
+              <input
+                className="form-check-input me-2 mt-0"
+                type="checkbox"
+                id="analyzeWithLLMCheckbox"
+                checked={shouldAnalyzeWithLLM}
+                onChange={(e) => setShouldAnalyzeWithLLM(e.target.checked)}
                 style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
               />
               <label className="form-check-label text-muted" htmlFor="analyzeWithLLMCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
