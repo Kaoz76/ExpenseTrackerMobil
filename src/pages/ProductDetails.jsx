@@ -15,7 +15,7 @@ function ProductDetails() {
   const brandName = searchParams.get('brand');
 
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, convertPrice } = useCurrency();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
@@ -85,6 +85,7 @@ function ProductDetails() {
                   id: doc.id,
                   receiptId: doc.id,
                   price: itemPrice,
+                  currency: data.currency || currency?.code || 'USD',
                   store: data.fileName,
                   date: data.date,
                   createdAt: data.createdAt,
@@ -112,19 +113,33 @@ function ProductDetails() {
 
       return () => unsubscribe();
     }
-  }, [user, productName, brandName]);
+  }, [user, productName, brandName, currency?.code, convertPrice]);
 
-  // İstatistik Hesaplama
-  const avgPrice = history.length > 0
-    ? (history.reduce((a, b) => a + b.price, 0) / history.length)
+  const convertedHistoryPrices = history.map(h => 
+    convertPrice(h.price, h.currency || currency.code || 'USD', currency.code)
+  );
+
+  const avgPrice = convertedHistoryPrices.length > 0
+    ? (convertedHistoryPrices.reduce((a, b) => a + b, 0) / convertedHistoryPrices.length)
     : 0;
 
   let minRecord = null;
   let maxRecord = null;
 
   if (history.length > 0) {
-    minRecord = history.reduce((prev, curr) => (prev.price < curr.price ? prev : curr));
-    maxRecord = history.reduce((prev, curr) => (prev.price > curr.price ? prev : curr));
+    let minPriceVal = Infinity;
+    let maxPriceVal = -Infinity;
+    history.forEach((h, idx) => {
+      const convertedVal = convertedHistoryPrices[idx];
+      if (convertedVal < minPriceVal) {
+        minPriceVal = convertedVal;
+        minRecord = h;
+      }
+      if (convertedVal > maxPriceVal) {
+        maxPriceVal = convertedVal;
+        maxRecord = h;
+      }
+    });
   }
 
   // Başlık Formatı Oluşturma
@@ -188,7 +203,7 @@ function ProductDetails() {
                     <FaTag />
                   </div>
                   <h3 className="fw-bold mb-1">
-                    {minRecord ? formatPrice(minRecord.price) : formatPrice(0)}
+                    {minRecord ? formatPrice(minRecord.price, minRecord.currency) : formatPrice(0)}
                   </h3>
                   {minRecord && (
                     <div className="mt-1">
@@ -209,7 +224,7 @@ function ProductDetails() {
                     <FaTag />
                   </div>
                   <h3 className="fw-bold mb-1">
-                    {maxRecord ? formatPrice(maxRecord.price) : formatPrice(0)}
+                    {maxRecord ? formatPrice(maxRecord.price, maxRecord.currency) : formatPrice(0)}
                   </h3>
                   {maxRecord && (
                     <div className="mt-1">
@@ -248,7 +263,7 @@ function ProductDetails() {
                         <td className="ps-4 text-body-secondary fw-medium">{record.date}</td>
                         <td className="fw-bold">{record.store}</td>
                         <td>{record.size || '-'}</td>
-                        <td className="text-end fw-bold text-primary">{formatPrice(record.price)}</td>
+                        <td className="text-end fw-bold text-primary">{formatPrice(record.price, record.currency)}</td>
                         <td className="text-center pe-4">
                           <Link
                             to={`/receipts/${record.receiptId}`}

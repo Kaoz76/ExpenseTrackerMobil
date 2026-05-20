@@ -19,7 +19,7 @@ export const cleanStoreName = (name) => {
 function StoreDetails() {
   const { storeId } = useParams();
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, convertPrice } = useCurrency();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -65,7 +65,8 @@ function StoreDetails() {
               ...data
             });
 
-            total += Number(data.price) || 0;
+            const rawPrice = Number(data.price) || 0;
+            total += convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
 
             if (data.items && Array.isArray(data.items)) {
               data.items.forEach(item => {
@@ -128,7 +129,7 @@ function StoreDetails() {
 
       return () => unsubscribe();
     }
-  }, [user, targetStoreName]);
+  }, [user, targetStoreName, currency?.code, convertPrice]);
 
   // 🔥 Tıklayınca Çökmeyi Engelleyen Akıllı Yönlendirme
   const handleRowClick = (record) => {
@@ -270,7 +271,7 @@ function StoreDetails() {
                         </td>
 
                         <td className="text-end pe-4 fw-bold text-primary">
-                          {formatPrice(record.price)}
+                          {formatPrice(record.price, record.currency)}
                         </td>
                       </tr>
                     ))}

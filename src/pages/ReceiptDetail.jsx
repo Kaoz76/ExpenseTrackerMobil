@@ -5,7 +5,7 @@ import {
   FaTimes, FaArrowLeft, FaShoppingCart, FaSave, FaImage, FaExpandAlt
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
-import { useCurrency } from '../context/CurrencyContext';
+import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { db, storage } from '../firebase';
 import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
@@ -16,7 +16,7 @@ function ReceiptDetail() {
   const { receiptId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { formatPrice, currency } = useCurrency();
+  const { formatPrice, currency, favoriteCurrencies } = useCurrency();
   const { t } = useLanguage();
 
   const [receipt, setReceipt] = useState(null);
@@ -320,7 +320,7 @@ function ReceiptDetail() {
               {editingTotal ? (
                 <div className="d-flex align-items-center gap-2">
                   <div className="input-group input-group-sm">
-                    <span className="input-group-text">{currency?.symbol || '$'}</span>
+                    <span className="input-group-text">{CURRENCY_MAP[receipt?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
                     <input
                       type="number"
                       className="form-control fw-bold"
@@ -342,15 +342,49 @@ function ReceiptDetail() {
                   </button>
                 </div>
               ) : (
-                <div className="d-flex align-items-center gap-2">
-                  <h3 className="fw-bold mb-0">{formatPrice(totalPrice)}</h3>
-                  <button
-                    className="btn btn-sm btn-outline-primary border-0"
-                    onClick={() => setEditingTotal(true)}
-                    title="Edit total price"
-                  >
-                    <FaPen size={12} />
-                  </button>
+                <div className="d-flex flex-column gap-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <h3 className="fw-bold mb-0">{formatPrice(totalPrice, receipt?.currency)}</h3>
+                    <button
+                      className="btn btn-sm btn-outline-primary border-0"
+                      onClick={() => setEditingTotal(true)}
+                      title="Edit total price"
+                    >
+                      <FaPen size={12} />
+                    </button>
+                  </div>
+                  
+                  {/* Currency Pills */}
+                  <div className="d-flex flex-wrap gap-1 mt-1">
+                    {favoriteCurrencies.map((code) => {
+                      const isSelected = (receipt?.currency || currency?.code || 'USD') === code;
+                      const symbol = CURRENCY_MAP[code]?.symbol || '$';
+                      return (
+                        <button
+                          key={code}
+                          type="button"
+                          className={`btn btn-xs rounded-pill px-2 py-1 transition-all ${
+                            isSelected
+                              ? 'btn-primary border-0 fw-bold text-white'
+                              : 'btn-outline-primary border-1 text-primary'
+                          }`}
+                          style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                          onClick={async () => {
+                            try {
+                              await updateDoc(doc(db, "receipts", receiptId), {
+                                currency: code
+                              });
+                            } catch (err) {
+                              console.error("Error updating receipt currency:", err);
+                            }
+                          }}
+                        >
+                          <span className="me-1">{symbol}</span>
+                          <span>{code}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -375,7 +409,7 @@ function ReceiptDetail() {
                 <h6 className="mb-0 fw-bold">{t('common.items_total')}</h6>
                 <FaReceipt />
               </div>
-              <h3 className="fw-bold mb-0">{formatPrice(itemsTotal)}</h3>
+              <h3 className="fw-bold mb-0">{formatPrice(itemsTotal, receipt?.currency)}</h3>
               <small className="opacity-75">{t('common.sum_of_all_items')}</small>
             </div>
           </div>
@@ -451,7 +485,7 @@ function ReceiptDetail() {
                 <div className="col-6 col-md-2">
                   <label className="form-label small fw-bold">{t('common.price')}</label>
                   <div className="input-group input-group-sm">
-                    <span className="input-group-text">{currency?.symbol || '$'}</span>
+                    <span className="input-group-text">{CURRENCY_MAP[receipt?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
                     <input
                       type="number"
                       step="0.01"
@@ -507,7 +541,7 @@ function ReceiptDetail() {
                         <div className="col-6"><input type="text" className="form-control form-control-sm" placeholder={t('common.size')} value={item.size || ''} onChange={(e) => handleItemChange(idx, 'size', e.target.value)} /></div>
                       </div>
                       <div className="input-group input-group-sm mt-1">
-                        <span className="input-group-text">{currency?.symbol || '$'}</span>
+                        <span className="input-group-text">{CURRENCY_MAP[receipt?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
                         <input type="number" step="0.01" className="form-control form-control-sm text-end" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value)} placeholder={t('common.price')} />
                       </div>
                     </div>
@@ -522,7 +556,7 @@ function ReceiptDetail() {
                         </div>
                       </div>
                       <div className="d-flex flex-column align-items-end">
-                        <div className="fw-bold text-primary mb-2" style={{ whiteSpace: 'nowrap' }}>{formatPrice(item.price)}</div>
+                        <div className="fw-bold text-primary mb-2" style={{ whiteSpace: 'nowrap' }}>{formatPrice(item.price, receipt?.currency)}</div>
                         <div>
                           <button className="btn btn-sm btn-outline-primary border-0 me-1" onClick={() => setEditingItemIdx(idx)}><FaPen size={12}/></button>
                           <button className="btn btn-sm btn-outline-danger border-0" onClick={() => handleRemoveItem(idx)}><FaTrash size={12}/></button>
@@ -545,7 +579,7 @@ function ReceiptDetail() {
             {items.length > 0 && (
               <div className="d-flex justify-content-between align-items-center p-3 border-top bg-white rounded-bottom">
                 <span className="fw-bold">{t('common.items_total')}</span>
-                <span className="fw-bold fs-5 text-primary">{formatPrice(itemsTotal)}</span>
+                <span className="fw-bold fs-5 text-primary">{formatPrice(itemsTotal, receipt?.currency)}</span>
               </div>
             )}
           </div>
@@ -585,7 +619,7 @@ function ReceiptDetail() {
                         </td>
                         <td>
                           <div className="input-group input-group-sm">
-                            <span className="input-group-text">{currency?.symbol || '$'}</span>
+                            <span className="input-group-text">{CURRENCY_MAP[receipt?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
                             <input type="number" step="0.01" className="form-control form-control-sm text-end" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value)} />
                           </div>
                         </td>
@@ -600,7 +634,7 @@ function ReceiptDetail() {
                         <td className="text-muted">{item.type || '-'}</td>
                         <td className="text-muted">{item.brand || '-'}</td>
                         <td className="text-muted">{item.size || '-'}</td>
-                        <td className="text-end fw-bold text-primary">{formatPrice(item.price)}</td>
+                        <td className="text-end fw-bold text-primary">{formatPrice(item.price, receipt?.currency)}</td>
                         <td className="text-center pe-4">
                           <button className="btn btn-sm btn-outline-primary me-1 border-0" onClick={() => setEditingItemIdx(idx)} title={t('common.edit_item')}><FaPen size={12} /></button>
                           <button className="btn btn-sm btn-outline-danger border-0" onClick={() => handleRemoveItem(idx)} title={t('common.delete_item')}><FaTrash size={12} /></button>
@@ -627,7 +661,7 @@ function ReceiptDetail() {
                 <tfoot className="table-secondary">
                   <tr>
                     <td colSpan="5" className="text-end fw-bold py-3 ps-4">{t('common.items_total')}</td>
-                    <td className="text-end fw-bold fs-5 text-primary py-3">{formatPrice(itemsTotal)}</td>
+                    <td className="text-end fw-bold fs-5 text-primary py-3">{formatPrice(itemsTotal, receipt?.currency)}</td>
                     <td></td>
                   </tr>
                 </tfoot>

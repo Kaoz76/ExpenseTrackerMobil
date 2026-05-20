@@ -14,7 +14,7 @@ import { getCategoryInfo } from '../utils/categoryMap';
 
 function AnalyzeExpenses() {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, convertPrice } = useCurrency();
   const { t, language } = useLanguage();
 
   const [loading, setLoading] = useState(true);
@@ -147,7 +147,8 @@ function AnalyzeExpenses() {
         if (receiptsData) {
           receiptsData.forEach((doc) => {
             const data = doc.data();
-            const price = Number(data.price) || 0;
+            const rawPrice = Number(data.price) || 0;
+            const price = convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
 
             // Client-side date filtering (avoids composite index requirement)
             if (startDate && data.createdAt && typeof data.createdAt.toDate === 'function') {
@@ -188,7 +189,8 @@ function AnalyzeExpenses() {
               let hasTypedItems = false;
               data.items.forEach(item => {
                 const type = item.type || "";
-                const itemPrice = Number(item.price) || 0;
+                const rawItemPrice = Number(item.price) || 0;
+                const itemPrice = convertPrice(rawItemPrice, data.currency || currency.code || 'USD', currency.code);
                 if (type.trim()) {
                   hasTypedItems = true;
                   if (!categoryMap[type]) categoryMap[type] = 0;
@@ -232,7 +234,8 @@ function AnalyzeExpenses() {
           let subsTotal = 0;
 
           subsData.forEach(sub => {
-            const subPrice = Number(sub.price) || 0;
+            const rawSubPrice = Number(sub.price) || 0;
+            const subPrice = convertPrice(rawSubPrice, sub.currency || currency.code || 'USD', currency.code);
             subsTotal += subPrice;
           });
 
@@ -312,7 +315,7 @@ function AnalyzeExpenses() {
       setTotalSpent(0);
       setLoading(false);
     }
-  }, [user, timeRange]);
+  }, [user, timeRange, currency?.code, convertPrice]);
 
   return (
     <div className="dashboard-page-wrapper p-4">

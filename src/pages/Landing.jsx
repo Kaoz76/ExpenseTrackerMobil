@@ -77,7 +77,7 @@ function RevealSection({ children, className = '', delay = 0 }) {
 
 function Landing() {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, convertPrice } = useCurrency();
   const { t } = useLanguage();
 
   // Canlı istatistikler (sadece giriş yapmış kullanıcılar için)
@@ -103,7 +103,8 @@ function Landing() {
         const data = doc.data();
         const createdAtDate = data.createdAt?.toDate ? data.createdAt.toDate() : null;
         if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
-          total += Number(data.price) || 0;
+          const rawPrice = Number(data.price) || 0;
+          total += convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
           count++;
         }
       });
@@ -124,7 +125,7 @@ function Landing() {
       unsubReceipts();
       unsubSubs();
     };
-  }, [user]);
+  }, [user, currency?.code, convertPrice]);
 
   return (
     <div className="dashboard-page-wrapper">

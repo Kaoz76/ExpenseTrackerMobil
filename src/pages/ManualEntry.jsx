@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useCurrency } from '../context/CurrencyContext';
+import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
@@ -13,8 +13,15 @@ import { suggestedBrands } from '../data/brandDictionary';
 
 function ManualEntry() {
   const { user } = useAuth();
-  const { formatPrice, currency } = useCurrency();
+  const { formatPrice, currency, favoriteCurrencies } = useCurrency();
   const { t, language } = useLanguage();
+  const [entryCurrency, setEntryCurrency] = useState(currency?.code || 'USD');
+
+  useEffect(() => {
+    if (currency?.code) {
+      setEntryCurrency(currency.code);
+    }
+  }, [currency?.code]);
 
   const suggestedCategories = language === 'tr' ? suggestedCategoriesTR : suggestedCategoriesEN;
   const [loading, setLoading] = useState(false);
@@ -164,6 +171,7 @@ function ManualEntry() {
         date: new Date().toLocaleDateString(),
         createdAt: Timestamp.now(),
         price: totalAmount,
+        currency: entryCurrency,
         items: formattedProducts
       };
 
@@ -242,18 +250,49 @@ function ManualEntry() {
               <div className="card border-0 shadow-sm p-4">
                 <div className="mb-4">
                   <h5 className="fw-bold mb-3 text-secondary">{t('common.store_info')}</h5>
-                  <label className="form-label small fw-bold text-secondary mb-1">
-                    {t('common.store_name')}<span className="text-danger ms-1">*</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    className="form-control form-control-lg bg-light" 
-                    placeholder={t('common.placeholder_store')} 
-                    value={storeName} 
-                    onChange={(e) => setStoreName(e.target.value)} 
-                    disabled={isDisabled} 
-                    style={{ fontSize: '1rem' }}
-                  />
+                  <div className="row g-3">
+                    <div className="col-md-7">
+                      <label className="form-label small fw-bold text-secondary mb-1">
+                        {t('common.store_name')}<span className="text-danger ms-1">*</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        className="form-control form-control-lg bg-light" 
+                        placeholder={t('common.placeholder_store')} 
+                        value={storeName} 
+                        onChange={(e) => setStoreName(e.target.value)} 
+                        disabled={isDisabled} 
+                        style={{ fontSize: '1rem' }}
+                      />
+                    </div>
+                    <div className="col-md-5">
+                      <label className="form-label small fw-bold text-secondary mb-1">
+                        {t('settings.currency')}
+                      </label>
+                      <div className="d-flex flex-wrap gap-2 mt-1">
+                        {favoriteCurrencies.map((code) => {
+                          const isSelected = entryCurrency === code;
+                          const symbol = CURRENCY_MAP[code]?.symbol || '$';
+                          return (
+                            <button
+                              key={code}
+                              type="button"
+                              className={`btn btn-sm px-3 py-2 rounded-3 transition-all ${
+                                isSelected
+                                  ? 'btn-primary shadow-sm border-0 fw-bold'
+                                  : 'btn-outline-secondary border-1 text-muted'
+                              }`}
+                              onClick={() => setEntryCurrency(code)}
+                              disabled={isDisabled}
+                            >
+                              <span className="me-1">{symbol}</span>
+                              <span>{code}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div className="mb-4">
                   <h5 className="fw-bold mb-3">{t('common.product_details')}</h5>
@@ -298,7 +337,7 @@ function ManualEntry() {
                               {t('common.price')}<span className="text-danger ms-1">*</span>
                             </label>
                             <div className="input-group input-group-lg bg-light rounded border">
-                              <span className="input-group-text bg-transparent border-0 text-muted fw-bold pe-1">{currency?.symbol || '$'}</span>
+                              <span className="input-group-text bg-transparent border-0 text-muted fw-bold pe-1">{CURRENCY_MAP[entryCurrency]?.symbol || '$'}</span>
                               <input
                                 type="number"
                                 className="form-control border-0 bg-transparent ps-2"
@@ -457,7 +496,7 @@ function ManualEntry() {
                     </div>
 
                     <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary">
-                      {formatPrice(entry.price)}
+                      {formatPrice(entry.price, entry.currency)}
                     </div>
 
                     <div style={{ width: '50px', display: 'flex', justifyContent: 'flex-end' }}>

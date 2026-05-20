@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { useTheme } from '../context/ThemeContext';
-import { useCurrency } from '../context/CurrencyContext';
+import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
@@ -11,7 +11,7 @@ import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExcl
 
 function Settings() {
   const { theme, toggleTheme } = useTheme();
-  const { currency, updateCurrency } = useCurrency();
+  const { currency, updateCurrency, favoriteCurrencies, updateFavoriteCurrencies } = useCurrency();
   const { language, setLanguage, t } = useLanguage();
   const { user, logout } = useAuth();
 
@@ -272,9 +272,9 @@ function Settings() {
                     <option value="tr">{t('settings.turkish')}</option>
                   </select>
 
-                  <label className="form-label text-muted small fw-bold">{t('settings.currency').toUpperCase()}</label>
+                  <label className="form-label text-muted small fw-bold">{t('settings.primary_currency').toUpperCase()}</label>
                   <select
-                    className="form-select form-select-lg"
+                    className="form-select form-select-lg mb-4"
                     value={currency.code}
                     onChange={(e) => updateCurrency(e.target.value)}
                     style={{ cursor: 'pointer' }}
@@ -285,8 +285,43 @@ function Settings() {
                     <option value="GBP">GBP (£) - British Pound</option>
                     <option value="JPY">JPY (¥) - Japanese Yen</option>
                   </select>
+
+                  <label className="form-label text-muted small fw-bold d-block mb-2">{t('settings.favorite_currencies').toUpperCase()}</label>
+                  <div className="d-flex flex-wrap gap-2">
+                    {Object.values(CURRENCY_MAP).map((c) => {
+                      const isFavorite = favoriteCurrencies.includes(c.code);
+                      const isPrimary = c.code === currency.code;
+                      return (
+                        <button
+                          key={c.code}
+                          type="button"
+                          className={`btn btn-sm rounded-pill px-3 py-2 transition-all ${
+                            isPrimary
+                              ? 'btn-primary border-0'
+                              : isFavorite
+                              ? 'btn-outline-primary border-2 fw-semibold'
+                              : 'btn-outline-secondary border-1 text-muted'
+                          }`}
+                          disabled={isPrimary}
+                          onClick={() => {
+                            let updated;
+                            if (isFavorite) {
+                              updated = favoriteCurrencies.filter(code => code !== c.code);
+                            } else {
+                              updated = [...favoriteCurrencies, c.code];
+                            }
+                            updateFavoriteCurrencies(updated);
+                          }}
+                        >
+                          <span className="me-1">{c.symbol}</span>
+                          <span>{c.code}</span>
+                          {isPrimary && <span className="badge bg-white text-primary ms-1" style={{ fontSize: '0.65rem' }}>Main</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <div className="form-text mt-2">
-                    {t('common.currency_desc')}
+                    {t('settings.favorite_currencies_desc')}
                   </div>
                 </div>
               </div>

@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus, FaEdit } from 'react-icons/fa';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { useCurrency } from '../context/CurrencyContext';
+import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, Timestamp, limit, getDocs } from "firebase/firestore";
@@ -104,7 +104,7 @@ const isFuzzyMatch = (line, targetWords, maxDist = 2) => {
 
 function Receipts() {
   const { user } = useAuth();
-  const { formatPrice, currency } = useCurrency();
+  const { formatPrice, currency, favoriteCurrencies } = useCurrency();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
@@ -769,6 +769,7 @@ function Receipts() {
         isManual: verifyData.isManual,
         items: itemsToSave,
         price: Number(verifiedPrice) || 0,
+        currency: verifyData.currency || currency?.code || 'USD',
         storeNameCleaned: cleanStoreName(verifyData.fileName)
       };
 
@@ -949,7 +950,7 @@ function Receipts() {
                           <span className="fw-bold text-truncate">{receipt.fileName}</span>
                         </div>
                         <div style={{ flex: 1 }} className="text-muted small">{formatDate(receipt.createdAt)}</div>
-                        <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary">{formatPrice(receipt.price)}</div>
+                        <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary">{formatPrice(receipt.price, receipt.currency)}</div>
                         <div style={{ width: '50px', display: 'flex', justifyContent: 'flex-end' }}>
                           <button
                             className="delete-entry-btn"
@@ -1034,8 +1035,8 @@ function Receipts() {
 
                   <div className="form-group mb-4">
                     <label className="form-label fw-bold">{t('common.total_price_ocr').replace(' (OCR)', '')}</label>
-                    <div className="input-group input-group-lg">
-                      <span className="input-group-text">{currency?.symbol || '$'}</span>
+                    <div className="input-group input-group-lg mb-2">
+                      <span className="input-group-text">{CURRENCY_MAP[verifyData?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
                       <input
                         type="number"
                         className="form-control"
@@ -1043,6 +1044,27 @@ function Receipts() {
                         onChange={(e) => setVerifiedPrice(e.target.value)}
                         step="0.01"
                       />
+                    </div>
+                    <div className="d-flex flex-wrap gap-2 mt-1">
+                      {favoriteCurrencies.map((code) => {
+                        const isSelected = (verifyData?.currency || currency?.code || 'USD') === code;
+                        const symbol = CURRENCY_MAP[code]?.symbol || '$';
+                        return (
+                          <button
+                            key={code}
+                            type="button"
+                            className={`btn btn-sm px-3 py-2 rounded-3 transition-all ${
+                              isSelected
+                                ? 'btn-primary shadow-sm border-0 fw-bold'
+                                : 'btn-outline-secondary border-1 text-muted'
+                            }`}
+                            onClick={() => setVerifyData({ ...verifyData, currency: code })}
+                          >
+                            <span className="me-1">{symbol}</span>
+                            <span>{code}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                     <div className="form-text">{t('common.detected_from_ocr')}</div>
                   </div>

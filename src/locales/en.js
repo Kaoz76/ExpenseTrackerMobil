@@ -20,7 +20,10 @@ export const en = {
     currency: "Currency",
     logout: "Log Out",
     profile: "Profile Settings",
-    app_preferences: "App Preferences"
+    app_preferences: "App Preferences",
+    primary_currency: "Primary Currency",
+    favorite_currencies: "Favorite Currencies",
+    favorite_currencies_desc: "Choose the currencies you want to quickly switch between when entering expenses."
   },
   common: {
     receipts: "Receipts",

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useCurrency } from '../context/CurrencyContext';
+import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 
 function Subscriptions() {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, favoriteCurrencies, convertPrice } = useCurrency();
   const { t } = useLanguage();
 
   const [loading, setLoading] = useState(true);
@@ -20,6 +20,14 @@ function Subscriptions() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState('1');
+  const [selectedCurrency, setSelectedCurrency] = useState('');
+
+  // Set initial currency when context currency is loaded
+  useEffect(() => {
+    if (currency?.code && !selectedCurrency) {
+      setSelectedCurrency(currency.code);
+    }
+  }, [currency, selectedCurrency]);
 
   // VERİ ÇEKME
   useEffect(() => {
@@ -76,6 +84,7 @@ function Subscriptions() {
         userId: user.uid,
         name: name.trim(), // Boşlukları temizle
         price: priceValue,
+        currency: selectedCurrency || currency?.code || 'USD',
         dayOfMonth: parseInt(dayOfMonth),
         createdAt: Timestamp.now()
       });
@@ -104,8 +113,11 @@ function Subscriptions() {
 
   // 🔥 DÜZELTME 2: Gereksiz render hesaplamalarını engelleyen useMemo
   const totalMonthlyFixed = useMemo(() => {
-    return subscriptions.reduce((acc, curr) => acc + (curr.price || 0), 0);
-  }, [subscriptions]);
+    return subscriptions.reduce((acc, curr) => {
+      const convPrice = convertPrice(curr.price || 0, curr.currency || currency?.code || 'USD', currency?.code || 'USD');
+      return acc + convPrice;
+    }, 0);
+  }, [subscriptions, currency?.code, convertPrice]);
 
   return (
     <div className="dashboard-page-wrapper p-4">
@@ -157,18 +169,53 @@ function Subscriptions() {
 
                   <div className="mb-3">
                     <label className="form-label small text-muted fw-bold">{t('common.price_upper')}</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      placeholder="0.00"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      step="0.01"
-                      min="0.01" // 🔥 HTML seviyesinde de negatifleri engelle
-                      disabled={!user || adding}
-                      required
-                    />
+                    <div className="input-group">
+                      <span className="input-group-text">
+                        {CURRENCY_MAP[selectedCurrency || currency?.code || 'USD']?.symbol || '$'}
+                      </span>
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="0.00"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                        step="0.01"
+                        min="0.01" // 🔥 HTML seviyesinde de negatifleri engelle
+                        disabled={!user || adding}
+                        required
+                      />
+                    </div>
                   </div>
+
+                  {/* Currency Selection Pills */}
+                  {favoriteCurrencies.length > 1 && (
+                    <div className="mb-3">
+                      <label className="form-label small text-muted fw-bold">{t('settings.favorite_currencies')}</label>
+                      <div className="d-flex flex-wrap gap-1">
+                        {favoriteCurrencies.map((code) => {
+                          const isSelected = (selectedCurrency || currency?.code || 'USD') === code;
+                          const symbol = CURRENCY_MAP[code]?.symbol || '$';
+                          return (
+                            <button
+                              key={code}
+                              type="button"
+                              className={`btn btn-xs rounded-pill px-2 py-1 transition-all ${
+                                isSelected
+                                  ? 'btn-primary border-0 fw-bold text-white'
+                                  : 'btn-outline-primary border-1 text-primary'
+                              }`}
+                              style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                              onClick={() => setSelectedCurrency(code)}
+                              disabled={adding}
+                            >
+                              <span className="me-1">{symbol}</span>
+                              <span>{code}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mb-4">
                     <label className="form-label small text-muted fw-bold">{t('common.renewal_day')}</label>
@@ -245,7 +292,7 @@ function Subscriptions() {
                     </div>
 
                     <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary fs-5">
-                      {formatPrice(sub.price)}
+                      {formatPrice(sub.price, sub.currency)}
                     </div>
 
                     <div style={{ width: '40px', textAlign: 'right' }}>

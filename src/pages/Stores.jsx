@@ -19,7 +19,7 @@ export const cleanStoreName = (name) => {
 
 function Stores() {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, convertPrice } = useCurrency();
   const { t } = useLanguage();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,9 @@ function Stores() {
             };
           }
 
-          storeMap[storeName].totalSpent += Number(data.price) || 0;
+          const rawPrice = Number(data.price) || 0;
+          const price = convertPrice(rawPrice, data.currency || currency?.code || 'USD', currency?.code || 'USD');
+          storeMap[storeName].totalSpent += price;
           storeMap[storeName].visitCount += 1;
         });
 
@@ -74,7 +76,7 @@ function Stores() {
       setStores([]);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, currency?.code, convertPrice]);
 
   // 🔥 YENİ: Performanslı (useMemo) ve Türkçe Uyumlu Arama Filtresi
   const filteredStores = useMemo(() => {

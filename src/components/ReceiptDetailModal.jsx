@@ -68,7 +68,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
                             </div>
                           </div>
                           <div className="fw-bold text-primary text-end" style={{ whiteSpace: 'nowrap' }}>
-                            {formatPrice(item.price)}
+                            {formatPrice(item.price, receipt.currency)}
                           </div>
                         </div>
                       </div>
@@ -81,7 +81,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
                 </div>
                 <div className="d-flex justify-content-between align-items-center pt-2">
                   <span className="fw-bold">{t('common.total')}</span>
-                  <span className="fw-bold fs-5 text-primary">{formatPrice(receipt.price)}</span>
+                  <span className="fw-bold fs-5 text-primary">{formatPrice(receipt.price, receipt.currency)}</span>
                 </div>
               </div>
 
@@ -106,7 +106,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
                           <td>{item.brand || '-'}</td>
                           <td>{item.size || '-'}</td>
                           <td className="text-end fw-bold text-primary">
-                            {formatPrice(item.price)}
+                            {formatPrice(item.price, receipt.currency)}
                           </td>
                         </tr>
                       ))
@@ -122,7 +122,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
                     <tr>
                       <td colSpan="4" className="text-end fw-bold">{t('common.total')}</td>
                       <td className="text-end fw-bold fs-5 text-primary">
-                        {formatPrice(receipt.price)}
+                        {formatPrice(receipt.price, receipt.currency)}
                       </td>
                     </tr>
                   </tfoot>

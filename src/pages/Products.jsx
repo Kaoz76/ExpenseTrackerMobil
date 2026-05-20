@@ -12,7 +12,7 @@ import { trToLower } from '../utils/stringUtils';
 
 function Products() {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
   const { t } = useLanguage();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +55,7 @@ function Products() {
                   brand: safeBrand,
                   type: item.type || 'Other',
                   latestPrice: Number(item.price) || 0,
+                  latestPriceCurrency: data.currency || currency?.code || 'USD',
                   latestDate: data.date,
                   createdAt: data.createdAt,
                   historyCount: 1
@@ -62,6 +63,7 @@ function Products() {
               } else {
                 if (data.createdAt > productMap[uniqueKey].createdAt) {
                   productMap[uniqueKey].latestPrice = Number(item.price) || 0;
+                  productMap[uniqueKey].latestPriceCurrency = data.currency || currency?.code || 'USD';
                   productMap[uniqueKey].latestDate = data.date;
                   productMap[uniqueKey].createdAt = data.createdAt;
                 }
@@ -80,7 +82,7 @@ function Products() {
       setProducts([]);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, currency?.code]);
 
   // 🔥 DÜZELTME 2 & 3: useMemo ile performans artışı, çökme koruması ve historyCount'a göre sıralama
   const filteredAndSortedProducts = useMemo(() => {
@@ -179,7 +181,7 @@ function Products() {
                   <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-end">
                     <div>
                       <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>{t('common.last_price')}</small>
-                      <span className="fs-5 fw-bold text-primary">{formatPrice(product.latestPrice)}</span>
+                      <span className="fs-5 fw-bold text-primary">{formatPrice(product.latestPrice, product.latestPriceCurrency)}</span>
                     </div>
 
                     {/* URL Güvenliği İçin Marka'yı da encode ederek gönderiyoruz */}

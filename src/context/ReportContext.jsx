@@ -10,7 +10,7 @@ const ReportContext = createContext(null);
 
 export const ReportProvider = ({ children }) => {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, convertPrice } = useCurrency();
 
   const [hasNotification, setHasNotification] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -122,7 +122,8 @@ export const ReportProvider = ({ children }) => {
           details = `"${itemNames.replace(/"/g, '""')}"`;
         }
 
-        csvContent += `${dateStr};${description};${type};${priceStr};TRY;${details}\n`;
+        const curStr = data.currency || "TRY";
+        csvContent += `${dateStr};${description};${type};${priceStr};${curStr};${details}\n`;
       });
 
       const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -140,7 +141,7 @@ export const ReportProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  }, [user]);
+  }, [user, currency?.code]);
 
   // OKUNDU OLARAK İŞARETLEME (Geliştirme: useCallback eklendi, yukarı alındı)
   const markAsRead = useCallback(async () => {
@@ -192,7 +193,7 @@ export const ReportProvider = ({ children }) => {
               price: Number(data.price) || 0,
             };
             receipts.push(safeData);
-            totalSpent += safeData.price;
+            totalSpent += convertPrice(safeData.price, safeData.currency || currency.code || 'USD', currency.code);
           }
         }
       });
@@ -267,7 +268,7 @@ export const ReportProvider = ({ children }) => {
 
         const description = receipt.fileName || receipt.title || "No Description";
         const type = receipt.isManual ? "Manual Entry" : "Scanned Receipt";
-        const price = formatPrice(receipt.price);
+        const price = formatPrice(receipt.price, receipt.currency);
 
         tableRows.push([dateStr, description, type, price]);
       });
@@ -293,7 +294,7 @@ export const ReportProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  }, [user, formatPrice, markAsRead]); // Bağımlılıklar güncellendi
+  }, [user, formatPrice, markAsRead, currency?.code, convertPrice]); // Bağımlılıklar güncellendi
 
   // Geliştirme: Context value objesini useMemo ile sarmalayarak gereksiz renderları kestik
   const contextValue = useMemo(() => ({

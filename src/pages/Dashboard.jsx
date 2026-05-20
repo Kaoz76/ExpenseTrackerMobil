@@ -12,7 +12,7 @@ import { collection, query, where, onSnapshot, orderBy, limit, doc, getDoc } fro
 
 function Dashboard() {
   const { user } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency, convertPrice } = useCurrency();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -64,7 +64,9 @@ function Dashboard() {
       const unsubscribe = onSnapshot(q, (snapshot) => {
         let total = 0;
         snapshot.forEach((doc) => {
-          total += Number(doc.data().price) || 0;
+          const data = doc.data();
+          const subPrice = Number(data.price) || 0;
+          total += convertPrice(subPrice, data.currency || currency?.code || 'USD', currency?.code || 'USD');
         });
         setSubscriptionTotal(total);
       });
@@ -73,7 +75,7 @@ function Dashboard() {
     } else {
       setSubscriptionTotal(0);
     }
-  }, [user]);
+  }, [user, currency?.code, convertPrice]);
 
   // AYLIK HARCAMALARI (RECEIPTS) ÇEKME - 🔥 DÜZELTİLDİ: Sadece bu ayın verisi iniyor!
   useEffect(() => {
@@ -103,7 +105,9 @@ function Dashboard() {
           }
           
           if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
-            total += Number(data.price) || 0;
+            const priceVal = Number(data.price) || 0;
+            const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
+            total += convertedPrice;
             count++;
           }
         });
@@ -122,7 +126,7 @@ function Dashboard() {
     } else {
       setMonthlyStats({ totalSpent: 0, receiptCount: 0, averageSpend: 0 });
     }
-  }, [user]);
+  }, [user, currency?.code, convertPrice]);
 
   // SON 3 KAYDI ÇEKME - 🔥 DÜZELTİLDİ: Veritabanından orderBy ve limit ile sadece 3 kayıt isteniyor!
   useEffect(() => {
@@ -276,7 +280,7 @@ function Dashboard() {
 
                   <div className="card-body">
                     <h6 className="card-title text-truncate" title={scan.fileName}>{scan.fileName}</h6>
-                    <p className="card-text text-muted">{formatPrice(scan.price)}</p>
+                    <p className="card-text text-muted">{formatPrice(scan.price, scan.currency)}</p>
 
                     {scan.isManual && <span className="badge bg-secondary me-1">{t('common.text_badge')}</span>}
                     {!scan.isManual && <span className="badge bg-info text-dark">{t('common.scanned')}</span>}

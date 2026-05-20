@@ -20,7 +20,10 @@ export const tr = {
     currency: "Para Birimi",
     logout: "Çıkış Yap",
     profile: "Profil Ayarları",
-    app_preferences: "Uygulama Tercihleri"
+    app_preferences: "Uygulama Tercihleri",
+    primary_currency: "Ana Para Birimi",
+    favorite_currencies: "Favori Para Birimleri",
+    favorite_currencies_desc: "Manuel ve fiş girişlerinde hızlıca seçebileceğiniz para birimlerini belirleyin."
   },
   common: {
     receipts: "Fişler",
