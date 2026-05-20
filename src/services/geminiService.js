@@ -104,8 +104,12 @@ export const enrichItemsWithGemini = async (items, storeName = '', language = 'e
 
 Use these guidelines to choose the correct category:
 - "Gıda" (Food): All edible or drinkable food items, ingredients, staples, dairy, bakery items, water, or packaged grocery foodstuffs (e.g., milk, cheese, eggs, bread, water, pasta, rice, tea bags, meat, fruits, vegetables, snacks, soda, chocolate).
-- "Market" (Grocery): ONLY non-food supermarket items (e.g., cleaning supplies, laundry detergent, dish soap, trash bags, shampoo, body wash, toilet paper, paper towels, personal care, toothpaste).
+- "Market" (Grocery): ONLY non-food supermarket items (e.g., cleaning supplies, laundry detergent, dish soap, trash bags, toilet paper, paper towels, toothpaste).
 - "Alkol & Tütün" (Alcohol & Tobacco): Her türlü alkollü içecek (bira, şarap, rakı, viski vb.) ve tütün/sigara ürünleri (sigaralar, sarmalık tütün vb.).
+- "Evcil Hayvan" (Pet): Kedi/köpek maması, kum, tasma, oyuncak, petshop ürünleri.
+- "Bebek" (Baby): Bebek bezi, mama, biberon, bebek bakım ürünleri, bebek giysileri.
+- "Spor" (Sports): Spor salonu aboneliği, protein tozu, spor malzemeleri, fitness ekipmanları.
+- "Kozmetik" (Cosmetics): Makyaj, cilt bakımı, parfüm, şampuan, saç bakım ürünleri, kişisel bakım ürünleri.
 - "Yemek" (Dining): Prepared meals, hot food, fast food, takeaways, or restaurant orders (e.g., pizza, burgers, kebab, sushi, cooked dishes, soup).
 - "Kafe" (Cafe): Coffee, tea cups, pastries, cookies, or hot/cold cafe-purchased beverages.
 - "Restoran" (Restaurant): Sit-down dining bills or restaurant invoices.`
@@ -113,15 +117,19 @@ Use these guidelines to choose the correct category:
 
 Use these guidelines to choose the correct category:
 - "Food": All edible or drinkable food items, ingredients, staples, dairy, bakery items, water, or packaged grocery foodstuffs (e.g., milk, cheese, eggs, bread, water, pasta, rice, tea bags, meat, fruits, vegetables, snacks, soda, chocolate).
-- "Grocery": ONLY non-food supermarket items (e.g., cleaning supplies, laundry detergent, dish soap, trash bags, shampoo, body wash, toilet paper, paper towels, personal care, toothpaste).
+- "Grocery": ONLY non-food supermarket items (e.g., cleaning supplies, laundry detergent, dish soap, trash bags, toilet paper, paper towels, toothpaste).
 - "Alcohol & Tobacco": All alcoholic beverages (beer, wine, liquor) and tobacco/cigarette products.
+- "Pet": Pet food, cat litter, leashes, toys, petshop products.
+- "Baby": Baby formula, diapers, baby bottles, baby care products, baby clothes.
+- "Sports": Gym memberships, protein powder, sports equipment, fitness gear.
+- "Cosmetics": Makeup, skincare, perfume, shampoo, hair care, personal care products.
 - "Dining": Prepared meals, hot food, fast food, takeaways, or restaurant orders (e.g., pizza, burgers, kebab, sushi, cooked dishes, soup).
 - "Cafe": Coffee, tea cups, pastries, cookies, or hot/cold cafe-purchased beverages.
 - "Restaurant": Sit-down dining bills or restaurant invoices.`;
 
   const exampleResponse = language === 'tr'
-    ? `[{"index":1,"brand":"Ülker","type":"Gıda"},{"index":2,"brand":"Ariel","type":"Market"},{"index":3,"brand":"Marlboro","type":"Alkol & Tütün"}]`
-    : `[{"index":1,"brand":"Ülker","type":"Food"},{"index":2,"brand":"Ariel","type":"Grocery"},{"index":3,"brand":"Marlboro","type":"Alcohol & Tobacco"}]`;
+    ? `[{"index":1,"brand":"Ülker","type":"Gıda"},{"index":2,"brand":"Ariel","type":"Market"},{"index":3,"brand":"Marlboro","type":"Alkol & Tütün"},{"index":4,"brand":"Royal Canin","type":"Evcil Hayvan"}]`
+    : `[{"index":1,"brand":"Ülker","type":"Food"},{"index":2,"brand":"Ariel","type":"Grocery"},{"index":3,"brand":"Marlboro","type":"Alcohol & Tobacco"},{"index":4,"brand":"Royal Canin","type":"Pet"}]`;
 
   // Build system instructions for Gemini prompt caching
   const systemInstructionText = `You are a product data extraction assistant for grocery/retail receipt items.

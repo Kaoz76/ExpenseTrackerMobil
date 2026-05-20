@@ -80,6 +80,20 @@ const categoryDictionary = {
   'kırtasiye': { icon: '✏️', color: '#0284c7' },
   'stationery': { icon: '✏️', color: '#0284c7' },
 
+  // Evcil Hayvan
+  'evcil hayvan': { icon: '🐾', color: '#f97316' },
+  'pet': { icon: '🐾', color: '#f97316' },
+  'petshop': { icon: '🐾', color: '#f97316' },
+
+  // Bebek
+  'bebek': { icon: '🍼', color: '#f9a8d4' },
+  'baby': { icon: '🍼', color: '#f9a8d4' },
+
+  // Spor & Fitness
+  'spor': { icon: '🏋️', color: '#06b6d4' },
+  'sports': { icon: '🏋️', color: '#06b6d4' },
+  'fitness': { icon: '🏋️', color: '#06b6d4' },
+
   // Alkol ve Tütün
   'alkol & tütün': { icon: '🍺', color: '#ef4444' },
   'alcohol & tobacco': { icon: '🍺', color: '#ef4444' },
@@ -150,7 +164,8 @@ export const suggestedCategoriesTR = [
   'Ev', 'Mobilya', 'Kira', 'Fatura',
   'Sağlık', 'Eczane', 'Kozmetik',
   'Eğlence', 'Abonelik', 'Oyun', 'Hobi',
-  'Eğitim', 'Kitap', 'Kırtasiye', 'Alkol & Tütün', 'Diğer'
+  'Eğitim', 'Kitap', 'Kırtasiye',
+  'Alkol & Tütün', 'Evcil Hayvan', 'Bebek', 'Spor', 'Diğer'
 ].sort();
 
 // İngilizce kategori isimleri
@@ -162,5 +177,78 @@ export const suggestedCategoriesEN = [
   'Home', 'Furniture', 'Rent', 'Bills',
   'Health', 'Pharmacy', 'Cosmetics',
   'Entertainment', 'Subscription', 'Gaming', 'Hobby',
-  'Education', 'Books', 'Stationery', 'Alcohol & Tobacco', 'Other'
+  'Education', 'Books', 'Stationery',
+  'Alcohol & Tobacco', 'Pet', 'Baby', 'Sports', 'Other'
 ].sort();
+
+// TR ↔ EN Kategori Çeviri Haritası
+export const categoryTranslationMap = {
+  // TR -> EN
+  'Market': 'Grocery',
+  'Gıda': 'Food',
+  'Yemek': 'Dining',
+  'Kafe': 'Cafe',
+  'Restoran': 'Restaurant',
+  'Giyim': 'Clothing',
+  'Ayakkabı': 'Shoes',
+  'Moda': 'Fashion',
+  'Elektronik': 'Electronics',
+  'Teknoloji': 'Technology',
+  'Yazılım': 'Software',
+  'Akaryakıt': 'Fuel',
+  'Ulaşım': 'Transport',
+  'Taksi': 'Taxi',
+  'Ev': 'Home',
+  'Mobilya': 'Furniture',
+  'Kira': 'Rent',
+  'Fatura': 'Bills',
+  'Sağlık': 'Health',
+  'Eczane': 'Pharmacy',
+  'Kozmetik': 'Cosmetics',
+  'Eğlence': 'Entertainment',
+  'Abonelik': 'Subscription',
+  'Oyun': 'Gaming',
+  'Hobi': 'Hobby',
+  'Eğitim': 'Education',
+  'Kitap': 'Books',
+  'Kırtasiye': 'Stationery',
+  'Alkol & Tütün': 'Alcohol & Tobacco',
+  'Evcil Hayvan': 'Pet',
+  'Bebek': 'Baby',
+  'Spor': 'Sports',
+  'Diğer': 'Other',
+  // EN -> TR
+  'Grocery': 'Market',
+  'Food': 'Gıda',
+  'Dining': 'Yemek',
+  'Cafe': 'Kafe',
+  'Restaurant': 'Restoran',
+  'Clothing': 'Giyim',
+  'Shoes': 'Ayakkabı',
+  'Fashion': 'Moda',
+  'Electronics': 'Elektronik',
+  'Technology': 'Teknoloji',
+  'Software': 'Yazılım',
+  'Fuel': 'Akaryakıt',
+  'Transport': 'Ulaşım',
+  'Taxi': 'Taksi',
+  'Home': 'Ev',
+  'Furniture': 'Mobilya',
+  'Rent': 'Kira',
+  'Bills': 'Fatura',
+  'Health': 'Sağlık',
+  'Pharmacy': 'Eczane',
+  'Cosmetics': 'Kozmetik',
+  'Entertainment': 'Eğlence',
+  'Subscription': 'Abonelik',
+  'Gaming': 'Oyun',
+  'Hobby': 'Hobi',
+  'Education': 'Eğitim',
+  'Books': 'Kitap',
+  'Stationery': 'Kırtasiye',
+  'Alcohol & Tobacco': 'Alkol & Tütün',
+  'Pet': 'Evcil Hayvan',
+  'Baby': 'Bebek',
+  'Sports': 'Spor',
+  'Other': 'Diğer',
+};
