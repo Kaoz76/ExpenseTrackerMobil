@@ -198,8 +198,20 @@ function Receipts() {
   const extractDataFromText = (text) => {
     if (!text) return { total: 0, items: [] };
 
+    let usTaxScore = 0;
+    let ukTaxScore = 0;
+    let extractedTaxAmount = 0;
+
     const normalizedText = trToLower(text.replace(/\r/g, '\n'));
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+    for (let line of lines) {
+      if (/[Vv][Aa][Tt]|gbp|£|gross|net|tax\s*invoice/i.test(line)) ukTaxScore++;
+      if (/\b(sales\s*tax|state\s*tax|usd|\$)\b/i.test(line)) usTaxScore++;
+    }
+
+    // Determine tax system context: Turkish KDV and UK VAT are both tax-inclusive.
+    const isUSStyleTax = (language !== 'tr') && (ukTaxScore <= usTaxScore);
 
     // 1. Setup regexes outside the loop
     const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
@@ -279,7 +291,18 @@ function Receipts() {
 
       // Skip tax and point exclusions
       if (excludeRegex.test(line)) {
-        continue;
+        if (isUSStyleTax && /(sales\s*tax|state\s*tax|^tax\b)/i.test(line)) {
+          let taxMatches = line.match(priceRegex);
+          if (taxMatches && taxMatches.length > 0) {
+            const parsed = cleanAndParseNumber(taxMatches[taxMatches.length - 1]);
+            if (parsed) {
+              extractedTaxAmount += parsed;
+            }
+          }
+          // Do NOT call continue if it represents an external balance addition.
+        } else {
+          continue;
+        }
       }
 
       const hasKeyword = keywordRegex.test(line) || isFuzzyMatch(line, fuzzyKeywords);
@@ -404,14 +427,15 @@ function Receipts() {
 
     let finalTotal = 0;
     const itemsSum = extractedItems.reduce((acc, item) => acc + item.price, 0);
+    const targetSum = isUSStyleTax ? (itemsSum + extractedTaxAmount) : itemsSum;
 
     if (possibleTotals.length > 0) {
       if (itemsSum > 0) {
         // Math.max() tuzağını önlemek için, ürünlerin toplamına en yakın olan sayıyı seçiyoruz
         let closest = possibleTotals[0];
-        let minDiff = Math.abs(possibleTotals[0] - itemsSum);
+        let minDiff = Math.abs(possibleTotals[0] - targetSum);
         for (let i = 1; i < possibleTotals.length; i++) {
-          const diff = Math.abs(possibleTotals[i] - itemsSum);
+          const diff = Math.abs(possibleTotals[i] - targetSum);
           if (diff < minDiff) {
             minDiff = diff;
             closest = possibleTotals[i];
@@ -426,7 +450,7 @@ function Receipts() {
       // Fallback Senaryosu (Anahtar kelime hiç bulunamazsa)
       if (itemsSum > 0) {
         // Ürün listesi varsa doğrudan toplamını al (Math.max tuzağından kaçınılır)
-        finalTotal = itemsSum;
+        finalTotal = targetSum;
       } else {
         const allMatches = normalizedText.match(priceRegex);
         if (allMatches) {
