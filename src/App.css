@@ -18,6 +18,19 @@
   --bs-primary-rgb: 99, 102, 241;
 }
 
+/* ==============================================
+   GLOBAL FORM RESETS
+   ============================================== */
+/* Hide number input arrows (spinners) globally */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+
+input[type=number] {
+  -moz-appearance: textfield; /* Firefox */
+}
 [data-bs-theme="dark"] {
   --bs-body-bg: #0f172a;
   /* Deep modern dark blue */
