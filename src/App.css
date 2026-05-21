@@ -517,6 +517,18 @@ body::after {
 }
 
 /* ========================================
+   MAIN CONTENT — BOTTOM NAV SPACING
+   ======================================== */
+/* Bottom nav (d-md-none) is visible below 768px.
+   We add matching bottom padding so content never
+   hides behind the floating nav bar. */
+@media (max-width: 767.98px) {
+  .main-content-area {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ========================================
    BOTTOM NAVIGATION
    ======================================== */
 .bottom-nav-container {
@@ -1343,4 +1355,186 @@ body::after {
   .d-none.d-sm-inline {
     display: inline !important;
   }
+}
+
+/* ========================================
+   SEARCH EXPERIENCE ENHANCEMENTS
+   ======================================== */
+
+.search-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+}
+
+@media (max-width: 767px) {
+  .search-wrapper {
+    max-width: 100%;
+  }
+}
+
+.search-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  margin-top: 5px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 1000;
+  padding: 8px 0;
+  backdrop-filter: blur(8px);
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  color: var(--bs-body-color);
+  text-decoration: none;
+}
+
+.suggestion-item:hover {
+  background-color: var(--bs-primary-bg-subtle);
+  color: var(--bs-primary-text-emphasis);
+}
+
+.suggestion-item-icon {
+  margin-right: 12px;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+}
+
+.suggestion-item-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.suggestion-item-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-item-sub {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}
+
+.recent-searches-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 0 4px;
+}
+
+.recent-searches-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+
+.recent-search-pill {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  background-color: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 15px;
+  color: var(--bs-body-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.recent-search-pill:hover {
+  background-color: var(--bs-primary-bg-subtle);
+  color: var(--bs-primary-text-emphasis);
+  border-color: var(--modern-primary);
+}
+
+.category-scroll-container {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 4px 12px;
+  margin-bottom: 8px;
+  scrollbar-width: none; /* Firefox */
+}
+
+.category-scroll-container::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+.category-pill {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--bs-border-color);
+  background-color: var(--bs-body-bg);
+  color: var(--bs-secondary-color);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.category-pill:hover {
+  border-color: var(--modern-primary);
+  color: var(--modern-primary);
+}
+
+.category-pill.active {
+  background-color: var(--modern-primary);
+  color: white;
+  border-color: var(--modern-primary);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.search-controls-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .search-controls-wrapper {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    flex-shrink: 0;
+  }
+}
+
+.sort-select {
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--bs-border-color);
+  background-color: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  outline: none;
+  cursor: pointer;
+  min-height: 40px;
+  min-width: 160px;
+  transition: all 0.2s ease;
+}
+
+.sort-select:focus {
+  border-color: var(--modern-primary);
+  box-shadow: 0 0 0 3px var(--bs-primary-bg-subtle);
 }

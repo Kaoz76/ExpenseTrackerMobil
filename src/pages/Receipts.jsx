@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus, FaEdit } from 'react-icons/fa';
 import { db, storage } from '../firebase';
@@ -115,11 +115,30 @@ function Receipts() {
   const [shouldAnalyzeWithLLM, setShouldAnalyzeWithLLM] = useState(true);
   const [existingProductNames, setExistingProductNames] = useState([]);
 
-  const [receipts, setReceipts] = useState([]);
+  const [allReceipts, setAllReceipts] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // 🔥 Yükleme limiti (Load More için)
   const [displayLimit, setDisplayLimit] = useState(20);
+
+  const filteredReceipts = useMemo(() => {
+    let result = allReceipts;
+    if (searchTerm.trim() !== '') {
+      const search = searchTerm.toLocaleLowerCase('tr-TR');
+      result = allReceipts.filter(receipt => {
+        const storeName = (receipt.fileName || '').toLocaleLowerCase('tr-TR');
+        const formattedPrice = (receipt.price || '').toString();
+        const dateStr = receipt.createdAt ? new Date(receipt.createdAt.seconds * 1000).toLocaleDateString() : '';
+        return storeName.includes(search) || formattedPrice.includes(search) || dateStr.includes(search);
+      });
+    }
+    return result;
+  }, [allReceipts, searchTerm]);
+
+  const displayedReceipts = useMemo(() => {
+    return filteredReceipts.slice(0, displayLimit);
+  }, [filteredReceipts, displayLimit]);
 
   // DOĞRULAMA MODALI STATE'LERİ
   const [processedScans, setProcessedScans] = useState([]);
@@ -156,7 +175,7 @@ function Receipts() {
           return getMillis(b.createdAt) - getMillis(a.createdAt);
         });
 
-        setReceipts(receiptsData.slice(0, displayLimit));
+        setAllReceipts(receiptsData);
         setLoadingReceipts(false);
       }, (err) => {
         console.error("Error fetching receipts: ", err);
@@ -165,10 +184,10 @@ function Receipts() {
 
       return () => unsubscribe();
     } else {
-      setReceipts([]);
+      setAllReceipts([]);
       setLoadingReceipts(false);
     }
-  }, [user, displayLimit]);
+  }, [user]);
 
   // 🔥 Mevcut ürün isimlerini çek (Fuzzy Match için)
   useEffect(() => {
@@ -850,7 +869,7 @@ function Receipts() {
     }
     try {
       // 🔥 Also delete image from Firebase Storage if it exists
-      const receiptToDelete = receipts.find(r => r.id === receiptId);
+      const receiptToDelete = allReceipts.find(r => r.id === receiptId);
       if (receiptToDelete?.storagePath) {
         try {
           await deleteObject(ref(storage, receiptToDelete.storagePath));
@@ -957,9 +976,39 @@ function Receipts() {
           )}
 
           <div className="mt-5 mb-5">
-            <h3 id="scanned-section" className="h5 mb-3 fw-bold d-flex align-items-center">
-              <FaListAlt className="me-2 text-muted" /> {t('common.all_scanned_receipts')}
-            </h3>
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+              <h3 id="scanned-section" className="h5 mb-3 mb-md-0 fw-bold d-flex align-items-center">
+                <FaListAlt className="me-2 text-muted" /> {t('common.all_scanned_receipts')}
+              </h3>
+
+              {user && allReceipts.length > 0 && (
+                <div className="search-wrapper" style={{ maxWidth: '300px' }}>
+                  <form className="search-form" onSubmit={(e) => e.preventDefault()}>
+                    <button type="button">
+                      <svg width="17" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="search">
+                        <path d="M7.667 12.667A5.333 5.333 0 107.667 2a5.333 5.333 0 000 10.667zM14.334 14l-2.9-2.9" stroke="currentColor" strokeWidth="1.333" strokeLinecap="round" strokeLinejoin="round"></path>
+                      </svg>
+                    </button>
+
+                    <input
+                      className="search-input"
+                      placeholder={t('common.search_receipts')}
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+
+                    {searchTerm && (
+                      <button className="search-reset" type="button" onClick={() => setSearchTerm('')}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    )}
+                  </form>
+                </div>
+              )}
+            </div>
 
             <div className="card shadow-sm border-0">
               <div className="list-group list-group-flush">
@@ -972,11 +1021,14 @@ function Receipts() {
 
                 {loadingReceipts && <div className="p-4 text-center text-muted">{t('common.loading_receipts')}</div>}
                 {!user && !loadingReceipts && <div className="p-5 text-center text-muted"><Link to="/login">{t('common.log_in')}</Link> {t('common.please_log_in_receipts')}</div>}
-                {user && !loadingReceipts && receipts.length === 0 && <div className="p-5 text-center text-muted">{t('common.no_receipts_uploaded')}</div>}
+                {user && !loadingReceipts && allReceipts.length === 0 && <div className="p-5 text-center text-muted">{t('common.no_receipts_uploaded')}</div>}
+                {user && !loadingReceipts && allReceipts.length > 0 && filteredReceipts.length === 0 && (
+                  <div className="p-5 text-center text-muted">{t('common.no_products_matched')}</div>
+                )}
 
-                {user && !loadingReceipts && (
+                {user && !loadingReceipts && displayedReceipts.length > 0 && (
                   <>
-                    {receipts.map(receipt => (
+                    {displayedReceipts.map(receipt => (
                       <div
                         key={receipt.id}
                         className="list-group-item list-group-item-action d-flex align-items-center p-3"
@@ -1002,7 +1054,7 @@ function Receipts() {
                       </div>
                     ))}
 
-                    {receipts.length >= displayLimit && (
+                    {filteredReceipts.length > displayedReceipts.length && (
                       <div className="list-group-item text-center p-3 bg-light">
                         <button
                           className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold shadow-sm"

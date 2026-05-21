@@ -370,20 +370,16 @@ function ManualEntry() {
                             <div className="input-group input-group-lg bg-light rounded border">
                               <span className="input-group-text bg-transparent border-0 text-muted fw-bold pe-1">{CURRENCY_MAP[entryCurrency]?.symbol || '$'}</span>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 className="form-control border-0 bg-transparent ps-2"
                                 placeholder="0.00"
                                 value={product.price}
                                 onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val >= 0 || val === '') {
-                                    handleInputChange(product.id, 'price', val);
-                                  }
+                                  const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                  handleInputChange(product.id, 'price', val);
                                 }}
-                                onKeyDown={(e) => { if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault(); }}
                                 disabled={isDisabled}
-                                step="0.01"
-                                min="0"
                                 style={{ fontSize: '1rem' }}
                               />
                             </div>
