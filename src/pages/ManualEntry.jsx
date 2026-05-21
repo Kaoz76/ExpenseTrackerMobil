@@ -10,6 +10,7 @@ import ReceiptDetailModal from '../components/ReceiptDetailModal';
 import { formatDateTime } from '../utils/dateFormatter';
 import { suggestedCategoriesTR, suggestedCategoriesEN, localizeCategory } from '../utils/categoryMap';
 import { suggestedBrands } from '../data/brandDictionary';
+import { enrichItemsWithGemini } from '../services/geminiService';
 
 function ManualEntry() {
   const { user } = useAuth();
@@ -153,12 +154,42 @@ function ManualEntry() {
     setLoading(true);
 
     try {
-      const formattedProducts = products.map(p => ({
-        ...p,
-        type: p.type ? localizeCategory(p.type, language) : '',
-        brand: p.brand ? p.brand.trim().charAt(0).toUpperCase() + p.brand.trim().slice(1) : '',
-        price: Math.abs(parseFloat(p.price || 0)) // Negatif değerlerin her ihtimale karşı mutlak değerini al
+      // 1. Prepare items for Gemini mapping format (requires name and price fields)
+      const itemsToEnrich = products.map(p => ({
+        name: p.name.trim(),
+        price: parseFloat(p.price || 0)
       }));
+
+      // 2. Query Gemini to enrich missing categories and brands based on current input context
+      let enrichedItems = [];
+      try {
+        enrichedItems = await enrichItemsWithGemini(itemsToEnrich, storeName, language);
+      } catch (aiError) {
+        console.warn("Manual AI enrichment failed, falling back to user input:", aiError);
+      }
+
+      // 3. Merge the AI results back. If the user explicitly typed a brand or category, prioritize their manual text over the AI's suggestion
+      const formattedProducts = products.map((p, idx) => {
+        const aiSuggestion = enrichedItems[idx];
+        
+        let finalType = p.type.trim();
+        if (!finalType && aiSuggestion?.type) {
+          finalType = aiSuggestion.type;
+        }
+
+        let finalBrand = p.brand.trim();
+        if (!finalBrand && aiSuggestion?.brand) {
+          finalBrand = aiSuggestion.brand;
+        }
+
+        return {
+          name: p.name.trim(),
+          size: p.size.trim(),
+          price: Math.abs(parseFloat(p.price || 0)),
+          type: finalType ? localizeCategory(finalType, language) : '',
+          brand: finalBrand ? finalBrand.charAt(0).toUpperCase() + finalBrand.slice(1) : ''
+        };
+      });
 
       const totalAmount = formattedProducts.reduce((acc, curr) => acc + parseFloat(curr.price || 0), 0);
 
