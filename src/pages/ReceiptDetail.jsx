@@ -322,12 +322,12 @@ function ReceiptDetail() {
                   <div className="input-group input-group-sm">
                     <span className="input-group-text">{CURRENCY_MAP[receipt?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       className="form-control fw-bold"
                       value={totalPrice}
-                      onChange={(e) => setTotalPrice(e.target.value)}
+                      onChange={(e) => setTotalPrice(e.target.value.replace(/[^0-9.,]/g, ''))}
                       onKeyDown={(e) => e.key === 'Enter' && handleSaveTotal()}
-                      step="0.01"
                       autoFocus
                     />
                   </div>
@@ -487,12 +487,12 @@ function ReceiptDetail() {
                   <div className="input-group input-group-sm">
                     <span className="input-group-text">{CURRENCY_MAP[receipt?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       className="form-control form-control-sm"
                       placeholder="0.00"
                       value={newItem.price}
-                      onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                      onChange={(e) => setNewItem({ ...newItem, price: e.target.value.replace(/[^0-9.,]/g, '') })}
                     />
                   </div>
                 </div>
@@ -542,7 +542,7 @@ function ReceiptDetail() {
                       </div>
                       <div className="input-group input-group-sm mt-1">
                         <span className="input-group-text">{CURRENCY_MAP[receipt?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
-                        <input type="number" step="0.01" className="form-control form-control-sm text-end" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value)} placeholder={t('common.price')} />
+                        <input type="text" inputMode="decimal" className="form-control form-control-sm text-end" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value.replace(/[^0-9.,]/g, ''))} placeholder={t('common.price')} />
                       </div>
                     </div>
                   ) : (
@@ -620,7 +620,7 @@ function ReceiptDetail() {
                         <td>
                           <div className="input-group input-group-sm">
                             <span className="input-group-text">{CURRENCY_MAP[receipt?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
-                            <input type="number" step="0.01" className="form-control form-control-sm text-end" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value)} />
+                            <input type="text" inputMode="decimal" className="form-control form-control-sm text-end" value={item.price} onChange={(e) => handleItemChange(idx, 'price', e.target.value.replace(/[^0-9.,]/g, ''))} />
                           </div>
                         </td>
                         <td className="text-center pe-4">

@@ -1127,11 +1127,11 @@ function Receipts() {
                     <div className="input-group input-group-lg mb-2">
                       <span className="input-group-text">{CURRENCY_MAP[verifyData?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="form-control"
                         value={verifiedPrice}
-                        onChange={(e) => setVerifiedPrice(e.target.value)}
-                        step="0.01"
+                        onChange={(e) => setVerifiedPrice(e.target.value.replace(/[^0-9.,]/g, ''))}
                       />
                     </div>
                     <div className="d-flex flex-wrap gap-2 mt-1">
@@ -1195,11 +1195,11 @@ function Receipts() {
                                   <div className="input-group input-group-sm" style={{ width: '120px' }}>
                                     <span className="input-group-text bg-light text-primary fw-bold border-end-0">{currency?.symbol || '$'}</span>
                                     <input
-                                      type="number"
-                                      step="0.01"
+                                      type="text"
+                                      inputMode="decimal"
                                       className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0"
                                       value={item.price}
-                                      onChange={(e) => handleItemChange(idx, 'price', e.target.value)}
+                                      onChange={(e) => handleItemChange(idx, 'price', e.target.value.replace(/[^0-9.,]/g, ''))}
                                       placeholder={t('common.price')}
                                     />
                                   </div>

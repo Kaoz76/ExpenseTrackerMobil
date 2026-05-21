@@ -9,6 +9,42 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy, limit, doc, getDoc } from "firebase/firestore";
+import { formatDateTime, formatDate } from '../utils/dateFormatter';
+
+// Image loading wrapper component for smoother UX
+const DashboardImage = ({ src, alt }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <div style={{ position: 'relative', height: '200px', width: '100%', backgroundColor: 'var(--bs-tertiary-bg)' }}>
+      {!loaded && !error && (
+        <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center placeholder-glow">
+          <span className="placeholder w-100 h-100"></span>
+        </div>
+      )}
+      <img
+        src={src}
+        alt={alt}
+        className="card-img-top"
+        onLoad={() => setLoaded(true)}
+        onError={(e) => {
+          setError(true);
+          setLoaded(true);
+          e.target.src = '/empty_state.png';
+        }}
+        style={{
+          height: '200px',
+          objectFit: 'cover',
+          opacity: loaded ? 1 : 0,
+          transition: 'opacity 0.3s ease-in-out',
+          position: 'relative',
+          zIndex: 1
+        }}
+      />
+    </div>
+  );
+};
 
 function Dashboard() {
   const { user } = useAuth();
@@ -262,13 +298,7 @@ function Dashboard() {
                   onClick={() => handleCardClick(scan)}
                 >
                   {scan.imageUrl ? (
-                    <img
-                      src={scan.imageUrl}
-                      alt={scan.fileName}
-                      className="card-img-top"
-                      style={{ height: '200px', objectFit: 'cover' }}
-                      onError={(e) => { e.target.src = '/empty_state.png'; }}
-                    />
+                    <DashboardImage src={scan.imageUrl} alt={scan.fileName} />
                   ) : (
                     <img
                       src="/empty_state.png"
