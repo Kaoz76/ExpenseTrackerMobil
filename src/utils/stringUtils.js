@@ -83,11 +83,12 @@ export const cleanItemName = (name) => {
 
   let cleaned = name;
 
-  // 1. KDV / vergi oran kodlarını sil: %1, %8, *08, %18, *18, %20, *01 vb.
-  cleaned = cleaned.replace(/[%*]\s?\d{1,2}/g, '');
+  // 1. Fiyat token'larını sil: *91,90  *125.50  %1  *08  vb.
+  //    Önce tam fiyat ifadelerini (ondalıklı dahil) yakala, sonra yalnız kalan % * işaretlerini temizle.
+  cleaned = cleaned.replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '');
 
-  // 1b. Multiplier / adet çarpanlarını sil: x1, X1, x 1, 1x, 1X, 1 x, vb.
-  cleaned = cleaned.replace(/\b[xX]\s?\d+\b/g, '');
+  // 1b. Multiplier / adet çarpanlarını sil: x1, X1, x 1, 1x, 1X, 1 x, x85,89 vb.
+  cleaned = cleaned.replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '');
   cleaned = cleaned.replace(/\b\d+\s?[xX]\b/g, '');
 
   // 2. Baştaki stok/barkod numaralarını sil (5+ haneli sayı dizileri)

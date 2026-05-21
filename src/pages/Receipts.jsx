@@ -184,7 +184,9 @@ function Receipts() {
           if (data.items && Array.isArray(data.items)) {
             data.items.forEach(item => {
               if (item.name && item.name.trim().length > 2) {
-                names.add(item.name.trim());
+                // Clean the stored name so fuzzy matching works against clean names
+                const cleanedName = trTitleCase(cleanItemName(item.name.trim()));
+                if (cleanedName.length > 2) names.add(cleanedName);
               }
             });
           }
@@ -389,10 +391,10 @@ function Receipts() {
 
             // 2. IMPROVED SANITIZATION: Aggressively target percent/multiplier tokens anywhere in the string
             let cleaned = namePart
-              .replace(/%\s*\d{1,2}\b/g, '')      // Clear "%1", "% 1"
-              .replace(/\b[xX\s*#-]+\d+\b/g, '')  // Clear "x1", "*1"
-              .replace(/\b\d+\s*[xX]\b/g, '')     // Clear "1x"
-              .replace(/[*#]/g, ' ')               // Strip stray OCR characters
+              .replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '') // Clear "%1", "*91,90", "*125.50"
+              .replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '') // Clear "x1", "x85,89"
+              .replace(/\b\d+\s?[xX]\b/g, '')     // Clear "1x"
+              .replace(/[*#%]/g, ' ')               // Strip any stray OCR characters
               .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '') // Strip trailing units
               .replace(/\s+/g, ' ')               // Collapse multiple spaces
               .trim();
@@ -430,10 +432,10 @@ function Receipts() {
 
             // IMPROVED SANITIZATION: Aggressively target percent/multiplier tokens anywhere in the string
             let cleaned = line
-              .replace(/%\s*\d{1,2}\b/g, '')      // Clear "%1", "% 1"
-              .replace(/\b[xX\s*#-]+\d+\b/g, '')  // Clear "x1", "*1"
-              .replace(/\b\d+\s*[xX]\b/g, '')     // Clear "1x"
-              .replace(/[*#]/g, ' ')               // Strip stray OCR characters
+              .replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '') // Clear "%1", "*91,90", "*125.50"
+              .replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '') // Clear "x1", "x85,89"
+              .replace(/\b\d+\s?[xX]\b/g, '')     // Clear "1x"
+              .replace(/[*#%]/g, ' ')               // Strip any stray OCR characters
               .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '') // Strip trailing units
               .replace(/\s+/g, ' ')               // Collapse multiple spaces
               .trim();
@@ -494,6 +496,7 @@ function Receipts() {
       }
     }
 
+    console.log("✅ Parsed Items:", extractedItems.map(i => i.name));
     return { total: finalTotal, items: extractedItems, currency: finalCurrency };
   };
 
@@ -668,7 +671,8 @@ function Receipts() {
 
       const matchedItems = (extractedData.items || []).map(item => {
         const matchedName = findBestProductMatch(item.name, existingProductNames);
-        return { ...item, name: matchedName };
+        // Always clean the matched name — guards against dirty legacy names from Firestore
+        return { ...item, name: trTitleCase(cleanItemName(matchedName)) };
       });
 
       // 🤖 AI Enrichment: Use Gemini 2.5 Flash-Lite to detect brand, type, and size
@@ -784,6 +788,7 @@ function Receipts() {
     try {
       const itemsToSave = (verifyData.items || []).map(item => ({
         ...item,
+        name: item.name ? trTitleCase(cleanItemName(item.name)) : item.name,
         price: parseFloat(item.price) || 0
       }));
 
