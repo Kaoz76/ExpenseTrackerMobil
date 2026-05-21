@@ -237,7 +237,7 @@ function Dashboard() {
         {/* BAŞLIK */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
           <div className="mb-3 mb-md-0">
-            <h1 className="display-6 fw-bold mb-1 text-gradient" style={{ paddingBottom: '0.2rem' }}>{t('nav.dashboard')}</h1>
+            <h1 className="display-6 fw-bold mb-1 text-gradient text-nowrap" style={{ paddingBottom: '0.2rem' }}>{t('nav.dashboard')}</h1>
             {user && <p className="text-muted mb-0">{t('common.hello')}, {user.email ? user.email.split('@')[0] : 'User'} 👋</p>}
           </div>
 

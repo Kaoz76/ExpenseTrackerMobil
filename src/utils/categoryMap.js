@@ -6,43 +6,46 @@
 
 const categoryDictionary = {
   // Gıda ve Market
-  'market': { icon: '🛒', color: '#10b981' }, // Zümrüt Yeşili
+  'market': { icon: '🛒', color: '#10b981' },
   'grocery': { icon: '🛒', color: '#10b981' },
-  'gıda': { icon: '🥖', color: '#059669' },
-  'food': { icon: '🍔', color: '#ef4444' },
-  'yemek': { icon: '🍔', color: '#ef4444' },
-  'restaurant': { icon: '🍽️', color: '#f43f5e' },
-  'restoran': { icon: '🍽️', color: '#f43f5e' },
+  'gıda': { icon: '🥗', color: '#059669' },
+  'food': { icon: '🥗', color: '#059669' },
+  'yemek': { icon: '🍽️', color: '#ef4444' },
+  'dining': { icon: '🍽️', color: '#ef4444' },
+  'restaurant': { icon: '🍴', color: '#f43f5e' },
+  'restoran': { icon: '🍴', color: '#f43f5e' },
   'cafe': { icon: '☕', color: '#d97706' },
   'kafe': { icon: '☕', color: '#d97706' },
 
   // Giyim ve Moda
-  'giyim': { icon: '👕', color: '#8b5cf6' }, // Mor
+  'giyim': { icon: '👕', color: '#8b5cf6' },
   'clothing': { icon: '👕', color: '#8b5cf6' },
-  'apparel': { icon: '👗', color: '#a855f7' },
+  'apparel': { icon: '👕', color: '#8b5cf6' },
   'moda': { icon: '👗', color: '#a855f7' },
-  'ayakkabı': { icon: '👞', color: '#6366f1' },
+  'fashion': { icon: '👗', color: '#a855f7' },
+  'ayakkabı': { icon: '👟', color: '#6366f1' },
   'shoes': { icon: '👟', color: '#6366f1' },
 
   // Teknoloji ve Elektronik
-  'elektronik': { icon: '💻', color: '#3b82f6' }, // Mavi
+  'elektronik': { icon: '💻', color: '#3b82f6' },
   'electronics': { icon: '💻', color: '#3b82f6' },
   'teknoloji': { icon: '📱', color: '#2563eb' },
+  'technology': { icon: '📱', color: '#2563eb' },
   'tech': { icon: '📱', color: '#2563eb' },
   'software': { icon: '💾', color: '#0ea5e9' },
   'yazılım': { icon: '💾', color: '#0ea5e9' },
 
   // Ulaşım ve Akaryakıt
-  'akaryakıt': { icon: '⛽', color: '#f59e0b' }, // Turuncu
+  'akaryakıt': { icon: '⛽', color: '#f59e0b' },
   'yakıt': { icon: '⛽', color: '#f59e0b' },
   'fuel': { icon: '⛽', color: '#f59e0b' },
   'ulaşım': { icon: '🚌', color: '#eab308' },
-  'transport': { icon: '🚗', color: '#eab308' },
+  'transport': { icon: '🚌', color: '#eab308' },
   'taksi': { icon: '🚕', color: '#facc15' },
   'taxi': { icon: '🚕', color: '#facc15' },
 
   // Ev ve Yaşam
-  'ev': { icon: '🏠', color: '#14b8a6' }, // Teal
+  'ev': { icon: '🏠', color: '#14b8a6' },
   'home': { icon: '🏠', color: '#14b8a6' },
   'mobilya': { icon: '🛋️', color: '#0d9488' },
   'furniture': { icon: '🛋️', color: '#0d9488' },
@@ -53,7 +56,7 @@ const categoryDictionary = {
   'utilities': { icon: '⚡', color: '#475569' },
 
   // Kişisel Bakım ve Sağlık
-  'sağlık': { icon: '🏥', color: '#ec4899' }, // Pembe
+  'sağlık': { icon: '🏥', color: '#ec4899' },
   'health': { icon: '🏥', color: '#ec4899' },
   'eczane': { icon: '💊', color: '#f472b6' },
   'pharmacy': { icon: '💊', color: '#f472b6' },
@@ -63,7 +66,7 @@ const categoryDictionary = {
   'care': { icon: '🧴', color: '#be185d' },
 
   // Eğlence ve Abonelikler
-  'eğlence': { icon: '🎬', color: '#84cc16' }, // Açık Yeşil
+  'eğlence': { icon: '🎬', color: '#84cc16' },
   'entertainment': { icon: '🎬', color: '#84cc16' },
   'abonelik': { icon: '🔄', color: '#10b981' },
   'subscription': { icon: '🔄', color: '#10b981' },
@@ -73,10 +76,11 @@ const categoryDictionary = {
   'hobby': { icon: '🎨', color: '#14b8a6' },
 
   // Eğitim ve Kırtasiye
-  'eğitim': { icon: '📚', color: '#0284c7' }, // Gök Mavisi
+  'eğitim': { icon: '📚', color: '#0284c7' },
   'education': { icon: '📚', color: '#0284c7' },
   'kitap': { icon: '📖', color: '#0369a1' },
   'book': { icon: '📖', color: '#0369a1' },
+  'books': { icon: '📖', color: '#0369a1' },
   'kırtasiye': { icon: '✏️', color: '#0284c7' },
   'stationery': { icon: '✏️', color: '#0284c7' },
 
@@ -95,14 +99,14 @@ const categoryDictionary = {
   'fitness': { icon: '🏋️', color: '#06b6d4' },
 
   // Alkol ve Tütün
-  'alkol & tütün': { icon: '🍺', color: '#ef4444' },
-  'alcohol & tobacco': { icon: '🍺', color: '#ef4444' },
-  'alkol': { icon: '🍺', color: '#ef4444' },
-  'alcohol': { icon: '🍺', color: '#ef4444' },
-  'tütün': { icon: '🚬', color: '#64748b' },
-  'tobacco': { icon: '🚬', color: '#64748b' },
-  'sigara': { icon: '🚬', color: '#64748b' },
-  'cigarette': { icon: '🚬', color: '#64748b' },
+  'alkol & tütün': { icon: '🍺', color: '#b45309' },
+  'alcohol & tobacco': { icon: '🍺', color: '#b45309' },
+  'alkol': { icon: '🍺', color: '#b45309' },
+  'alcohol': { icon: '🍺', color: '#b45309' },
+  'tütün': { icon: '🚬', color: '#78716c' },
+  'tobacco': { icon: '🚬', color: '#78716c' },
+  'sigara': { icon: '🚬', color: '#78716c' },
+  'cigarette': { icon: '🚬', color: '#78716c' },
 
   // Vergiler
   'vergiler': { icon: '💸', color: '#f43f5e' },

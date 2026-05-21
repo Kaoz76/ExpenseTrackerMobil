@@ -76,7 +76,8 @@ const levenshtein = (s, t) => {
  * - Stok/barkod numaralarını kaldırır (baştaki uzun sayı dizileri)
  * - Anlamsız özel karakterleri (@, |, ], [, {, }, ~, ^, <, >, =) siler
  * - Tekrar eden boşlukları temizler
- * - Çok kısa (1 harfli) kelimeleri ve sadece sayılardan oluşan kelimeleri eler
+ * - Tek karakterli kelimeleri siler (stray "X", "A" gibi OCR artıkları dahil)
+ * - Sadece sayılardan oluşan kelimeleri eler
  */
 export const cleanItemName = (name) => {
   if (typeof name !== 'string' || !name.trim()) return name;
@@ -103,9 +104,10 @@ export const cleanItemName = (name) => {
   // 5. Tekrarlayan boşlukları tek boşluğa indir
   cleaned = cleaned.replace(/\s{2,}/g, ' ').trim();
 
-  // 6. Sadece sayılardan oluşan kelimeleri sil (ama en az bir harf içerenler kalsın)
+  // 6. Sadece sayılardan oluşan kelimeleri ve tek harfli kelimeleri sil
+  //    (OCR artıkları: stray "X", "A" vb. tek harf token'ları da dahil)
   const words = cleaned.split(' ').filter(w => {
-    if (w.length <= 1 && !/[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(w)) return false; // tek karakterli sayılar
+    if (w.length <= 1) return false; // tek karakterli her şeyi sil (sayı veya harf)
     if (/^\d+[.,]?\d*$/.test(w)) return false; // tamamen sayı olan kelimeler
     return true;
   });
