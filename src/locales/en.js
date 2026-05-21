@@ -23,7 +23,12 @@ export const en = {
     app_preferences: "App Preferences",
     primary_currency: "Primary Currency",
     favorite_currencies: "Favorite Currencies",
-    favorite_currencies_desc: "Choose the currencies you want to quickly switch between when entering expenses."
+    favorite_currencies_desc: "Choose the currencies you want to quickly switch between when entering expenses.",
+    currency_usd: "US Dollar",
+    currency_eur: "Euro",
+    currency_try: "Turkish Lira",
+    currency_gbp: "British Pound",
+    currency_jpy: "Japanese Yen"
   },
   common: {
     receipts: "Receipts",

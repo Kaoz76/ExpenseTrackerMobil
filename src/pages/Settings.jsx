@@ -279,11 +279,11 @@ function Settings() {
                     onChange={(e) => updateCurrency(e.target.value)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <option value="USD">USD ($) - US Dollar</option>
-                    <option value="EUR">EUR (€) - Euro</option>
-                    <option value="TRY">TRY (₺) - Turkish Lira</option>
-                    <option value="GBP">GBP (£) - British Pound</option>
-                    <option value="JPY">JPY (¥) - Japanese Yen</option>
+                    <option value="USD">USD ($) - {t('settings.currency_usd')}</option>
+                    <option value="EUR">EUR (€) - {t('settings.currency_eur')}</option>
+                    <option value="TRY">TRY (₺) - {t('settings.currency_try')}</option>
+                    <option value="GBP">GBP (£) - {t('settings.currency_gbp')}</option>
+                    <option value="JPY">JPY (¥) - {t('settings.currency_jpy')}</option>
                   </select>
 
                   <label className="form-label text-muted small fw-bold d-block mb-2">{t('settings.favorite_currencies').toUpperCase()}</label>

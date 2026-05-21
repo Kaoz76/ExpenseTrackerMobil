@@ -174,13 +174,15 @@ function Subscriptions() {
                         {CURRENCY_MAP[selectedCurrency || currency?.code || 'USD']?.symbol || '$'}
                       </span>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="form-control"
                         placeholder="0.00"
                         value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                        step="0.01"
-                        min="0.01" // 🔥 HTML seviyesinde de negatifleri engelle
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.,]/g, '');
+                          setPrice(val);
+                        }}
                         disabled={!user || adding}
                         required
                       />
@@ -220,13 +222,15 @@ function Subscriptions() {
                   <div className="mb-4">
                     <label className="form-label small text-muted fw-bold">{t('common.renewal_day')}</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       className="form-control"
                       placeholder={t('common.eg_5')}
                       value={dayOfMonth}
-                      onChange={(e) => setDayOfMonth(e.target.value)}
-                      min="1"
-                      max="31"
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setDayOfMonth(val);
+                      }}
                       disabled={!user || adding}
                       required
                     />

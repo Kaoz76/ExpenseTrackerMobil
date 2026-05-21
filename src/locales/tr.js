@@ -23,7 +23,12 @@ export const tr = {
     app_preferences: "Uygulama Tercihleri",
     primary_currency: "Ana Para Birimi",
     favorite_currencies: "Favori Para Birimleri",
-    favorite_currencies_desc: "Manuel ve fiş girişlerinde hızlıca seçebileceğiniz para birimlerini belirleyin."
+    favorite_currencies_desc: "Manuel ve fiş girişlerinde hızlıca seçebileceğiniz para birimlerini belirleyin.",
+    currency_usd: "Amerikan Doları",
+    currency_eur: "Euro",
+    currency_try: "Türk Lirası",
+    currency_gbp: "İngiliz Sterlini",
+    currency_jpy: "Japon Yeni"
   },
   common: {
     receipts: "Fişler",
