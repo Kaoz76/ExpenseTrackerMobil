@@ -4,18 +4,12 @@ import { FaStore } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
-import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-
 import { trTitleCase } from '../utils/stringUtils';
+import { useStores } from '../hooks/useStores';
+import StoreFilters from '../components/stores/StoreFilters';
 
-// YARDIMCI FONKSİYON: İsim Temizleme (Dışarı aktarılabilir Pure Function)
-export const cleanStoreName = (name) => {
-  if (!name) return "Unknown Store";
-  let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-  cleanName = trTitleCase(cleanName);
-  return cleanName.trim();
-};
+// We can export cleanStoreName from utils instead of here, but keeping it for backward compatibility if any other file imports it from here.
+export { cleanStoreName } from '../utils/stringUtils';
 
 function Stores() {
   const { user } = useAuth();
@@ -23,13 +17,11 @@ function Stores() {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  const [stores, setStores] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // 🔥 YENİ: Arama çubuğu için state
   const [searchTerm, setSearchTerm] = useState('');
   const [recentSearches, setRecentSearches] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const { stores, loading } = useStores(user, currency, convertPrice);
 
   const handleReset = () => {
     setSearchTerm('');
@@ -63,53 +55,6 @@ function Stores() {
     ).slice(0, 5);
   }, [stores, searchTerm]);
 
-  useEffect(() => {
-    if (user) {
-      setLoading(true);
-      const q = query(
-        collection(db, "receipts"),
-        where("userId", "==", user.uid)
-      );
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const storeMap = {};
-
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-
-          // 🔥 OPTİMİZASYON: Veritabanında hazır storeNameCleaned varsa onu kullan, yoksa anlık temizle
-          const rawName = data.fileName || data.title || "Unknown Store";
-          const storeName = data.storeNameCleaned || cleanStoreName(rawName);
-
-          if (!storeMap[storeName]) {
-            storeMap[storeName] = {
-              id: storeName,
-              name: storeName,
-              totalSpent: 0,
-              visitCount: 0
-            };
-          }
-
-          const rawPrice = Number(data.price) || 0;
-          const price = convertPrice(rawPrice, data.currency || currency?.code || 'USD', currency?.code || 'USD');
-          storeMap[storeName].totalSpent += price;
-          storeMap[storeName].visitCount += 1;
-        });
-
-        // 🔥 UX GELİŞTİRMESİ: A-Z yerine En Çok Para Harcanan Mağazayı en üste koy! (Premium His)
-        const storesArray = Object.values(storeMap).sort((a, b) => b.totalSpent - a.totalSpent);
-
-        setStores(storesArray);
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    } else {
-      setStores([]);
-      setLoading(false);
-    }
-  }, [user, currency?.code, convertPrice]);
-
   // 🔥 YENİ: Performanslı (useMemo) ve Türkçe Uyumlu Arama Filtresi
   const filteredStores = useMemo(() => {
     if (!searchTerm) return stores;
@@ -127,83 +72,17 @@ function Stores() {
           </ol>
         </nav>
 
-        {/* 🔥 BAŞLIK VE YENİ ARAMA ÇUBUĞU */}
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
-          <h1 className="display-6 fw-bold mb-3 mb-md-0">{t('common.stores')}</h1>
-
-          <div className="search-controls-wrapper d-flex flex-column flex-md-row gap-2">
-            <div className="search-wrapper">
-              <form className="search-form" onSubmit={(e) => { e.preventDefault(); saveSearchTerm(searchTerm); }}>
-                <button type="submit">
-                  <svg width="17" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="search">
-                    <path d="M7.667 12.667A5.333 5.333 0 107.667 2a5.333 5.333 0 000 10.667zM14.334 14l-2.9-2.9" stroke="currentColor" strokeWidth="1.333" strokeLinecap="round" strokeLinejoin="round"></path>
-                  </svg>
-                </button>
-
-                <input
-                  className="search-input"
-                  placeholder={t('common.search_stores_placeholder')}
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                />
-
-                {searchTerm && (
-                  <button className="search-reset" type="button" onClick={handleReset}>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                  </button>
-                )}
-              </form>
-
-              {/* Autocomplete suggestions dropdown */}
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="search-suggestions-dropdown">
-                  {suggestions.map((store) => (
-                    <div
-                      key={store.id}
-                      className="suggestion-item"
-                      onMouseDown={() => handleSelectSuggestion(store)}
-                    >
-                      <div className="suggestion-item-icon text-primary">
-                        <FaStore />
-                      </div>
-                      <div className="suggestion-item-details">
-                        <span className="suggestion-item-name">{store.name}</span>
-                        <span className="suggestion-item-sub">{store.visitCount} {t('common.visit_recorded')}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Recent searches history tags */}
-        {showSuggestions && !searchTerm.trim() && recentSearches.length > 0 && (
-          <div className="recent-searches-container mb-4">
-            <span className="recent-searches-title">{t('common.recent_searches')}:</span>
-            {recentSearches.map((term, idx) => (
-              <button
-                key={idx}
-                className="recent-search-pill"
-                onMouseDown={() => {
-                  setSearchTerm(term);
-                  setShowSuggestions(false);
-                }}
-              >
-                {term}
-              </button>
-            ))}
-          </div>
-        )}
+        <StoreFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          showSuggestions={showSuggestions}
+          setShowSuggestions={setShowSuggestions}
+          suggestions={suggestions}
+          recentSearches={recentSearches}
+          saveSearchTerm={saveSearchTerm}
+          handleSelectSuggestion={handleSelectSuggestion}
+          handleReset={handleReset}
+        />
 
         {loading && <div className="text-center p-5"><div className="spinner-border text-primary" role="status"></div></div>}
 

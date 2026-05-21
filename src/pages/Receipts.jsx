@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { useDropzone } from 'react-dropzone';
 import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus, FaEdit } from 'react-icons/fa';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -12,95 +11,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import Tesseract from 'tesseract.js';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
+import { extractDataFromText } from '../utils/ocrUtils';
+import { enrichItemsWithGemini } from '../services/geminiService';
 import { formatDateTime, formatDate } from '../utils/dateFormatter';
 import { trTitleCase, trToLower, cleanItemName, findBestProductMatch, brandAutoCorrect } from '../utils/stringUtils';
-import { enrichItemsWithGemini } from '../services/geminiService';
+import { useReceipts } from '../hooks/useReceipts';
+import ReceiptList from '../components/receipts/ReceiptList';
+import ReceiptScanZone from '../components/receipts/ReceiptScanZone';
+import ReceiptFilters from '../components/receipts/ReceiptFilters';
+import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
 
-// 🔥 Client-side image resizing to speed up OCR and reduce memory/storage footprint
-const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
-  return new Promise((resolve) => {
-    if (!file.type.startsWith('image/')) {
-      resolve(file);
-      return;
-    }
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-
-      if (width > maxWidth || height > maxHeight) {
-        const ratio = Math.min(maxWidth / width, maxHeight / height);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-      } else {
-        resolve(file);
-        return;
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          resolve(file);
-          return;
-        }
-        const resizedFile = new File([blob], file.name, {
-          type: 'image/jpeg',
-          lastModified: Date.now(),
-        });
-        resolve(resizedFile);
-      }, 'image/jpeg', 0.85);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(file);
-    };
-    img.src = url;
-  });
-};
-
-// 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
-const cleanStoreName = (name) => {
-  if (!name) return ""; // Boş dönerse bileşen tarafında t('common.unknown_store') basılır
-  let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-  return trTitleCase(brandAutoCorrect(cleanName)).trim();
-};
-
-// YAZIM HATALARINA KARŞI: Levenshtein Distance (Bulanık Eşleştirme) Algoritması
-const levenshteinDistance = (s, t) => {
-  if (!s.length) return t.length;
-  if (!t.length) return s.length;
-  const arr = [];
-  for (let i = 0; i <= t.length; i++) {
-    arr[i] = [i];
-    for (let j = 1; j <= s.length; j++) {
-      arr[i][j] = i === 0 ? j : Math.min(
-        arr[i - 1][j] + 1,
-        arr[i][j - 1] + 1,
-        arr[i - 1][j - 1] + (s[j - 1] === t[i - 1] ? 0 : 1)
-      );
-    }
-  }
-  return arr[t.length][s.length];
-};
-
-const isFuzzyMatch = (line, targetWords, maxDist = 2) => {
-  const words = line.replace(/[^a-z0-9ğüşöçığ]/gi, ' ').split(/\s+/).filter(w => w.length > 3);
-  for (let word of words) {
-    for (let target of targetWords) {
-      const allowedDist = target.length <= 5 ? 1 : maxDist;
-      if (levenshteinDistance(word, target) <= allowedDist) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
+import { resizeImage } from '../utils/imageUtils';
+import { cleanStoreName, levenshteinDistance, isFuzzyMatch } from '../utils/receiptUtils';
 
 function Receipts() {
   const { user } = useAuth();
@@ -114,10 +36,10 @@ function Receipts() {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [shouldAnalyzeWithLLM, setShouldAnalyzeWithLLM] = useState(true);
   const [existingProductNames, setExistingProductNames] = useState([]);
-
-  const [allReceipts, setAllReceipts] = useState([]);
-  const [loadingReceipts, setLoadingReceipts] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [verifyData, setVerifyData] = useState(null);
+  const { allReceipts, loadingReceipts, deleteReceipt } = useReceipts(user);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // 🔥 Yükleme limiti (Load More için)
   const [displayLimit, setDisplayLimit] = useState(20);
@@ -142,52 +64,7 @@ function Receipts() {
 
   // DOĞRULAMA MODALI STATE'LERİ
   const [processedScans, setProcessedScans] = useState([]);
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [verifyData, setVerifyData] = useState(null);
   const [verifiedPrice, setVerifiedPrice] = useState('');
-  const [showItems, setShowItems] = useState(false);
-
-  // VERİ ÇEKME
-  useEffect(() => {
-    if (user) {
-      setLoadingReceipts(true);
-      const q = query(
-        collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        where("isManual", "==", false)
-      );
-
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const receiptsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-
-        receiptsData.sort((a, b) => {
-          const getMillis = (t) => {
-            if (!t) return Date.now();
-            if (typeof t.toMillis === 'function') return t.toMillis();
-            if (t.seconds) return t.seconds * 1000;
-            if (t instanceof Date) return t.getTime();
-            if (typeof t === 'number') return t;
-            return 0;
-          };
-          return getMillis(b.createdAt) - getMillis(a.createdAt);
-        });
-
-        setAllReceipts(receiptsData);
-        setLoadingReceipts(false);
-      }, (err) => {
-        console.error("Error fetching receipts: ", err);
-        setLoadingReceipts(false);
-      });
-
-      return () => unsubscribe();
-    } else {
-      setAllReceipts([]);
-      setLoadingReceipts(false);
-    }
-  }, [user]);
 
   // 🔥 Mevcut ürün isimlerini çek (Fuzzy Match için)
   useEffect(() => {
@@ -215,309 +92,7 @@ function Receipts() {
     }
   }, [user]);
 
-  // OCR PRICE EXTRACTCTION ALGORITHM
-  const extractDataFromText = (text) => {
-    if (!text) return { total: 0, items: [] };
 
-    let usTaxScore = 0;
-    let ukTaxScore = 0;
-    let extractedTaxAmount = 0;
-
-    const normalizedText = trToLower(text.replace(/\r/g, '\n'));
-    const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-
-    // Currency detection from OCR text
-    let detectedCurrency = null;
-    let tryCount = (normalizedText.match(/\b(tl|try|₺|türk\s*lirası|turk\s*lirasi)\b/g) || []).length;
-    let usdCount = (normalizedText.match(/\b(usd|dollar|\$)\b/g) || []).length;
-    let eurCount = (normalizedText.match(/\b(eur|euro|€)\b/g) || []).length;
-    let gbpCount = (normalizedText.match(/\b(gbp|pound|£)\b/g) || []).length;
-
-    // Check symbols without boundaries too (since OCR sometimes stitches symbols to numbers like $12.34 or 12.34TL or ₺50)
-    tryCount += (normalizedText.match(/[₺]/g) || []).length;
-    tryCount += (normalizedText.match(/\b\d+[.,]\d{2}tl\b/gi) || []).length;
-    usdCount += (normalizedText.match(/[\$]/g) || []).length;
-    eurCount += (normalizedText.match(/[€]/g) || []).length;
-    gbpCount += (normalizedText.match(/[£]/g) || []).length;
-
-    if (tryCount > 0 || usdCount > 0 || eurCount > 0 || gbpCount > 0) {
-      const maxCount = Math.max(tryCount, usdCount, eurCount, gbpCount);
-      if (maxCount === tryCount) detectedCurrency = 'TRY';
-      else if (maxCount === usdCount) detectedCurrency = 'USD';
-      else if (maxCount === eurCount) detectedCurrency = 'EUR';
-      else if (maxCount === gbpCount) detectedCurrency = 'GBP';
-    }
-
-    const finalCurrency = detectedCurrency || currency?.code || 'USD';
-
-    for (let line of lines) {
-      if (/[Vv][Aa][Tt]|gbp|£|gross|net|tax\s*invoice/i.test(line)) ukTaxScore++;
-      if (/\b(sales\s*tax|state\s*tax|usd|\$)\b/i.test(line)) usTaxScore++;
-    }
-
-    // Determine tax system context: USD uses US-style tax-exclusive; GBP/EUR/TRY use tax-inclusive.
-    let isUSStyleTax = false;
-    if (finalCurrency === 'USD') {
-      isUSStyleTax = true;
-    } else if (finalCurrency === 'GBP' || finalCurrency === 'EUR' || finalCurrency === 'TRY') {
-      isUSStyleTax = false;
-    } else {
-      isUSStyleTax = (language !== 'tr') && (ukTaxScore <= usTaxScore);
-    }
-
-    // 1. Setup regexes outside the loop
-    const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
-    const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'nakit', 'kredi'];
-
-    // EXCLUSION: Catches taxes, change, points (will be completely skipped)
-    const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro|puan|point|kazanc|kazanç)/i;
-
-    // MULTIPLIER: Expanded to catch "3,995 KG x", "3,995 KG *", or "3,995 KG TL/KG"
-    const multiplierRegex = /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX*]|tl\/(?:kg|gr|kc)|tg|[\d.,]+(?:\s*tg)?)/i;
-    const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
-
-    // SIZE extraction regex
-    const itemSizeRegex = /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b/i;
-
-    // Helper to normalize sizes
-    const normalizeSize = (rawSize) => {
-      if (!rawSize) return "";
-      const match = rawSize.match(/^(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)$/i);
-      if (!match) return rawSize.trim().toUpperCase().replace('KC', 'KG');
-
-      let val = match[1].replace(',', '.');
-      let unit = match[2].toLowerCase();
-
-      if (unit === 'gr') unit = 'g';
-      if (unit === 'lt') unit = 'l';
-      if (unit === 'kc') unit = 'kg';
-      if (unit === 'ad') unit = 'adet';
-      if (unit === 'l') {
-        return `${val}L`;
-      }
-      return `${val}${unit}`;
-    };
-
-    let possibleTotals = [];
-    let extractedItems = [];
-    let previousOrphanedText = "";
-    let previousOrphanedSize = "";
-    let pendingPrice = null;
-
-    // PRE-PASS: Find and isolate weight information globally first
-    let globalCachedSize = "";
-    
-    // Extract a global weight if a multiplier line exists anywhere in the text
-    for (let line of lines) {
-      const multiMatch = line.match(multiplierRegex);
-      if (multiMatch) {
-        let val = multiMatch[1].replace(',', '.');
-        let unit = multiMatch[2].toUpperCase().replace('KC', 'KG');
-        globalCachedSize = `${val} ${unit}`;
-        break;
-      }
-    }
-
-    // DEBUG: Log the parsed lines to see the OCR output structure
-    console.log("OCR Extracted Lines:", lines);
-
-    const cleanAndParseNumber = (valStr) => {
-      let cleanStr = valStr.replace(/[^0-9.,]/g, '');
-      if (cleanStr.includes(',') && cleanStr.includes('.')) {
-        cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
-      } else if (cleanStr.includes(',')) {
-        cleanStr = cleanStr.replace(',', '.');
-      }
-      const num = parseFloat(cleanStr);
-      return (!isNaN(num) && num > 0) ? num : null;
-    };
-
-    // MAIN PASS: Process prices and structural items
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-
-      // Skip multiplier lines completely now that we cached the size
-      if (multiplierRegex.test(line)) {
-        continue;
-      }
-
-      // Skip tax and point exclusions
-      if (excludeRegex.test(line)) {
-        if (isUSStyleTax && /(sales\s*tax|state\s*tax|^tax\b)/i.test(line)) {
-          let taxMatches = line.match(priceRegex);
-          if (taxMatches && taxMatches.length > 0) {
-            const parsed = cleanAndParseNumber(taxMatches[taxMatches.length - 1]);
-            if (parsed) {
-              extractedTaxAmount += parsed;
-            }
-          }
-          // Do NOT call continue if it represents an external balance addition.
-        } else {
-          continue;
-        }
-      }
-
-      const hasKeyword = keywordRegex.test(line) || isFuzzyMatch(line, fuzzyKeywords);
-
-      // Process Totals
-      if (hasKeyword) {
-        let matches = line.match(priceRegex);
-        if (matches) {
-          matches.forEach(m => {
-            const parsed = cleanAndParseNumber(m);
-            if (parsed) possibleTotals.push(parsed);
-          });
-        }
-        continue;
-      }
-
-      // Process Items
-      let matches = line.match(priceRegex);
-      if (matches && matches.length > 0) {
-        const lastMatch = matches[matches.length - 1];
-        let parsedPrice = cleanAndParseNumber(lastMatch);
-
-        if (parsedPrice) {
-          // FIX: Detect if the raw match string or the immediate prefix contains a negative sign
-          const isDiscountLine = /(indirim|ndirim|iskonto)/i.test(line) || lastMatch.includes('-');
-          if (isDiscountLine) {
-            parsedPrice = -Math.abs(parsedPrice);
-          }
-
-          let namePart = line.substring(0, line.lastIndexOf(lastMatch)).trim();
-          
-          // Check if line name is pure OCR junk/percentages
-          let isGarbageName = namePart.length === 0 || namePart.length <= 4 || /^[%xX\d\s*#-]+$/.test(namePart);
-
-          if (isGarbageName) {
-            if (previousOrphanedText) {
-              namePart = previousOrphanedText;
-              isGarbageName = false;
-            } else {
-              pendingPrice = parsedPrice;
-              continue;
-            }
-          }
-
-          if (!isGarbageName && namePart.length > 2 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(namePart)) {
-            // 1. Extract inline size if present
-            let itemSize = "";
-            const sizeMatch = namePart.match(itemSizeRegex);
-            if (sizeMatch) {
-              itemSize = normalizeSize(sizeMatch[0]);
-              namePart = namePart.replace(sizeMatch[0], '').trim();
-            }
-
-            // 2. IMPROVED SANITIZATION: Aggressively target percent/multiplier tokens anywhere in the string
-            let cleaned = namePart
-              .replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '') // Clear "%1", "*91,90", "*125.50"
-              .replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '') // Clear "x1", "x85,89"
-              .replace(/\b\d+\s?[xX]\b/g, '')     // Clear "1x"
-              .replace(/[*#%]/g, ' ')               // Strip any stray OCR characters
-              .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '') // Strip trailing units
-              .replace(/\s+/g, ' ')               // Collapse multiple spaces
-              .trim();
-
-            let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
-            
-            // Match cached size if this is our weighed item (e.g. Patates)
-            let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
-
-            extractedItems.push({
-              name: formattedName,
-              price: parsedPrice,
-              size: finalSize || previousOrphanedSize
-            });
-
-            previousOrphanedText = "";
-            if (finalSize === globalCachedSize) globalCachedSize = ""; // Consume it
-          }
-        }
-      } else {
-        // Orphaned Text Capture (Backward stitching link)
-        if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]{3,}/.test(line)) {
-          if (pendingPrice !== null) {
-            let itemPrice = pendingPrice;
-            const isDiscountLine = /(indirim|ndirim|iskonto)/i.test(line);
-            if (isDiscountLine) {
-              itemPrice = -Math.abs(itemPrice);
-            }
-
-            let itemSize = "";
-            const sizeMatch = line.match(itemSizeRegex);
-            if (sizeMatch) {
-              itemSize = normalizeSize(sizeMatch[0]);
-            }
-
-            // IMPROVED SANITIZATION: Aggressively target percent/multiplier tokens anywhere in the string
-            let cleaned = line
-              .replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '') // Clear "%1", "*91,90", "*125.50"
-              .replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '') // Clear "x1", "x85,89"
-              .replace(/\b\d+\s?[xX]\b/g, '')     // Clear "1x"
-              .replace(/[*#%]/g, ' ')               // Strip any stray OCR characters
-              .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '') // Strip trailing units
-              .replace(/\s+/g, ' ')               // Collapse multiple spaces
-              .trim();
-
-            let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
-            let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
-
-            extractedItems.push({
-              name: formattedName,
-              price: itemPrice,
-              size: finalSize
-            });
-
-            pendingPrice = null;
-            if (finalSize === globalCachedSize) globalCachedSize = "";
-          } else {
-            previousOrphanedText = line;
-          }
-        }
-      }
-    }
-
-    let finalTotal = 0;
-    const itemsSum = extractedItems.reduce((acc, item) => acc + item.price, 0);
-    const targetSum = isUSStyleTax ? (itemsSum + extractedTaxAmount) : itemsSum;
-
-    if (possibleTotals.length > 0) {
-      if (itemsSum > 0) {
-        // Math.max() tuzağını önlemek için, ürünlerin toplamına en yakın olan sayıyı seçiyoruz
-        let closest = possibleTotals[0];
-        let minDiff = Math.abs(possibleTotals[0] - targetSum);
-        for (let i = 1; i < possibleTotals.length; i++) {
-          const diff = Math.abs(possibleTotals[i] - targetSum);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closest = possibleTotals[i];
-          }
-        }
-        finalTotal = closest;
-      } else {
-        // Ürün okunamadıysa elimizdeki "Toplam" adaylarının en büyüğünü alıyoruz (puanlar dışlandığı için nispeten güvenli)
-        finalTotal = Math.max(...possibleTotals);
-      }
-    } else {
-      // Fallback Senaryosu (Anahtar kelime hiç bulunamazsa)
-      if (itemsSum > 0) {
-        // Ürün listesi varsa doğrudan toplamını al (Math.max tuzağından kaçınılır)
-        finalTotal = targetSum;
-      } else {
-        const allMatches = normalizedText.match(priceRegex);
-        if (allMatches) {
-          // < 10000 fallback limiti kaldırıldı
-          const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null);
-          if (allNumbers.length > 0) {
-            finalTotal = Math.max(...allNumbers);
-          }
-        }
-      }
-    }
-
-    console.log("✅ Parsed Items:", extractedItems.map(i => i.name));
-    return { total: finalTotal, items: extractedItems, currency: finalCurrency };
-  };
 
   // DOSYA YÜKLEME VE OCR
   const onDrop = useCallback(async (acceptedFiles) => {
@@ -680,7 +255,7 @@ function Receipts() {
               }
             }
           );
-          extractedData = extractDataFromText(result.data.text);
+          extractedData = extractDataFromText(result.data.text, language, currency?.code || 'USD');
           URL.revokeObjectURL(fileUrl);
         }
       } catch (ocrError) {
@@ -731,7 +306,6 @@ function Receipts() {
       setTimeout(() => {
         setProcessedScans(results);
         if (results.length > 0) {
-          setShowItems(false);
           setVerifyData(results[0]);
           setVerifiedPrice(results[0].totalPrice);
           setShowVerifyModal(true);
@@ -758,7 +332,6 @@ function Receipts() {
     if (updatedQueue.length > 0) {
       setVerifyData(updatedQueue[0]);
       setVerifiedPrice(updatedQueue[0].totalPrice);
-      setShowItems(false);
     } else {
       setShowVerifyModal(false);
       setVerifyData(null);
@@ -776,26 +349,7 @@ function Receipts() {
     navigate('/texts', { state: { scannedData: dataToPass } });
   };
 
-  const handleItemChange = (index, field, value) => {
-    if (!verifyData) return;
-    const updatedItems = [...verifyData.items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
-    setVerifyData({ ...verifyData, items: updatedItems });
-  };
 
-  const handleRemoveItem = (index) => {
-    if (!verifyData) return;
-    const updatedItems = verifyData.items.filter((_, i) => i !== index);
-    setVerifyData({ ...verifyData, items: updatedItems });
-  };
-
-  const handleAddItem = () => {
-    if (!verifyData) return;
-    const newItem = { name: '', price: 0, type: '', brand: '', size: '' };
-    const updatedItems = [...(verifyData.items || []), newItem];
-    setVerifyData({ ...verifyData, items: updatedItems });
-    if (!showItems) setShowItems(true);
-  };
 
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
@@ -867,19 +421,8 @@ function Receipts() {
     if (!window.confirm(t('common.msg_delete_receipt_confirm'))) {
       return;
     }
-    try {
-      // 🔥 Also delete image from Firebase Storage if it exists
-      const receiptToDelete = allReceipts.find(r => r.id === receiptId);
-      if (receiptToDelete?.storagePath) {
-        try {
-          await deleteObject(ref(storage, receiptToDelete.storagePath));
-        } catch (storageErr) {
-          console.warn("Could not delete storage file:", storageErr);
-        }
-      }
-      await deleteDoc(doc(db, "receipts", receiptId));
-    } catch (err) {
-      console.error("Error deleting document: ", err);
+    const success = await deleteReceipt(receiptId);
+    if (!success) {
       alert(t('common.msg_delete_receipt_failed'));
     }
   };
@@ -898,11 +441,7 @@ function Receipts() {
     setSelectedImage({ url: '', alt: '' });
   };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { 'image/jpeg': [], 'image/png': [], 'application/pdf': [] },
-    maxSize: 10485760
-  });
+
 
   return (
     <div className="receipts-page-wrapper p-4">
@@ -912,68 +451,17 @@ function Receipts() {
       >
         <div className="container-fluid">
 
-          <div className="mb-5">
-            <h1 className="display-6 fw-bold">{t('common.scan_new_receipt')}</h1>
-            <p className="text-muted">{t('common.upload_image')}</p>
-            {error && <div className="alert alert-danger">{error}</div>}
-
-            <div
-              {...getRootProps()}
-              className={`dropzone-container ${isDragActive ? 'dropzone-active' : ''}`}
-            >
-              <input {...getInputProps()} />
-              <FaCloudUploadAlt className="dropzone-icon mb-3" />
-              <p className="mb-1">
-                <span className="dropzone-link-text">{t('common.click_to_upload')}</span> {t('common.or_drag_drop')}
-              </p>
-              <p className="text-muted small">{t('common.file_limits')}</p>
-            </div>
-
-            <div className="form-check mt-3 d-flex justify-content-center align-items-center">
-              <input
-                className="form-check-input me-2 mt-0"
-                type="checkbox"
-                id="privacyModeCheckbox"
-                checked={privacyMode}
-                onChange={(e) => setPrivacyMode(e.target.checked)}
-                style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
-              />
-              <label className="form-check-label text-muted" htmlFor="privacyModeCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
-                {t('common.privacy_toggle_label')}
-              </label>
-            </div>
-
-            <div className="form-check mt-2 d-flex justify-content-center align-items-center">
-              <input
-                className="form-check-input me-2 mt-0"
-                type="checkbox"
-                id="analyzeWithLLMCheckbox"
-                checked={shouldAnalyzeWithLLM}
-                onChange={(e) => setShouldAnalyzeWithLLM(e.target.checked)}
-                style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
-              />
-              <label className="form-check-label text-muted" htmlFor="analyzeWithLLMCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
-                {t('common.analyze_with_llm')}
-              </label>
-            </div>
-          </div>
-
-          {isUploading && (
-            <div className="mb-5">
-              <h3 className="h5 mb-3">{t('common.processing')}</h3>
-              <div className="progress" style={{ height: '20px' }}>
-                <div
-                  className="progress-bar progress-bar-striped progress-bar-animated"
-                  role="progressbar"
-                  style={{ width: `${uploadProgress}%` }}
-                  aria-valuenow={uploadProgress}
-                >
-                  {uploadProgress.toFixed(0)}%
-                </div>
-              </div>
-              <p className="mt-2 text-muted">{statusText}</p>
-            </div>
-          )}
+          <ReceiptScanZone
+            onDrop={onDrop}
+            error={error}
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
+            statusText={statusText}
+            privacyMode={privacyMode}
+            setPrivacyMode={setPrivacyMode}
+            shouldAnalyzeWithLLM={shouldAnalyzeWithLLM}
+            setShouldAnalyzeWithLLM={setShouldAnalyzeWithLLM}
+          />
 
           <div className="mt-5 mb-5">
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
@@ -982,92 +470,22 @@ function Receipts() {
               </h3>
 
               {user && allReceipts.length > 0 && (
-                <div className="search-wrapper" style={{ maxWidth: '300px' }}>
-                  <form className="search-form" onSubmit={(e) => e.preventDefault()}>
-                    <button type="button">
-                      <svg width="17" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="search">
-                        <path d="M7.667 12.667A5.333 5.333 0 107.667 2a5.333 5.333 0 000 10.667zM14.334 14l-2.9-2.9" stroke="currentColor" strokeWidth="1.333" strokeLinecap="round" strokeLinejoin="round"></path>
-                      </svg>
-                    </button>
-
-                    <input
-                      className="search-input"
-                      placeholder={t('common.search_receipts')}
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-
-                    {searchTerm && (
-                      <button className="search-reset" type="button" onClick={() => setSearchTerm('')}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                      </button>
-                    )}
-                  </form>
-                </div>
+                <ReceiptFilters
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                />
               )}
             </div>
 
-            <div className="card shadow-sm border-0">
-              <div className="list-group list-group-flush">
-                <div className="list-group-item bg-body-tertiary text-body-secondary fw-bold small text-uppercase d-flex align-items-center">
-                  <div style={{ flex: 2 }}>{t('common.store_name')}</div>
-                  <div style={{ flex: 1 }}>{t('common.date')}</div>
-                  <div style={{ flex: 1, textAlign: 'right' }}>{t('common.total_price_ocr')}</div>
-                  <div style={{ width: '40px' }}></div>
-                </div>
-
-                {loadingReceipts && <div className="p-4 text-center text-muted">{t('common.loading_receipts')}</div>}
-                {!user && !loadingReceipts && <div className="p-5 text-center text-muted"><Link to="/login">{t('common.log_in')}</Link> {t('common.please_log_in_receipts')}</div>}
-                {user && !loadingReceipts && allReceipts.length === 0 && <div className="p-5 text-center text-muted">{t('common.no_receipts_uploaded')}</div>}
-                {user && !loadingReceipts && allReceipts.length > 0 && filteredReceipts.length === 0 && (
-                  <div className="p-5 text-center text-muted">{t('common.no_products_matched')}</div>
-                )}
-
-                {user && !loadingReceipts && displayedReceipts.length > 0 && (
-                  <>
-                    {displayedReceipts.map(receipt => (
-                      <div
-                        key={receipt.id}
-                        className="list-group-item list-group-item-action d-flex align-items-center p-3"
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => navigate(`/receipts/${receipt.id}`)}
-                      >
-                        <div style={{ flex: 2, minWidth: 0 }} className="d-flex align-items-center pe-2">
-                          <span className="fw-bold text-truncate">{receipt.fileName}</span>
-                        </div>
-                        <div style={{ flex: 1 }} className="text-muted small">{formatDate(receipt.createdAt)}</div>
-                        <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary">{formatPrice(receipt.price, receipt.currency)}</div>
-                        <div style={{ width: '50px', display: 'flex', justifyContent: 'flex-end' }}>
-                          <button
-                            className="delete-entry-btn"
-                            onClick={(e) => handleDeleteReceipt(e, receipt.id)}
-                            title="Delete Receipt"
-                          >
-                            <svg viewBox="0 0 448 512" className="delete-entry-svgIcon">
-                              <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"></path>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-
-                    {filteredReceipts.length > displayedReceipts.length && (
-                      <div className="list-group-item text-center p-3 bg-light">
-                        <button
-                          className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold shadow-sm"
-                          onClick={() => setDisplayLimit(prev => prev + 20)}
-                        >
-                          <FaPlus className="me-2 small" /> {t('common.load_older_receipts')}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
+            <ReceiptList
+              user={user}
+              loadingReceipts={loadingReceipts}
+              allReceipts={allReceipts}
+              filteredReceipts={filteredReceipts}
+              displayedReceipts={displayedReceipts}
+              setDisplayLimit={setDisplayLimit}
+              handleDeleteReceipt={handleDeleteReceipt}
+            />
           </div>
         </div>
       </div>
@@ -1079,196 +497,18 @@ function Receipts() {
         imageAlt={selectedImage.alt}
       />
 
-      {showVerifyModal && (
-        <>
-          <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
-          <div className="modal fade show d-block" style={{ zIndex: 1055 }} tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content shadow-lg border-0">
-
-                <div className="modal-header bg-primary text-white">
-                  <h5 className="modal-title fw-bold">
-                    {t('common.verify_receipt')} ({processedScans.length} {t('common.msg_remaining')})
-                  </h5>
-                  <button type="button" className="btn-close btn-close-white" onClick={handleCloseAll} title="Cancel All"></button>
-                </div>
-
-                <div className="modal-body p-4">
-                  {verifyData?.tempImageUrl && (
-                    <div className="mb-4 text-center">
-                      <img
-                        src={verifyData.tempImageUrl}
-                        alt="Scanned Receipt"
-                        style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', border: '1px solid #dee2e6' }}
-                      />
-                    </div>
-                  )}
-
-                  <p className="text-muted mb-4">
-                    {t('common.ocr_detected_price')}
-                  </p>
-
-                  <div className="text-center mb-4">
-                    <div className="p-4 bg-light rounded border shadow-sm mx-auto" style={{ maxWidth: '250px' }}>
-                      <FaCheck className="text-success mb-2" size={40} />
-                      <input
-                        type="text"
-                        className="form-control text-center fw-bold mt-2"
-                        value={verifyData?.fileName || ''}
-                        onChange={(e) => setVerifyData({ ...verifyData, fileName: e.target.value })}
-                        placeholder={t('common.store_name')}
-                      />
-                      <small className="text-muted mt-1 d-block">{t('common.enter_store_name')}</small>
-                    </div>
-                  </div>
-
-                  <div className="form-group mb-4">
-                    <label className="form-label fw-bold">{t('common.total_price_ocr').replace(' (OCR)', '')}</label>
-                    <div className="input-group input-group-lg mb-2">
-                      <span className="input-group-text">{CURRENCY_MAP[verifyData?.currency || currency?.code || 'USD']?.symbol || '$'}</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="form-control"
-                        value={verifiedPrice}
-                        onChange={(e) => setVerifiedPrice(e.target.value.replace(/[^0-9.,]/g, ''))}
-                      />
-                    </div>
-                    <div className="d-flex flex-wrap gap-2 mt-1">
-                      {favoriteCurrencies.map((code) => {
-                        const isSelected = (verifyData?.currency || currency?.code || 'USD') === code;
-                        const symbol = CURRENCY_MAP[code]?.symbol || '$';
-                        return (
-                          <button
-                            key={code}
-                            type="button"
-                            className={`btn btn-sm px-3 py-2 rounded-3 transition-all ${
-                              isSelected
-                                ? 'btn-primary shadow-sm border-0 fw-bold'
-                                : 'btn-outline-secondary border-1 text-muted'
-                            }`}
-                            onClick={() => setVerifyData({ ...verifyData, currency: code })}
-                          >
-                            <span className="me-1">{symbol}</span>
-                            <span>{code}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="form-text">{t('common.detected_from_ocr')}</div>
-                  </div>
-
-                  {verifyData && (
-                    <div className="border rounded mb-3 overflow-hidden">
-                      <button
-                        className="btn btn-light w-100 d-flex justify-content-between align-items-center p-3 text-secondary"
-                        onClick={() => setShowItems(!showItems)}
-                        style={{ borderRadius: 0, border: 'none', borderBottom: showItems ? '1px solid #dee2e6' : 'none' }}
-                      >
-                        <span className="fw-bold text-dark">
-                          {t('common.parsed_items')} <span className="badge bg-secondary ms-2">{(verifyData.items || []).length}</span>
-                        </span>
-                        <span>{showItems ? <FaTimes size={14} className="text-secondary" /> : <FaListAlt size={14} className="text-secondary" />}</span>
-                      </button>
-
-                      {showItems && (
-                        <div className="bg-white" style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                          <ul className="list-group list-group-flush">
-                            {(verifyData.items || []).map((item, idx) => (
-                              <li key={idx} className="list-group-item d-flex flex-column py-2 px-3">
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <button
-                                    className="btn btn-sm btn-outline-danger me-2 border-0"
-                                    onClick={() => handleRemoveItem(idx)}
-                                    title="Remove Item"
-                                  >
-                                    <FaTrash size={12} />
-                                  </button>
-                                  <input
-                                    type="text"
-                                    className="form-control form-control-sm me-2 text-secondary"
-                                    style={{ fontWeight: '500' }}
-                                    value={item.name}
-                                    onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
-                                    placeholder={t('common.item_name')}
-                                  />
-                                  <div className="input-group input-group-sm" style={{ width: '120px' }}>
-                                    <span className="input-group-text bg-light text-primary fw-bold border-end-0">{currency?.symbol || '$'}</span>
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0"
-                                      value={item.price}
-                                      onChange={(e) => handleItemChange(idx, 'price', e.target.value.replace(/[^0-9.,]/g, ''))}
-                                      placeholder={t('common.price')}
-                                    />
-                                  </div>
-                                </div>
-                                <div className="row g-2 ps-4 mt-1">
-                                  <div className="col-12 col-md-4">
-                                    <input
-                                      type="text"
-                                      className="form-control form-control-sm"
-                                      placeholder={t('common.type')}
-                                      value={item.type || ''}
-                                      onChange={(e) => handleItemChange(idx, 'type', e.target.value)}
-                                    />
-                                  </div>
-                                  <div className="col-6 col-md-4">
-                                    <input
-                                      type="text"
-                                      className="form-control form-control-sm"
-                                      placeholder={t('common.brand')}
-                                      value={item.brand || ''}
-                                      onChange={(e) => handleItemChange(idx, 'brand', e.target.value)}
-                                    />
-                                  </div>
-                                  <div className="col-6 col-md-4">
-                                    <input
-                                      type="text"
-                                      className="form-control form-control-sm"
-                                      placeholder={t('common.size')}
-                                      value={item.size || ''}
-                                      onChange={(e) => handleItemChange(idx, 'size', e.target.value)}
-                                    />
-                                  </div>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                          <div className="p-2 border-top bg-light">
-                            <button
-                              className="btn btn-sm btn-outline-primary w-100 d-flex justify-content-center align-items-center"
-                              onClick={handleAddItem}
-                            >
-                              <FaPlus className="me-2" /> {t('common.add_item')}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="modal-footer bg-light d-flex justify-content-between">
-                  <button className="btn btn-outline-info border-0 d-flex align-items-center" onClick={handleSendToManual}>
-                    <FaEdit className="me-1" /> {t('common.use_manual_form')}
-                  </button>
-                  <div className="d-flex gap-2">
-                    <button type="button" className="btn btn-outline-secondary" onClick={handleCancelSave}>
-                      <FaTimes className="me-2" /> {t('common.discard')}
-                    </button>
-                    <button type="button" className="btn btn-success px-4" onClick={handleConfirmSave}>
-                      <FaCheck className="me-2" /> {t('common.save_next')}
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      <ReceiptVerifyModal
+        showVerifyModal={showVerifyModal}
+        processedScans={processedScans}
+        verifyData={verifyData}
+        setVerifyData={setVerifyData}
+        verifiedPrice={verifiedPrice}
+        setVerifiedPrice={setVerifiedPrice}
+        handleCloseAll={handleCloseAll}
+        handleSendToManual={handleSendToManual}
+        handleCancelSave={handleCancelSave}
+        handleConfirmSave={handleConfirmSave}
+      />
 
     </div>
   );

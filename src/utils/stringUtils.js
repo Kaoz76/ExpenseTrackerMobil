@@ -41,6 +41,16 @@ export const trTitleCase = (str) => {
 };
 
 /**
+ * Cleans and formats a store name.
+ */
+export const cleanStoreName = (name) => {
+  if (!name) return "Unknown Store";
+  let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
+  cleanName = trTitleCase(cleanName);
+  return cleanName.trim();
+};
+
+/**
  * Checks if a string includes another string, case-insensitively using locale rules.
  */
 export const trIncludes = (source, target) => {
