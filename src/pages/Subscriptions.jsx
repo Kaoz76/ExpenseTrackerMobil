@@ -244,7 +244,7 @@ function Subscriptions() {
           {/* LİSTE */}
           <div className="col-lg-8">
             <div className="card border-0 shadow-sm h-100">
-              <div className="card-header bg-body-tertiary py-3 d-flex justify-content-between align-items-center">
+              <div className="card-header bg-body-tertiary py-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                 <h5 className="mb-0 fw-bold d-flex align-items-center text-body">
                   <FaCalendarCheck className="me-2 text-body-secondary" /> {t('common.active_subscriptions')}
                 </h5>
