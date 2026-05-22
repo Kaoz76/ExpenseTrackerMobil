@@ -8,13 +8,12 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebas
 import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, Timestamp, limit, getDocs } from "firebase/firestore";
 import ImageModal from '../components/ImageModal';
 import { Link, useNavigate } from 'react-router-dom';
-import Tesseract from 'tesseract.js';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
 import { extractDataFromText } from '../utils/ocrUtils';
 import { enrichItemsWithGemini } from '../services/geminiService';
 import { formatDateTime, formatDate } from '../utils/dateFormatter';
-import { trTitleCase, trToLower, cleanItemName, findBestProductMatch, brandAutoCorrect } from '../utils/stringUtils';
+import { trTitleCase, trToLower, cleanItemName, findBestProductMatch, brandAutoCorrect, cleanStoreName } from '../utils/stringUtils';
 import { useReceipts } from '../hooks/useReceipts';
 import ReceiptList from '../components/receipts/ReceiptList';
 import ReceiptScanZone from '../components/receipts/ReceiptScanZone';
@@ -22,7 +21,7 @@ import ReceiptFilters from '../components/receipts/ReceiptFilters';
 import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
 
 import { resizeImage } from '../utils/imageUtils';
-import { cleanStoreName, levenshteinDistance, isFuzzyMatch } from '../utils/receiptUtils';
+import { levenshteinDistance, isFuzzyMatch } from '../utils/receiptUtils';
 
 function Receipts() {
   const { user } = useAuth();
@@ -244,6 +243,7 @@ function Receipts() {
           extractedData = extractDataFromText(base64Text);
         } else {
           const fileUrl = URL.createObjectURL(file);
+          const Tesseract = (await import('tesseract.js')).default;
           const result = await Tesseract.recognize(
             fileUrl,
             'tur+eng',
