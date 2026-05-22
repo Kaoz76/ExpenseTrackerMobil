@@ -5,11 +5,10 @@ import {
   FaTimes, FaArrowLeft, FaShoppingCart, FaSave, FaImage, FaExpandAlt
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
-import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
+
 import { db, storage } from '../firebase';
 import { doc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
-import { formatDateTime } from '../utils/dateFormatter';
 import { useLanguage } from '../context/LanguageContext';
 import ReceiptInfoCard from '../components/receipts/ReceiptInfoCard';
 import ReceiptItemList from '../components/receipts/ReceiptItemList';
@@ -18,7 +17,6 @@ function ReceiptDetail() {
   const { receiptId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { formatPrice, currency, favoriteCurrencies } = useCurrency();
   const { t } = useLanguage();
 
   const [receipt, setReceipt] = useState(null);

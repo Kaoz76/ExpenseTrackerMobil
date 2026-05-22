@@ -1,11 +1,4 @@
-import { trTitleCase, brandAutoCorrect } from './stringUtils';
 
-// 🔥 StoreDetails için mağaza ismini standardize eden fonksiyon
-export const cleanStoreName = (name) => {
-  if (!name) return ""; 
-  let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-  return trTitleCase(brandAutoCorrect(cleanName)).trim();
-};
 
 // YAZIM HATALARINA KARŞI: Levenshtein Distance (Bulanık Eşleştirme) Algoritması
 export const levenshteinDistance = (s, t) => {

@@ -4,8 +4,7 @@ import { FaBoxOpen, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
-import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+
 import { getCategoryInfo, localizeCategory } from '../utils/categoryMap';
 import { trToLower } from '../utils/stringUtils';
 import { useProducts } from '../hooks/useProducts';

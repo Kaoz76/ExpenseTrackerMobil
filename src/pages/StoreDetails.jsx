@@ -6,15 +6,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
-import { trTitleCase, trToLower } from '../utils/stringUtils';
-
-// YARDIMCI FONKSİYON
-export const cleanStoreName = (name) => {
-  if (!name) return "Unknown Store";
-  let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-  cleanName = trTitleCase(cleanName);
-  return cleanName.trim();
-};
+import { trToLower, cleanStoreName } from '../utils/stringUtils';
 
 function StoreDetails() {
   const { storeId } = useParams();

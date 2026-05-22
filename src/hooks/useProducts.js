@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
-import { getCategoryInfo, localizeCategory } from '../utils/categoryMap';
+import { localizeCategory } from '../utils/categoryMap';
 import { trToLower } from '../utils/stringUtils';
 
 export function useProducts(user, currency, language) {

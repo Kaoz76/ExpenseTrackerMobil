@@ -4,12 +4,10 @@ import { FaStore } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
-import { trTitleCase } from '../utils/stringUtils';
 import { useStores } from '../hooks/useStores';
 import StoreFilters from '../components/stores/StoreFilters';
 
-// We can export cleanStoreName from utils instead of here, but keeping it for backward compatibility if any other file imports it from here.
-export { cleanStoreName } from '../utils/stringUtils';
+// Removed cleanStoreName export
 
 function Stores() {
   const { user } = useAuth();

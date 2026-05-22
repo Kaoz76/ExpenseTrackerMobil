@@ -46,8 +46,7 @@ export const trTitleCase = (str) => {
 export const cleanStoreName = (name) => {
   if (!name) return "Unknown Store";
   let cleanName = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-  cleanName = trTitleCase(cleanName);
-  return cleanName.trim();
+  return trTitleCase(brandAutoCorrect(cleanName)).trim();
 };
 
 /**

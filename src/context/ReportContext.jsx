@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback, use
 import { useAuth } from './AuthContext';
 import { useCurrency } from './CurrencyContext';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -141,7 +141,7 @@ export const ReportProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  }, [user, currency?.code]);
+  }, [user]);
 
   // OKUNDU OLARAK İŞARETLEME (Geliştirme: useCallback eklendi, yukarı alındı)
   const markAsRead = useCallback(async () => {
