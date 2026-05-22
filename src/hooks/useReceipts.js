@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, orderBy, limit, startAfter, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase';
@@ -10,7 +10,7 @@ export function useReceipts(user) {
   const [lastDoc, setLastDoc] = useState(null);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchInitialReceipts = async () => {
+  const fetchInitialReceipts = useCallback(async () => {
     if (!user) {
       setAllReceipts([]);
       setLoadingReceipts(false);
@@ -36,11 +36,11 @@ export function useReceipts(user) {
     } finally {
       setLoadingReceipts(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchInitialReceipts();
-  }, [user]);
+  }, [fetchInitialReceipts]);
 
   const loadMoreReceipts = async () => {
     if (!user || !lastDoc || !hasMore) return;

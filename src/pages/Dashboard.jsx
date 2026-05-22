@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, getDoc, orderBy, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 // Image loading wrapper component for smoother UX
 const DashboardImage = ({ src, alt }) => {
@@ -111,79 +111,80 @@ function Dashboard() {
     }
   }, [user, currency?.code, convertPrice]);
 
-  // AYLIK HARCAMALARI (RECEIPTS) ÇEKME - 🔥 DÜZELTİLDİ: Sadece bu ayın verisi iniyor!
+  // AYLIK HARCAMALARI VE SON KAYITLARI ÇEKME (TEK DİNLEYİCİ)
   useEffect(() => {
     if (user) {
+      setLoadingScans(true);
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        where("createdAt", ">=", startOfMonth),
-        where("createdAt", "<=", endOfMonth),
-        orderBy("createdAt", "desc")
+        where("userId", "==", user.uid)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         let total = 0;
         let count = 0;
+        const scansData = [];
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          const priceVal = Number(data.price) || 0;
-          const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
-          total += convertedPrice;
-          count++;
+          scansData.push({ id: doc.id, ...data });
+
+          let createdAtDate = null;
+          if (data.createdAt) {
+            if (typeof data.createdAt.toDate === 'function') createdAtDate = data.createdAt.toDate();
+            else if (data.createdAt.seconds) createdAtDate = new Date(data.createdAt.seconds * 1000);
+            else if (data.createdAt instanceof Date) createdAtDate = data.createdAt;
+          } else {
+            createdAtDate = new Date();
+          }
+          
+          if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
+            const priceVal = Number(data.price) || 0;
+            const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
+            total += convertedPrice;
+            count++;
+          }
         });
 
+        // Aylık istatistikleri güncelle
         setMonthlyStats({
           totalSpent: total,
           receiptCount: count,
           averageSpend: count > 0 ? total / count : 0
         });
 
+        // Son 3 kaydı bulmak için sırala
+        scansData.sort((a, b) => {
+          const getMillis = (t) => {
+            if (!t) return Date.now();
+            if (typeof t.toMillis === 'function') return t.toMillis();
+            if (t.seconds) return t.seconds * 1000;
+            if (t instanceof Date) return t.getTime();
+            if (typeof t === 'number') return t;
+            return 0;
+          };
+          return getMillis(b.createdAt) - getMillis(a.createdAt);
+        });
+
+        setRecentScans(scansData.slice(0, 3));
+        setLoadingScans(false);
+
       }, (error) => {
-        console.error("Error calculating monthly stats:", error);
+        console.error("Error fetching receipts data:", error);
+        setLoadingScans(false);
       });
 
       return () => unsubscribe();
     } else {
       setMonthlyStats({ totalSpent: 0, receiptCount: 0, averageSpend: 0 });
-    }
-  }, [user, currency?.code, convertPrice]);
-
-  // SON 3 KAYDI ÇEKME - 🔥 DÜZELTİLDİ: Veritabanından orderBy ve limit ile sadece 3 kayıt isteniyor!
-  useEffect(() => {
-    setLoadingScans(true);
-    if (user) {
-      const q = query(
-        collection(db, "receipts"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc"),
-        limit(3)
-      );
-
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const scansData = [];
-        querySnapshot.forEach((doc) => {
-          scansData.push({ id: doc.id, ...doc.data() });
-        });
-
-        setRecentScans(scansData);
-        setLoadingScans(false);
-      }, (error) => {
-        console.error("Error fetching recent scans: ", error);
-        setLoadingScans(false);
-      });
-
-      return () => unsubscribe();
-    } else {
       setRecentScans([]);
       setLoadingScans(false);
     }
-  }, [user]);
+  }, [user, currency?.code, convertPrice]);
 
   const closeImageModal = () => { setIsImageModalShowing(false); setSelectedImage({ url: '', alt: '' }); };
   const handleCardClick = (scan) => { navigate(`/receipts/${scan.id}`); };
