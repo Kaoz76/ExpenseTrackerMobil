@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import Navbar from './components/Navbar';
@@ -7,21 +7,29 @@ import ScrollToHash from './components/ScrollToHash';
 import DynamicFavicon from './components/DynamicFavicon';
 import ScrollToTopButton from './components/ScrollToTopButton';
 
-import Dashboard from './pages/Dashboard';
-import Landing from './pages/Landing';
-import Receipts from './pages/Receipts';
-import ManualEntry from './pages/ManualEntry';
-import Subscriptions from './pages/Subscriptions';
-import Products from './pages/Products';
-import ProductDetails from './pages/ProductDetails';
-import ReceiptDetail from './pages/ReceiptDetail';
-import Stores from './pages/Stores';
-import StoreDetails from './pages/StoreDetails';
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import AnalyzeExpenses from './pages/AnalyzeExpenses';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Landing = lazy(() => import('./pages/Landing'));
+const Receipts = lazy(() => import('./pages/Receipts'));
+const ManualEntry = lazy(() => import('./pages/ManualEntry'));
+const Subscriptions = lazy(() => import('./pages/Subscriptions'));
+const Products = lazy(() => import('./pages/Products'));
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
+const ReceiptDetail = lazy(() => import('./pages/ReceiptDetail'));
+const Stores = lazy(() => import('./pages/Stores'));
+const StoreDetails = lazy(() => import('./pages/StoreDetails'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const AnalyzeExpenses = lazy(() => import('./pages/AnalyzeExpenses'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+const PageLoader = () => (
+  <div className="d-flex justify-content-center align-items-center w-100" style={{ minHeight: '60vh' }}>
+    <div className="spinner-border text-primary" role="status">
+      <span className="visually-hidden">Yükleniyor...</span>
+    </div>
+  </div>
+);
 
 function App() {
   const checkIsMobile = () => {
@@ -57,31 +65,33 @@ function App() {
 
       {/* Capacitor "Safe Area" destekli mobil boşluk mantığı mükemmel çalışıyor */}
       <main className="main-content-area">
-        <Routes>
-          {/* 🔥 Kök dizin (/) mobil uygulamada Dashboard'a yönlendirilir, web'de Landing gösterilir */}
-          <Route path="/" element={isMobile ? <Navigate to="/dashboard" replace /> : <Landing />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* 🔥 Kök dizin (/) mobil uygulamada Dashboard'a yönlendirilir, web'de Landing gösterilir */}
+            <Route path="/" element={isMobile ? <Navigate to="/dashboard" replace /> : <Landing />} />
+            <Route path="/dashboard" element={<Dashboard />} />
 
-          <Route path="/receipts" element={<Receipts />} />
-          <Route path="/receipts/:receiptId" element={<ReceiptDetail />} />
-          <Route path="/texts" element={<ManualEntry />} />
-          <Route path="/subscriptions" element={<Subscriptions />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/:productId" element={<ProductDetails />} />
-          <Route path="/stores" element={<Stores />} />
-          <Route path="/stores/:storeId" element={<StoreDetails />} />
+            <Route path="/receipts" element={<Receipts />} />
+            <Route path="/receipts/:receiptId" element={<ReceiptDetail />} />
+            <Route path="/texts" element={<ManualEntry />} />
+            <Route path="/subscriptions" element={<Subscriptions />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/products/:productId" element={<ProductDetails />} />
+            <Route path="/stores" element={<Stores />} />
+            <Route path="/stores/:storeId" element={<StoreDetails />} />
 
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignUpPage />} />
 
-          {/* Quick Links */}
-          <Route path="/analyze" element={<AnalyzeExpenses />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/settings" element={<Settings />} />
+            {/* Quick Links */}
+            <Route path="/analyze" element={<AnalyzeExpenses />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={<Settings />} />
 
-          {/* 🔥 GELİŞTİRME 2: 404 Catch-All (Bilinmeyen bir URL girilirse Dashboard'a geri fırlat) */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+            {/* 🔥 GELİŞTİRME 2: 404 Catch-All (Bilinmeyen bir URL girilirse Dashboard'a geri fırlat) */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
       </main>
 
       <BottomNav />
