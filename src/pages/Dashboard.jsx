@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, orderBy, limit } from "firebase/firestore";
 
 // Image loading wrapper component for smoother UX
 const DashboardImage = ({ src, alt }) => {
@@ -122,7 +122,8 @@ function Dashboard() {
         collection(db, "receipts"),
         where("userId", "==", user.uid),
         where("createdAt", ">=", startOfMonth),
-        where("createdAt", "<=", endOfMonth)
+        where("createdAt", "<=", endOfMonth),
+        orderBy("createdAt", "desc")
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {

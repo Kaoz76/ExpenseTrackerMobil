@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, query, where, Timestamp, getDocs } from "firebase/firestore";
+import { collection, addDoc, query, where, Timestamp, getDocs, orderBy, limit } from "firebase/firestore";
 import ImageModal from '../components/ImageModal';
 import { Link, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';

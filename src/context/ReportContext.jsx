@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback, use
 import { useAuth } from './AuthContext';
 import { useCurrency } from './CurrencyContext';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -176,7 +176,8 @@ export const ReportProvider = ({ children }) => {
         collection(db, "receipts"),
         where("userId", "==", user.uid),
         where("createdAt", ">=", startOfLastMonth),
-        where("createdAt", "<=", endOfLastMonth)
+        where("createdAt", "<=", endOfLastMonth),
+        orderBy("createdAt", "desc")
       );
 
       const querySnapshot = await getDocs(q);

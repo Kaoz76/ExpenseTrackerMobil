@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import { getCategoryInfo, localizeCategory } from '../utils/categoryMap';
 
@@ -90,12 +90,14 @@ function AnalyzeExpenses() {
         receiptsQuery = query(
           collection(db, "receipts"),
           where("userId", "==", user.uid),
-          where("createdAt", ">=", startDate)
+          where("createdAt", ">=", startDate),
+          orderBy("createdAt", "desc")
         );
       } else {
         receiptsQuery = query(
           collection(db, "receipts"),
-          where("userId", "==", user.uid)
+          where("userId", "==", user.uid),
+          orderBy("createdAt", "desc")
         );
       }
 
