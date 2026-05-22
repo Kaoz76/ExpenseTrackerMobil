@@ -58,7 +58,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
 
   const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
   const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'nakit', 'kredi'];
-  const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro|puan|point|kazanc|kazanç)/i;
+  const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro|puan|point|kazanc|kazanç|kasa no|fi[sş]\s*no|tarih|saat)/i;
   const multiplierRegex = /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX*]|tl\/(?:kg|gr|kc)|tg|[\d.,]+(?:\s*tg)?)/i;
   const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
   const itemSizeRegex = /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b/i;
@@ -183,11 +183,13 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
-          extractedItems.push({
-            name: formattedName,
-            price: parsedPrice,
-            size: finalSize || previousOrphanedSize
-          });
+          if (formattedName.length >= 2) {
+            extractedItems.push({
+              name: formattedName,
+              price: parsedPrice,
+              size: finalSize || previousOrphanedSize
+            });
+          }
 
           previousOrphanedText = "";
           if (finalSize === globalCachedSize) globalCachedSize = ""; 
@@ -220,11 +222,13 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
-          extractedItems.push({
-            name: formattedName,
-            price: itemPrice,
-            size: finalSize
-          });
+          if (formattedName.length >= 2) {
+            extractedItems.push({
+              name: formattedName,
+              price: itemPrice,
+              size: finalSize
+            });
+          }
 
           pendingPrice = null;
           if (finalSize === globalCachedSize) globalCachedSize = "";

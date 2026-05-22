@@ -101,6 +101,9 @@ export const cleanItemName = (name) => {
   cleaned = cleaned.replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '');
   cleaned = cleaned.replace(/\b\d+\s?[xX]\b/g, '');
 
+  // 1c. Kalan yalnız çarpanları sil (örn: "0,53 Kgx")
+  cleaned = cleaned.replace(/^\s*\d+(?:[.,]\d+)?\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)x?\s*$/i, '');
+
   // 2. Baştaki stok/barkod numaralarını sil (5+ haneli sayı dizileri)
   cleaned = cleaned.replace(/^\d{5,}\s*/g, '');
 
@@ -123,8 +126,15 @@ export const cleanItemName = (name) => {
 
   cleaned = words.join(' ').trim();
 
-  // Eğer temizleme sonrası boş kaldıysa orijinali döndür
-  return cleaned.length > 0 ? cleaned : name.trim();
+  // Eğer temizleme sonrası tamamen boş kaldıysa, bu kelimenin tamamen çöp/çarpan olduğunu anlarız.
+  // Sadece eğer orijinal isim harf içeriyorsa geri döndür (sayı/çöp değilse)
+  if (cleaned.length === 0) {
+    if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(name) && !/^\s*\d+(?:[.,]\d+)?\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)x?\s*$/i.test(name)) {
+      return name.trim();
+    }
+    return "";
+  }
+  return cleaned;
 };
 
 /**

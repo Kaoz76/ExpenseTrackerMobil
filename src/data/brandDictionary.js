@@ -691,6 +691,14 @@ export const commonMisreads = [
   { wrong: /\ba[-.]?[1|l|i|ı][0|o][-.]?[1|l|i|ı]\b/gi, right: 'A101' },
   { wrong: /\b[s|ş][oö0][k|x]\b/gi, right: 'ŞOK' },
   { wrong: /\bcar[e]?f[o]*u[r|a]+\b/gi, right: 'Carrefour' },
+  { wrong: /\btk\s+ri[,.]?\s*ra\s+zeytinya[gğ]/gi, right: 'Tariş Riviera Zeytinyağ' },
+  { wrong: /\btk\s+a2\s+ya[gğ]l[ıi]\s+dana\s+ki/gi, right: 'TK Az Yağlı Dana Kıyma' },
+  { wrong: /\btk\s+[cç]if\s+kavrulmu[sş]t/gi, right: 'TK Çifte Kavrulmuş' },
+  { wrong: /\btk\s+ku\s+et\s+fermente\s+da/gi, right: 'TK Kuru Et Fermente' },
+  { wrong: /\btars\s+tam\s+ya[gğ]l[ıi]\s+ka[sş]/gi, right: 'Tariş Tam Yağlı Kaşar' },
+  { wrong: /\bs[uü]ta\s+a[sş]ar\s+peyniri/gi, right: 'Sütaş Kaşar Peyniri' },
+  { wrong: /\btk\s+da\s+kasap\s+sucuk/gi, right: 'TK Dana Kasap Sucuk' },
+  { wrong: /\buno\s+eleneksel\s+lava[sş]/gi, right: 'Uno Geleneksel Lavaş' },
   
   // --- KRİTİK MARKA DÜZELTMELERİ ---
   { wrong: /\b[b|8|e]anv[iı]t/gi, right: 'Banvit' },

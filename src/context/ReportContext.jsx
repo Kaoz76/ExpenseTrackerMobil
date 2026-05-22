@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useCurrency } from './CurrencyContext';
+import { useLanguage } from './LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy } from 'firebase/firestore';
 import jsPDF from 'jspdf';
@@ -11,6 +12,7 @@ const ReportContext = createContext(null);
 export const ReportProvider = ({ children }) => {
   const { user } = useAuth();
   const { formatPrice, currency, convertPrice } = useCurrency();
+  const { t } = useLanguage();
 
   const [hasNotification, setHasNotification] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -86,7 +88,7 @@ export const ReportProvider = ({ children }) => {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        alert("No data found to export.");
+        alert(t('common.no_data_period'));
         setIsGenerating(false);
         return;
       }
@@ -134,14 +136,17 @@ export const ReportProvider = ({ children }) => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // Kullanıcıya indirme başarılı bildirimi veriyoruz
+      setTimeout(() => alert(t('common.msg_export_success')), 300);
 
     } catch (error) {
       console.error("CSV Export Error:", error);
-      alert("Failed to export data.");
+      alert(t('common.msg_export_failed'));
     } finally {
       setIsGenerating(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   // OKUNDU OLARAK İŞARETLEME (Geliştirme: useCallback eklendi, yukarı alındı)
   const markAsRead = useCallback(async () => {
@@ -203,7 +208,7 @@ export const ReportProvider = ({ children }) => {
       });
 
       if (receipts.length === 0) {
-        alert(`No expenses found for ${monthName}. PDF cannot be generated.`);
+        alert(t('common.no_data_period'));
         setIsGenerating(false);
         return;
       }
@@ -283,15 +288,18 @@ export const ReportProvider = ({ children }) => {
       const safeFileName = `Expense_Report_${monthName.replace(/\s/g, '_')}.pdf`;
       pdfDoc.save(safeFileName);
 
+      // Kullanıcıya indirme başarılı bildirimi veriyoruz
+      setTimeout(() => alert(t('common.msg_export_success')), 300);
+
       markAsRead();
 
     } catch (error) {
       console.error("PDF Generation Error (Critical):", error);
-      alert(`Error generating PDF: ${error.message}`);
+      alert(t('common.msg_export_failed') + `: ${error.message}`);
     } finally {
       setIsGenerating(false);
     }
-  }, [user, formatPrice, markAsRead, currency?.code, convertPrice]); // Bağımlılıklar güncellendi
+  }, [user, formatPrice, markAsRead, currency?.code, convertPrice, t]); // Bağımlılıklar güncellendi
 
   // Geliştirme: Context value objesini useMemo ile sarmalayarak gereksiz renderları kestik
   const contextValue = useMemo(() => ({
