@@ -84,11 +84,20 @@ function AnalyzeExpenses() {
       // Use daily grouping for short ranges, monthly for longer ones
       const useDailyGrouping = (timeRange === 'this_week' || timeRange === 'this_month');
 
-      // --- 1) Receipts query (no composite index needed — client-side date filtering)
-      const receiptsQuery = query(
-        collection(db, "receipts"),
-        where("userId", "==", user.uid)
-      );
+      // --- 1) Receipts query (server-side date filtering using composite index)
+      let receiptsQuery;
+      if (startDate) {
+        receiptsQuery = query(
+          collection(db, "receipts"),
+          where("userId", "==", user.uid),
+          where("createdAt", ">=", startDate)
+        );
+      } else {
+        receiptsQuery = query(
+          collection(db, "receipts"),
+          where("userId", "==", user.uid)
+        );
+      }
 
       // --- 2) Subscriptions query ---
       const subsQuery = query(

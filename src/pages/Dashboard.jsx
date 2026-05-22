@@ -122,7 +122,9 @@ function Dashboard() {
 
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        where("createdAt", ">=", startOfMonth),
+        where("createdAt", "<=", endOfMonth)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -131,21 +133,10 @@ function Dashboard() {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          let createdAtDate = null;
-          if (data.createdAt) {
-            if (typeof data.createdAt.toDate === 'function') createdAtDate = data.createdAt.toDate();
-            else if (data.createdAt.seconds) createdAtDate = new Date(data.createdAt.seconds * 1000);
-            else if (data.createdAt instanceof Date) createdAtDate = data.createdAt;
-          } else {
-            createdAtDate = new Date();
-          }
-          
-          if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
-            const priceVal = Number(data.price) || 0;
-            const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
-            total += convertedPrice;
-            count++;
-          }
+          const priceVal = Number(data.price) || 0;
+          const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
+          total += convertedPrice;
+          count++;
         });
 
         setMonthlyStats({
@@ -170,7 +161,9 @@ function Dashboard() {
     if (user) {
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(3)
       );
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -179,20 +172,7 @@ function Dashboard() {
           scansData.push({ id: doc.id, ...doc.data() });
         });
 
-        // Sort locally by createdAt desc and limit to 3
-        scansData.sort((a, b) => {
-          const getMillis = (t) => {
-            if (!t) return Date.now();
-            if (typeof t.toMillis === 'function') return t.toMillis();
-            if (t.seconds) return t.seconds * 1000;
-            if (t instanceof Date) return t.getTime();
-            if (typeof t === 'number') return t;
-            return 0;
-          };
-          return getMillis(b.createdAt) - getMillis(a.createdAt);
-        });
-
-        setRecentScans(scansData.slice(0, 3));
+        setRecentScans(scansData);
         setLoadingScans(false);
       }, (error) => {
         console.error("Error fetching recent scans: ", error);

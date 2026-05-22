@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { getCategoryInfo, localizeCategory } from '../utils/categoryMap';
 import { trToLower } from '../utils/stringUtils';
 
@@ -13,7 +13,9 @@ export function useProducts(user, currency, language) {
       setLoading(true);
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(200)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {

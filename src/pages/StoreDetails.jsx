@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { trTitleCase, trToLower } from '../utils/stringUtils';
 
 // YARDIMCI FONKSİYON
@@ -40,11 +40,11 @@ function StoreDetails() {
     if (user && targetStoreName) {
       setLoading(true);
 
-      // KULLANICININ TÜM FİŞLERİNİ ÇEK VE İSTEMCİ TARAFINDA FİLTRELE (Index hatasını önlemek için)
-      // orderBy kaldırıldı, çünkü sıralamayı lokalde (JS ile) yapacağız.
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        where("storeNameCleaned", "==", targetStoreName),
+        orderBy("createdAt", "desc")
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -54,56 +54,33 @@ function StoreDetails() {
 
         snapshot.forEach((doc) => {
           const data = doc.data();
-          const rawName = data.fileName || data.title || "Unknown Store";
+          receiptsData.push({
+            id: doc.id,
+            ...data
+          });
 
-          // 🔥 ESKİ VERİLER İÇİN HAYAT KURTARAN DÜZELTME
-          const storeName = data.storeNameCleaned || cleanStoreName(rawName);
+          const rawPrice = Number(data.price) || 0;
+          total += convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
 
-          if (storeName === targetStoreName) {
-            receiptsData.push({
-              id: doc.id,
-              ...data
-            });
+          if (data.items && Array.isArray(data.items)) {
+            data.items.forEach(item => {
+              if (item.name && item.name.length > 1) {
+                const key = trToLower(`${item.brand || 'Unknown'}-${item.name}`);
 
-            const rawPrice = Number(data.price) || 0;
-            total += convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
-
-            if (data.items && Array.isArray(data.items)) {
-              data.items.forEach(item => {
-                if (item.name && item.name.length > 1) {
-                  const key = trToLower(`${item.brand || 'Unknown'}-${item.name}`);
-
-                  if (!itemFrequency[key]) {
-                    itemFrequency[key] = {
-                      count: 0,
-                      details: {
-                        name: item.name,
-                        brand: item.brand || 'Unknown',
-                        type: item.type || 'General'
-                      }
-                    };
-                  }
-                  itemFrequency[key].count += 1;
+                if (!itemFrequency[key]) {
+                  itemFrequency[key] = {
+                    count: 0,
+                    details: {
+                      name: item.name,
+                      brand: item.brand || 'Unknown',
+                      type: item.type || 'General'
+                    }
+                  };
                 }
-              });
-            }
+                itemFrequency[key].count += 1;
+              }
+            });
           }
-        });
-
-        // 🔥 ZIRHLI SIRALAMA (Tarih verisi bozuksa NaN dönüp listeyi çökertmesini engeller)
-        receiptsData.sort((a, b) => {
-          const getSafeTime = (record) => {
-            if (record.createdAt && typeof record.createdAt.toDate === 'function') {
-              return record.createdAt.toDate().getTime();
-            }
-            if (record.date) {
-              const parsed = new Date(record.date).getTime();
-              return isNaN(parsed) ? 0 : parsed;
-            }
-            return 0; // Tarih hiç yoksa en sona at
-          };
-
-          return getSafeTime(b) - getSafeTime(a); // desc (yeni olan en üstte)
         });
 
         let mostFrequent = null;

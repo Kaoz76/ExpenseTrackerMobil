@@ -11,7 +11,8 @@ function ReceiptList({
   allReceipts,
   filteredReceipts,
   displayedReceipts,
-  setDisplayLimit,
+  hasMore,
+  loadMoreReceipts,
   handleDeleteReceipt
 }) {
   const { t } = useLanguage();
@@ -63,11 +64,11 @@ function ReceiptList({
               </div>
             ))}
 
-            {filteredReceipts.length > displayedReceipts.length && (
+            {hasMore && (
               <div className="list-group-item text-center p-3 bg-light">
                 <button
                   className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold shadow-sm"
-                  onClick={() => setDisplayLimit(prev => prev + 20)}
+                  onClick={loadMoreReceipts}
                 >
                   <FaPlus className="me-2 small" /> {t('common.load_older_receipts')}
                 </button>

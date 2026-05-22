@@ -174,7 +174,9 @@ export const ReportProvider = ({ children }) => {
 
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        where("createdAt", ">=", startOfLastMonth),
+        where("createdAt", "<=", endOfLastMonth)
       );
 
       const querySnapshot = await getDocs(q);
@@ -184,18 +186,12 @@ export const ReportProvider = ({ children }) => {
       querySnapshot.forEach((firestoreDoc) => {
         const data = firestoreDoc.data();
         
-        // Client-side date filtering
-        if (data.createdAt) {
-          const date = data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-          if (date >= startOfLastMonth && date <= endOfLastMonth) {
-            const safeData = {
-              ...data,
-              price: Number(data.price) || 0,
-            };
-            receipts.push(safeData);
-            totalSpent += convertPrice(safeData.price, safeData.currency || currency.code || 'USD', currency.code);
-          }
-        }
+        const safeData = {
+          ...data,
+          price: Number(data.price) || 0,
+        };
+        receipts.push(safeData);
+        totalSpent += convertPrice(safeData.price, safeData.currency || currency.code || 'USD', currency.code);
       });
 
       // Client-side sorting

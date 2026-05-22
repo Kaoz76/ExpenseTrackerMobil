@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 
 import { trTitleCase } from '../utils/stringUtils';
 
@@ -49,7 +49,9 @@ function ProductDetails() {
       // Query all receipts (not just manual) — consistent with Products page
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(100)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {

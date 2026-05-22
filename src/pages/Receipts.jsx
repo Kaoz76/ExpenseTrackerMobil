@@ -38,11 +38,8 @@ function Receipts() {
   const [existingProductNames, setExistingProductNames] = useState([]);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyData, setVerifyData] = useState(null);
-  const { allReceipts, loadingReceipts, deleteReceipt } = useReceipts(user);
+  const { allReceipts, setAllReceipts, loadingReceipts, deleteReceipt, hasMore, loadMoreReceipts } = useReceipts(user);
   const [searchTerm, setSearchTerm] = useState("");
-
-  // 🔥 Yükleme limiti (Load More için)
-  const [displayLimit, setDisplayLimit] = useState(20);
 
   const filteredReceipts = useMemo(() => {
     let result = allReceipts;
@@ -58,10 +55,6 @@ function Receipts() {
     return result;
   }, [allReceipts, searchTerm]);
 
-  const displayedReceipts = useMemo(() => {
-    return filteredReceipts.slice(0, displayLimit);
-  }, [filteredReceipts, displayLimit]);
-
   // DOĞRULAMA MODALI STATE'LERİ
   const [processedScans, setProcessedScans] = useState([]);
   const [verifiedPrice, setVerifiedPrice] = useState('');
@@ -71,7 +64,9 @@ function Receipts() {
     if (user) {
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(100)
       );
       getDocs(q).then((snapshot) => {
         const names = new Set();
@@ -383,11 +378,14 @@ function Receipts() {
         storeNameCleaned: cleanStoreName(verifyData.fileName)
       };
 
-      await addDoc(collection(db, "receipts"), newReceiptData);
+      const docRef = await addDoc(collection(db, "receipts"), newReceiptData);
 
       if (verifyData.tempImageUrl) {
         URL.revokeObjectURL(verifyData.tempImageUrl);
       }
+
+      // Add to local receipts array so it shows up in real-time
+      setAllReceipts(prev => [{ id: docRef.id, ...newReceiptData }, ...prev]);
 
       moveToNextOrClose(processedScans);
 
@@ -482,8 +480,9 @@ function Receipts() {
               loadingReceipts={loadingReceipts}
               allReceipts={allReceipts}
               filteredReceipts={filteredReceipts}
-              displayedReceipts={displayedReceipts}
-              setDisplayLimit={setDisplayLimit}
+              displayedReceipts={filteredReceipts}
+              hasMore={hasMore}
+              loadMoreReceipts={loadMoreReceipts}
               handleDeleteReceipt={handleDeleteReceipt}
             />
           </div>

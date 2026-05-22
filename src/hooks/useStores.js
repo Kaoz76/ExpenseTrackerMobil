@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { cleanStoreName } from '../utils/stringUtils';
 
 export function useStores(user, currency, convertPrice) {
@@ -12,7 +12,9 @@ export function useStores(user, currency, convertPrice) {
       setLoading(true);
       const q = query(
         collection(db, "receipts"),
-        where("userId", "==", user.uid)
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(200)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {

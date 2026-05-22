@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt, FaArrowDown } from 'react-icons/fa';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
@@ -11,6 +11,7 @@ import { formatDateTime } from '../utils/dateFormatter';
 import { suggestedCategoriesTR, suggestedCategoriesEN, localizeCategory } from '../utils/categoryMap';
 import { suggestedBrands } from '../data/brandDictionary';
 import { enrichItemsWithGemini } from '../services/geminiService';
+import { cleanStoreName } from '../utils/stringUtils';
 
 function ManualEntry() {
   const { user } = useAuth();
@@ -70,11 +71,12 @@ function ManualEntry() {
   useEffect(() => {
     if (user) {
       setLoadingEntries(true);
-      // Query without orderBy to avoid composite index requirement
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
-        where("isManual", "==", true)
+        where("isManual", "==", true),
+        orderBy("createdAt", "desc"),
+        limit(entryLimit)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -82,19 +84,6 @@ function ManualEntry() {
           id: doc.id,
           ...doc.data()
         }));
-
-        // Sort client-side to avoid composite index requirement
-        entries.sort((a, b) => {
-          const getMillis = (t) => {
-            if (!t) return Date.now();
-            if (typeof t.toMillis === 'function') return t.toMillis();
-            if (t.seconds) return t.seconds * 1000;
-            if (t instanceof Date) return t.getTime();
-            if (typeof t === 'number') return t;
-            return 0;
-          };
-          return getMillis(b.createdAt) - getMillis(a.createdAt);
-        });
 
         setManualEntries(entries);
         setLoadingEntries(false);
@@ -108,7 +97,7 @@ function ManualEntry() {
       setManualEntries([]);
       setLoadingEntries(false);
     }
-  }, [user]); // Only re-run when user changes
+  }, [user, entryLimit]); // Re-run when user or limit changes
 
   const addProductRow = () => {
     setProducts([
@@ -203,7 +192,8 @@ function ManualEntry() {
         createdAt: Timestamp.now(),
         price: totalAmount,
         currency: entryCurrency,
-        items: formattedProducts
+        items: formattedProducts,
+        storeNameCleaned: cleanStoreName(storeName)
       };
 
       await addDoc(collection(db, "receipts"), newEntryData);
@@ -507,7 +497,7 @@ function ManualEntry() {
                   </div>
                 )}
 
-                {!loadingEntries && manualEntries.slice(0, entryLimit).map((entry) => (
+                {!loadingEntries && manualEntries.map((entry) => (
                   <div
                     key={entry.id}
                     className="list-group-item list-group-item-action d-flex align-items-center p-3"
@@ -540,7 +530,7 @@ function ManualEntry() {
                   </div>
                 ))}
 
-                {!loadingEntries && manualEntries.length > entryLimit && (
+                {!loadingEntries && manualEntries.length === entryLimit && (
                   <div className="list-group-item text-center p-3 bg-light">
                     <button
                       className="btn btn-outline-primary rounded-pill px-4 btn-sm fw-bold d-flex align-items-center mx-auto"

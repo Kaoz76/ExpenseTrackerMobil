@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, startAfter, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase';
 
@@ -7,36 +7,63 @@ export function useReceipts(user) {
   const [allReceipts, setAllReceipts] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(true);
   const [error, setError] = useState(null);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      const q = query(
-        collection(db, "receipts"),
-        where("userId", "==", user.uid)
-      );
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Client-side sort to avoid requiring a composite index
-        data.sort((a, b) => {
-          const timeA = a.createdAt?.seconds || 0;
-          const timeB = b.createdAt?.seconds || 0;
-          return timeB - timeA;
-        });
-        setAllReceipts(data);
-        setLoadingReceipts(false);
-      }, (err) => {
-        console.error("Failed to fetch receipts:", err);
-        setError("Failed to load receipts.");
-        setLoadingReceipts(false);
-      });
-
-      return () => unsubscribe();
-    } else {
+  const fetchInitialReceipts = async () => {
+    if (!user) {
       setAllReceipts([]);
       setLoadingReceipts(false);
+      return;
     }
+    setLoadingReceipts(true);
+    setError(null);
+    try {
+      const q = query(
+        collection(db, "receipts"),
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(20)
+      );
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllReceipts(data);
+      setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMore(snapshot.docs.length === 20);
+    } catch (err) {
+      console.error("Failed to fetch receipts:", err);
+      setError("Failed to load receipts.");
+    } finally {
+      setLoadingReceipts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInitialReceipts();
   }, [user]);
+
+  const loadMoreReceipts = async () => {
+    if (!user || !lastDoc || !hasMore) return;
+    try {
+      const q = query(
+        collection(db, "receipts"),
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        startAfter(lastDoc),
+        limit(20)
+      );
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (data.length > 0) {
+        setAllReceipts(prev => [...prev, ...data]);
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+      }
+      setHasMore(snapshot.docs.length === 20);
+    } catch (err) {
+      console.error("Failed to load more receipts:", err);
+      setError("Failed to load more receipts.");
+    }
+  };
 
   const deleteReceipt = async (receiptId) => {
     try {
@@ -49,6 +76,7 @@ export function useReceipts(user) {
         }
       }
       await deleteDoc(doc(db, "receipts", receiptId));
+      setAllReceipts(prev => prev.filter(r => r.id !== receiptId));
       return true;
     } catch (err) {
       console.error("Error deleting document: ", err);
@@ -57,5 +85,15 @@ export function useReceipts(user) {
     }
   };
 
-  return { allReceipts, loadingReceipts, error, deleteReceipt };
+  return {
+    allReceipts,
+    setAllReceipts,
+    loadingReceipts,
+    error,
+    hasMore,
+    loadMoreReceipts,
+    deleteReceipt,
+    refreshReceipts: fetchInitialReceipts
+  };
 }
+
