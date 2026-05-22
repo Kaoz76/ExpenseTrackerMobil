@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── receipts collection ──────────────────────────────────────────────────
+    // Each receipt document must have a userId field equal to the authenticated
+    // user's UID.  Users can only read/write their own receipts.
+    match /receipts/{receiptId} {
+      allow read, delete: if request.auth != null
+                          && resource.data.userId == request.auth.uid;
+
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ── users collection ─────────────────────────────────────────────────────
+    // Each user document is keyed by the user's UID.
+    // Users can only read/write their own document.
+    match /users/{userId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+
+    // ── subscriptions collection ─────────────────────────────────────────────
+    // Used by useExpenseAnalysis and the Subscriptions page.
+    // Users can only read/write their own subscriptions.
+    match /subscriptions/{subscriptionId} {
+      allow read, delete: if request.auth != null
+                          && resource.data.userId == request.auth.uid;
+
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+    }
+  }
+}
