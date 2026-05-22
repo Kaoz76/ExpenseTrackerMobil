@@ -53,3 +53,39 @@ export const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
     img.src = url;
   });
 };
+
+/**
+ * Extract cropped portion of image
+ */
+export const getCroppedImg = (imageElement, crop, fileName) => {
+  const canvas = document.createElement('canvas');
+  const scaleX = imageElement.naturalWidth / imageElement.width;
+  const scaleY = imageElement.naturalHeight / imageElement.height;
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+  const ctx = canvas.getContext('2d');
+
+  ctx.drawImage(
+    imageElement,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) {
+        reject(new Error('Canvas is empty'));
+        return;
+      }
+      blob.name = fileName;
+      const file = new File([blob], fileName, { type: 'image/jpeg', lastModified: Date.now() });
+      resolve(file);
+    }, 'image/jpeg', 1);
+  });
+};

@@ -7,7 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
-import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExclamationTriangle, FaBell, FaClock, FaTrash } from 'react-icons/fa';
+import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExclamationTriangle, FaBell, FaClock, FaTrash, FaFileExport, FaFileImport, FaDatabase } from 'react-icons/fa';
 
 function Settings() {
   const { theme, toggleTheme } = useTheme();
@@ -23,6 +23,11 @@ function Settings() {
   // Veri Sıfırlama State'i
   const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
+
+  // Yedekleme State'leri
+  const [backupMessage, setBackupMessage] = useState('');
+  const [isProcessingBackup, setIsProcessingBackup] = useState(false);
+  const fileInputRef = React.useRef(null);
 
 
   // BİLDİRİM VE SAAT STATE'LERİ
@@ -237,6 +242,72 @@ function Settings() {
       setResetMessage(t('common.msg_reset_failed'));
     } finally {
       setResetting(false);
+    }
+  };
+
+  // Veri Dışa Aktarma
+  const handleExportData = async () => {
+    if (!user?.uid) return;
+    setIsProcessingBackup(true);
+    setBackupMessage('');
+    try {
+      const q = query(collection(db, "receipts"), where("userId", "==", user.uid));
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map(doc => doc.data());
+      
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", `expense_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      
+      setBackupMessage(t('common.msg_export_success') || 'Veriler başarıyla dışa aktarıldı.');
+    } catch (err) {
+      console.error(err);
+      setBackupMessage(t('common.msg_export_failed') || 'Dışa aktarma başarısız oldu.');
+    } finally {
+      setIsProcessingBackup(false);
+    }
+  };
+
+  // Veri İçe Aktarma
+  const handleImportData = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !user?.uid) return;
+
+    setIsProcessingBackup(true);
+    setBackupMessage('');
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!Array.isArray(data)) throw new Error("Invalid format");
+      
+      // Batch işlemi ile aktar (Firestore 500 limitini düşünerek parçalara ayırabiliriz)
+      for (let i = 0; i < data.length; i += 500) {
+        const batch = writeBatch(db);
+        const chunk = data.slice(i, i + 500);
+
+        chunk.forEach(item => {
+          if (item.userId && item.items) {
+             const docRef = doc(collection(db, "receipts"));
+             batch.set(docRef, item);
+          }
+        });
+
+        await batch.commit();
+      }
+
+      setBackupMessage(t('common.msg_import_success') || 'Veriler başarıyla içe aktarıldı.');
+      // clear input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      console.error(err);
+      setBackupMessage(t('common.msg_import_failed') || 'İçe aktarma başarısız oldu veya dosya bozuk.');
+    } finally {
+      setIsProcessingBackup(false);
     }
   };
 
@@ -455,6 +526,51 @@ function Settings() {
                   </div>
                 </div>
 
+              </div>
+            </div>
+          </div>
+
+          {/* VERİ YEDEKLEME */}
+          <div className="col-md-12">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body p-4">
+                <div className="d-flex align-items-center mb-4">
+                  <div className="bg-success-subtle text-success p-2 rounded me-3">
+                    <FaDatabase className="fs-5" />
+                  </div>
+                  <h5 className="card-title mb-0 fw-bold">{t('common.data_backup')}</h5>
+                </div>
+
+                <p className="text-muted small mb-4">
+                  {t('common.data_backup_desc')}
+                </p>
+
+                <div className="d-flex flex-column flex-md-row gap-3">
+                  <button 
+                    className="btn btn-outline-primary d-flex align-items-center justify-content-center"
+                    onClick={handleExportData}
+                    disabled={isProcessingBackup}
+                  >
+                    <FaFileExport className="me-2" /> {t('common.export_backup')}
+                  </button>
+
+                  <input 
+                    type="file" 
+                    accept=".json" 
+                    style={{ display: 'none' }} 
+                    ref={fileInputRef} 
+                    onChange={handleImportData} 
+                  />
+                  
+                  <button 
+                    className="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isProcessingBackup}
+                  >
+                    <FaFileImport className="me-2" /> {t('common.import_restore')}
+                  </button>
+                </div>
+                {backupMessage && <div className={`mt-3 small fw-bold ${backupMessage.includes(t('common.msg_export_failed')) || backupMessage.includes(t('common.msg_import_failed')) ? 'text-danger' : 'text-success'}`}>{backupMessage}</div>}
               </div>
             </div>
           </div>

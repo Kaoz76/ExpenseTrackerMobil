@@ -398,6 +398,26 @@ export const tr = {
     placeholder_budget: "örn. 5000",
     placeholder_item_name: "Ürün adı",
     placeholder_brand_short: "Marka",
-    placeholder_category: "Kategori"
+    placeholder_category: "Kategori",
+
+    // Veri Yedekleme
+    data_backup: "Veri Yedekleme",
+    data_backup_desc: "Tüm harcama verilerinizi güvenceye almak için JSON formatında bilgisayarınıza indirebilir, daha sonra başka bir cihazda veya hesapta tekrar yükleyebilirsiniz.",
+    export_backup: "Dışa Aktar (Yedekle)",
+    import_restore: "İçe Aktar (Geri Yükle)",
+    msg_export_success: "Veriler başarıyla dışa aktarıldı.",
+    msg_export_failed: "Dışa aktarma başarısız oldu.",
+    msg_import_success: "Veriler başarıyla içe aktarıldı.",
+    msg_import_failed: "İçe aktarma başarısız oldu veya dosya bozuk.",
+
+    // Fiş Kırpma Modalı
+    crop_title: "Fişi Kırp (İsteğe Bağlı)",
+    crop_desc: "Tarama kalitesini artırmak için fişin gereksiz kısımlarını kırpabilirsiniz. İşiniz bitince Onayla butonuna basın.",
+    crop_and_continue: "Kırp ve Devam Et",
+    continue_directly: "Doğrudan Devam Et",
+
+    // Pie Chart
+    others_combined: "Diğerleri",
+    pie_no_data: "Kategori verisi yok"
   }
 };

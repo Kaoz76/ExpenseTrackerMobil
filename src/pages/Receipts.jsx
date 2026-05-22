@@ -6,7 +6,6 @@ import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { collection, addDoc, query, where, Timestamp, getDocs, orderBy, limit } from "firebase/firestore";
-import ImageModal from '../components/ImageModal';
 import { Link, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
@@ -18,6 +17,7 @@ import ReceiptList from '../components/receipts/ReceiptList';
 import ReceiptScanZone from '../components/receipts/ReceiptScanZone';
 import ReceiptFilters from '../components/receipts/ReceiptFilters';
 import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
+import ImageCropModal from '../components/receipts/ImageCropModal';
 
 import { resizeImage } from '../utils/imageUtils';
 
@@ -38,6 +38,9 @@ function Receipts() {
   const [verifyData, setVerifyData] = useState(null);
   const { allReceipts, setAllReceipts, loadingReceipts, deleteReceipt, hasMore, loadMoreReceipts } = useReceipts(user);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [cropModalVisible, setCropModalVisible] = useState(false);
+  const [cropFile, setCropFile] = useState(null);
 
   const filteredReceipts = useMemo(() => {
     let result = allReceipts;
@@ -88,7 +91,7 @@ function Receipts() {
 
 
   // DOSYA YÜKLEME VE OCR
-  const onDrop = useCallback(async (acceptedFiles) => {
+  const processFiles = useCallback(async (acceptedFiles) => {
     if (!acceptedFiles || acceptedFiles.length === 0) return;
 
     if (!user) {
@@ -317,6 +320,35 @@ function Receipts() {
 
   }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames, currency?.code, language]);
 
+  const onDrop = useCallback(async (acceptedFiles) => {
+    if (!acceptedFiles || acceptedFiles.length === 0) return;
+
+    if (!user) {
+      setError(t('common.msg_must_login_upload'));
+      return;
+    }
+
+    const filesToProcess = acceptedFiles.slice(0, 10);
+
+    if (filesToProcess.length === 1) {
+      setCropFile(filesToProcess[0]);
+      setCropModalVisible(true);
+    } else {
+      processFiles(filesToProcess);
+    }
+  }, [user, t, processFiles]);
+
+  const handleCropConfirm = (croppedFile) => {
+    setCropModalVisible(false);
+    setCropFile(null);
+    processFiles([croppedFile]);
+  };
+
+  const handleCropCancel = () => {
+    setCropModalVisible(false);
+    setCropFile(null);
+  };
+
   const moveToNextOrClose = (currentQueue) => {
     const updatedQueue = [...currentQueue];
     updatedQueue.shift();
@@ -424,23 +456,11 @@ function Receipts() {
     }
   };
 
-  // MODAL
-  const [isModalShowing, setIsModalShowing] = useState(false);
-  const [selectedImage, setSelectedImage] = useState({ url: '', alt: '' });
-
-
-
-  const closeModal = () => {
-    setIsModalShowing(false);
-    setSelectedImage({ url: '', alt: '' });
-  };
-
-
 
   return (
     <div className="receipts-page-wrapper p-4">
       <div
-        className={isModalShowing || showVerifyModal ? 'content-blurred' : ''}
+        className={showVerifyModal ? 'content-blurred' : ''}
         style={{ transition: 'filter 0.3s ease-in-out' }}
       >
         <div className="container-fluid">
@@ -485,13 +505,6 @@ function Receipts() {
         </div>
       </div>
 
-      <ImageModal
-        isShowing={isModalShowing}
-        onClose={closeModal}
-        imageUrl={selectedImage.url}
-        imageAlt={selectedImage.alt}
-      />
-
       <ReceiptVerifyModal
         showVerifyModal={showVerifyModal}
         processedScans={processedScans}
@@ -503,6 +516,13 @@ function Receipts() {
         handleSendToManual={handleSendToManual}
         handleCancelSave={handleCancelSave}
         handleConfirmSave={handleConfirmSave}
+      />
+
+      <ImageCropModal
+        show={cropModalVisible}
+        file={cropFile}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
       />
 
     </div>

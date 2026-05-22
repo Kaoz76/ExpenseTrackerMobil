@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaPlus, FaEdit, FaExclamationCircle, FaCalendarCheck } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaExclamationCircle, FaCalendarCheck, FaArrowUp, FaArrowDown } from 'react-icons/fa';
 import { dashboardData } from '../data/dashboardData';
 import ImageModal from '../components/ImageModal';
 
@@ -61,6 +61,10 @@ function Dashboard() {
     averageSpend: 0
   });
 
+  const [lastMonthStats, setLastMonthStats] = useState({
+    totalSpent: 0
+  });
+
   const [subscriptionTotal, setSubscriptionTotal] = useState(0);
 
   const [isImageModalShowing, setIsImageModalShowing] = useState(false);
@@ -119,6 +123,9 @@ function Dashboard() {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid)
@@ -126,6 +133,7 @@ function Dashboard() {
 
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         let total = 0;
+        let lastMonthTotal = 0;
         let count = 0;
         const scansData = [];
 
@@ -147,6 +155,10 @@ function Dashboard() {
             const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
             total += convertedPrice;
             count++;
+          } else if (createdAtDate && createdAtDate >= startOfLastMonth && createdAtDate <= endOfLastMonth) {
+            const priceVal = Number(data.price) || 0;
+            const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
+            lastMonthTotal += convertedPrice;
           }
         });
 
@@ -155,6 +167,10 @@ function Dashboard() {
           totalSpent: total,
           receiptCount: count,
           averageSpend: count > 0 ? total / count : 0
+        });
+
+        setLastMonthStats({
+          totalSpent: lastMonthTotal
         });
 
         // Son 3 kaydı bulmak için sırala
@@ -181,6 +197,7 @@ function Dashboard() {
       return () => unsubscribe();
     } else {
       setMonthlyStats({ totalSpent: 0, receiptCount: 0, averageSpend: 0 });
+      setLastMonthStats({ totalSpent: 0 });
       setRecentScans([]);
       setLoadingScans(false);
     }
@@ -202,6 +219,27 @@ function Dashboard() {
     if (p < 50) return 'bg-success';
     if (p < 85) return 'bg-warning';
     return 'bg-danger';
+  };
+
+  const renderTrend = () => {
+    if (lastMonthStats.totalSpent === 0) return null;
+    const diff = monthlyStats.totalSpent - lastMonthStats.totalSpent;
+    const percentage = ((Math.abs(diff) / lastMonthStats.totalSpent) * 100).toFixed(1);
+    
+    if (diff > 0) {
+      return (
+        <span className="badge bg-danger bg-opacity-10 text-danger ms-2 px-2 py-1 border border-danger-subtle rounded-pill">
+          <FaArrowUp className="me-1 small" /> {percentage}%
+        </span>
+      );
+    } else if (diff < 0) {
+      return (
+        <span className="badge bg-success bg-opacity-10 text-success ms-2 px-2 py-1 border border-success-subtle rounded-pill">
+          <FaArrowDown className="me-1 small" /> {percentage}%
+        </span>
+      );
+    }
+    return null;
   };
 
   return (
@@ -357,7 +395,10 @@ function Dashboard() {
           <div className="col-lg-4 col-md-6 mb-4">
             <div className="card stat-card border-0 shadow-sm h-100">
               <div className="card-body">
-                <h6 className="text-muted text-uppercase small fw-bold mb-2">{t('common.total_spent')}</h6>
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <h6 className="text-muted text-uppercase small fw-bold mb-0">{t('common.total_spent')}</h6>
+                  {renderTrend()}
+                </div>
                 <h2 className="display-6 fw-bold text-gradient">{formatPrice(monthlyStats.totalSpent)}</h2>
               </div>
             </div>

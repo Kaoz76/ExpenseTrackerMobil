@@ -6,6 +6,8 @@ import BottomNav from './components/BottomNav';
 import ScrollToHash from './components/ScrollToHash';
 import DynamicFavicon from './components/DynamicFavicon';
 import ScrollToTopButton from './components/ScrollToTopButton';
+import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Landing = lazy(() => import('./pages/Landing'));
@@ -56,8 +58,9 @@ function App() {
   }, []);
 
   return (
-    <div>
-      <ScrollToHash />
+    <ErrorBoundary>
+      <div>
+        <ScrollToHash />
       <DynamicFavicon />
       <ScrollToTopButton />
 
@@ -69,24 +72,24 @@ function App() {
           <Routes>
             {/* 🔥 Kök dizin (/) mobil uygulamada Dashboard'a yönlendirilir, web'de Landing gösterilir */}
             <Route path="/" element={isMobile ? <Navigate to="/dashboard" replace /> : <Landing />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
-            <Route path="/receipts" element={<Receipts />} />
-            <Route path="/receipts/:receiptId" element={<ReceiptDetail />} />
-            <Route path="/texts" element={<ManualEntry />} />
-            <Route path="/subscriptions" element={<Subscriptions />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/products/:productId" element={<ProductDetails />} />
-            <Route path="/stores" element={<Stores />} />
-            <Route path="/stores/:storeId" element={<StoreDetails />} />
+            <Route path="/receipts" element={<ProtectedRoute><Receipts /></ProtectedRoute>} />
+            <Route path="/receipts/:receiptId" element={<ProtectedRoute><ReceiptDetail /></ProtectedRoute>} />
+            <Route path="/texts" element={<ProtectedRoute><ManualEntry /></ProtectedRoute>} />
+            <Route path="/subscriptions" element={<ProtectedRoute><Subscriptions /></ProtectedRoute>} />
+            <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+            <Route path="/products/:productId" element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />
+            <Route path="/stores" element={<ProtectedRoute><Stores /></ProtectedRoute>} />
+            <Route path="/stores/:storeId" element={<ProtectedRoute><StoreDetails /></ProtectedRoute>} />
 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
 
             {/* Quick Links */}
-            <Route path="/analyze" element={<AnalyzeExpenses />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/analyze" element={<ProtectedRoute><AnalyzeExpenses /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
             {/* 🔥 GELİŞTİRME 2: 404 Catch-All (Bilinmeyen bir URL girilirse Dashboard'a geri fırlat) */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -95,7 +98,8 @@ function App() {
       </main>
 
       <BottomNav />
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 

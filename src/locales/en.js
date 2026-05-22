@@ -398,6 +398,26 @@ export const en = {
     placeholder_budget: "e.g. 5000",
     placeholder_item_name: "Item name",
     placeholder_brand_short: "Brand",
-    placeholder_category: "Category"
+    placeholder_category: "Category",
+
+    // Data Backup
+    data_backup: "Data Backup",
+    data_backup_desc: "Download all your expense data as a JSON file to keep a safe backup. You can restore it later on another device or account.",
+    export_backup: "Export (Backup)",
+    import_restore: "Import (Restore)",
+    msg_export_success: "Data exported successfully.",
+    msg_export_failed: "Export failed.",
+    msg_import_success: "Data imported successfully.",
+    msg_import_failed: "Import failed or file is corrupted.",
+
+    // Image Crop Modal
+    crop_title: "Crop Receipt (Optional)",
+    crop_desc: "You can crop the receipt to remove unnecessary parts and improve scan quality. Press Confirm when done.",
+    crop_and_continue: "Crop & Continue",
+    continue_directly: "Continue Directly",
+
+    // Pie Chart
+    others_combined: "Others",
+    pie_no_data: "No category data"
   }
 };
