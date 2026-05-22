@@ -6,7 +6,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { trTitleCase, trToLower, cleanStoreName } from '../utils/stringUtils';
+import { trToLower, cleanStoreName } from '../utils/stringUtils';
 
 function StoreDetails() {
   const { storeId } = useParams();

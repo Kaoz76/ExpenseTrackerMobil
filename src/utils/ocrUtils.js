@@ -28,7 +28,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
 
   tryCount += (normalizedText.match(/[₺]/g) || []).length;
   tryCount += (normalizedText.match(/\b\d+[.,]\d{2}tl\b/gi) || []).length;
-  usdCount += (normalizedText.match(/[\$]/g) || []).length;
+  usdCount += (normalizedText.match(/[$]/g) || []).length;
   eurCount += (normalizedText.match(/[€]/g) || []).length;
   gbpCount += (normalizedText.match(/[£]/g) || []).length;
 

@@ -4,16 +4,15 @@ import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, doc, Timestamp, limit, getDocs } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { collection, addDoc, query, where, Timestamp, getDocs } from "firebase/firestore";
 import ImageModal from '../components/ImageModal';
 import { Link, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
 import { extractDataFromText } from '../utils/ocrUtils';
 import { enrichItemsWithGemini } from '../services/geminiService';
-import { formatDateTime, formatDate } from '../utils/dateFormatter';
-import { trTitleCase, trToLower, cleanItemName, findBestProductMatch, brandAutoCorrect, cleanStoreName } from '../utils/stringUtils';
+import { trTitleCase, cleanItemName, findBestProductMatch, cleanStoreName } from '../utils/stringUtils';
 import { useReceipts } from '../hooks/useReceipts';
 import ReceiptList from '../components/receipts/ReceiptList';
 import ReceiptScanZone from '../components/receipts/ReceiptScanZone';
@@ -21,11 +20,11 @@ import ReceiptFilters from '../components/receipts/ReceiptFilters';
 import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
 
 import { resizeImage } from '../utils/imageUtils';
-import { levenshteinDistance, isFuzzyMatch } from '../utils/receiptUtils';
+
 
 function Receipts() {
   const { user } = useAuth();
-  const { formatPrice, currency, favoriteCurrencies } = useCurrency();
+  const { currency } = useCurrency();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
@@ -321,7 +320,7 @@ function Receipts() {
       setError("An error occurred while processing the files.");
     }
 
-  }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames]);
+  }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames, currency?.code, language]);
 
   const moveToNextOrClose = (currentQueue) => {
     const updatedQueue = [...currentQueue];
@@ -431,10 +430,7 @@ function Receipts() {
   const [isModalShowing, setIsModalShowing] = useState(false);
   const [selectedImage, setSelectedImage] = useState({ url: '', alt: '' });
 
-  const openModal = (imageUrl, imageAlt) => {
-    setSelectedImage({ url: imageUrl, alt: imageAlt });
-    setIsModalShowing(true);
-  };
+
 
   const closeModal = () => {
     setIsModalShowing(false);

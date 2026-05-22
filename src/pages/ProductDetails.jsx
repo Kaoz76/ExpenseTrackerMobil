@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { FaHistory, FaTag, FaChartLine, FaThumbsUp, FaThumbsDown, FaExternalLinkAlt } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
@@ -17,7 +17,6 @@ function ProductDetails() {
   const { user } = useAuth();
   const { formatPrice, currency, convertPrice } = useCurrency();
   const { t } = useLanguage();
-  const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [productType, setProductType] = useState(''); // Ürün türü için yeni state
@@ -27,7 +26,7 @@ function ProductDetails() {
     if (!name) return "";
     let cleaned = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
     // Decode any URI-encoded characters (e.g. literal %20 from OCR)
-    try { cleaned = decodeURIComponent(cleaned); } catch (e) { /* ignore */ }
+    try { cleaned = decodeURIComponent(cleaned); } catch { /* ignore */ }
     // Collapse multiple whitespace into single space
     cleaned = cleaned.replace(/\s+/g, ' ');
     return trTitleCase(cleaned).trim();

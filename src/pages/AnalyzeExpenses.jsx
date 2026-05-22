@@ -323,7 +323,7 @@ function AnalyzeExpenses() {
       setTotalSpent(0);
       setLoading(false);
     }
-  }, [user, timeRange, currency?.code, convertPrice]);
+  }, [user, timeRange, currency?.code, convertPrice, language, t]);
 
   return (
     <div className="dashboard-page-wrapper p-4">

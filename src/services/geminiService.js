@@ -44,7 +44,7 @@ const parseResilientJson = (text) => {
         if (parsedObj && typeof parsedObj === 'object') {
           list.push(parsedObj);
         }
-      } catch (parseError) {
+      } catch {
         // Regex field level extraction as the absolute last resort for corrupt individual objects
         try {
           const indexMatch = match.match(/"index"\s*:\s*(\d+)/);

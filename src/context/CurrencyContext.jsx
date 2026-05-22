@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const CurrencyContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const CURRENCY_MAP = {
   TRY: { code: 'TRY', symbol: '₺', locale: 'tr-TR' },
   EUR: { code: 'EUR', symbol: '€', locale: 'de-DE' },
@@ -44,7 +45,7 @@ export const CurrencyProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem('favorite_currencies');
       return saved ? JSON.parse(saved) : ['USD', 'EUR', 'TRY'];
-    } catch (error) {
+    } catch {
       return ['USD', 'EUR', 'TRY'];
     }
   });
@@ -257,7 +258,7 @@ export const CurrencyProvider = ({ children }) => {
         style: 'currency',
         currency: targetMeta.code
       }).format(validAmount);
-    } catch (error) {
+    } catch {
       return `${targetMeta.symbol}${validAmount.toFixed(2)}`;
     }
   }, [currency]);
@@ -280,4 +281,5 @@ export const CurrencyProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCurrency = () => useContext(CurrencyContext);

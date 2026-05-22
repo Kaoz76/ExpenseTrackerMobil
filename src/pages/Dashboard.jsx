@@ -3,13 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaPlus, FaEdit, FaExclamationCircle, FaCalendarCheck } from 'react-icons/fa';
 import { dashboardData } from '../data/dashboardData';
 import ImageModal from '../components/ImageModal';
-import ReceiptDetailModal from '../components/ReceiptDetailModal';
+
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, orderBy, limit, doc, getDoc } from "firebase/firestore";
-import { formatDateTime, formatDate } from '../utils/dateFormatter';
+import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 // Image loading wrapper component for smoother UX
 const DashboardImage = ({ src, alt }) => {
@@ -66,8 +65,7 @@ function Dashboard() {
 
   const [isImageModalShowing, setIsImageModalShowing] = useState(false);
   const [selectedImage, setSelectedImage] = useState({ url: '', alt: '' });
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
+
 
   // KULLANICI BÜTÇESİNİ ÇEKME
   useEffect(() => {
@@ -206,12 +204,7 @@ function Dashboard() {
     }
   }, [user]);
 
-  const openImageModal = (imageUrl, imageAlt) => {
-    setSelectedImage({ url: imageUrl, alt: imageAlt });
-    setIsImageModalShowing(true);
-  };
   const closeImageModal = () => { setIsImageModalShowing(false); setSelectedImage({ url: '', alt: '' }); };
-  const openDetailModal = (receipt) => { setSelectedReceipt(receipt); setShowDetailModal(true); };
   const handleCardClick = (scan) => { navigate(`/receipts/${scan.id}`); };
 
   const grandTotal = monthlyStats.totalSpent + subscriptionTotal;
@@ -232,7 +225,7 @@ function Dashboard() {
   return (
     <div className="dashboard-page-wrapper p-4">
 
-      <div className={`dashboard-content-wrapper ${isImageModalShowing || showDetailModal ? 'content-blurred' : ''}`} style={{ transition: 'filter 0.3s ease-in-out' }}>
+      <div className={`dashboard-content-wrapper ${isImageModalShowing ? 'content-blurred' : ''}`} style={{ transition: 'filter 0.3s ease-in-out' }}>
 
         {/* BAŞLIK */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
@@ -439,11 +432,7 @@ function Dashboard() {
         imageUrl={selectedImage.url}
         imageAlt={selectedImage.alt}
       />
-      <ReceiptDetailModal
-        show={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
-        receipt={selectedReceipt}
-      />
+
     </div>
   );
 }
