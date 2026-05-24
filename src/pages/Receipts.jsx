@@ -17,9 +17,11 @@ import ReceiptList from '../components/receipts/ReceiptList';
 import ReceiptScanZone from '../components/receipts/ReceiptScanZone';
 import ReceiptFilters from '../components/receipts/ReceiptFilters';
 import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
-import ImageCropModal from '../components/receipts/ImageCropModal';
+import PerspectiveCropModal from '../components/receipts/PerspectiveCropModal';
+
 
 import { resizeImage } from '../utils/imageUtils';
+import { applyLearnedCorrections, saveCorrection } from '../utils/learningUtils';
 
 
 function Receipts() {
@@ -276,6 +278,9 @@ function Receipts() {
           console.warn('AI enrichment failed, using raw OCR items:', aiError);
         }
       }
+      
+      // Apply User Learning Memory (fixes mistakes AI or OCR consistently make)
+      enrichedItems = applyLearnedCorrections(enrichedItems);
 
       return {
         userId: user.uid,
@@ -287,6 +292,7 @@ function Receipts() {
         title: '',
         date: new Date().toLocaleDateString(),
         isManual: false,
+        originalItems: JSON.parse(JSON.stringify(enrichedItems)), // Deep copy for learning comparison
         items: enrichedItems,
         totalPrice: extractedData.total || 0,
         currency: extractedData.currency || currency?.code || 'USD'
@@ -385,11 +391,27 @@ function Receipts() {
     }
 
     try {
-      const itemsToSave = (verifyData.items || []).map(item => ({
-        ...item,
-        name: item.name ? trTitleCase(cleanItemName(item.name)) : item.name,
-        price: parseFloat(item.price) || 0
-      }));
+      const itemsToSave = (verifyData.items || []).map((item, index) => {
+        const cleanedName = item.name ? trTitleCase(cleanItemName(item.name)) : item.name;
+        
+        // Detect user corrections for Learning Memory
+        const originalItem = verifyData.originalItems && verifyData.originalItems[index];
+        if (originalItem && !item._isLearned) { // Don't re-learn things we already applied
+          if (originalItem.name !== item.name || originalItem.type !== item.type) {
+            saveCorrection(originalItem.name, cleanedName, item.type);
+          }
+        }
+        
+        // Remove internal tracking fields before saving to Firebase
+        const finalItem = { ...item };
+        delete finalItem._isLearned;
+        
+        return {
+          ...finalItem,
+          name: cleanedName,
+          price: parseFloat(item.price) || 0
+        };
+      });
 
       // 🔥 Wait for the background upload to finish before saving to Firestore
       const uploadResult = verifyData.uploadPromise ? await verifyData.uploadPromise : { imageUrl: null, storagePath: null };
