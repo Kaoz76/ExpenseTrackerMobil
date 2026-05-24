@@ -44,7 +44,7 @@ export const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
           lastModified: Date.now(),
         });
         resolve(resizedFile);
-      }, 'image/jpeg', 0.85);
+      }, 'image/jpeg', 0.75); // Reduced from 0.85 to decrease memory usage
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -86,6 +86,7 @@ export const getCroppedImg = (imageElement, crop, fileName) => {
       blob.name = fileName;
       const file = new File([blob], fileName, { type: 'image/jpeg', lastModified: Date.now() });
       resolve(file);
-    }, 'image/jpeg', 1);
+    }, 'image/jpeg', 0.80); // Reduced from 1.0 to compress cropped files and save memory
   });
 };
+

@@ -108,25 +108,34 @@ function Receipts() {
 
     const processFile = async (originalFile) => {
       // 0. Resize Image to reduce memory footprint and speed up OCR
-      const file = await resizeImage(originalFile, 1500, 2000);
+      const file = await resizeImage(originalFile, 1000, 1300);
 
       // 1. Background Firebase Upload
+      // Wrapped in a 10-second timeout so that if the device is offline,
+      // the resumable upload (which retries indefinitely) doesn't block saving.
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
       if (!privacyMode) {
-        uploadPromise = (async () => {
-          try {
-            const timestamp = Date.now();
-            const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
-            const storageRef = ref(storage, storagePath);
-            await uploadBytesResumable(storageRef, file);
-            const imageUrl = await getDownloadURL(storageRef);
-            return { storagePath, imageUrl };
-          } catch (err) {
-            console.error("Storage upload failed:", err);
-            return { storagePath: null, imageUrl: null };
-          }
-        })();
+        const uploadTimeoutMs = 10000;
+        uploadPromise = Promise.race([
+          (async () => {
+            try {
+              const timestamp = Date.now();
+              const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
+              const storageRef = ref(storage, storagePath);
+              await uploadBytesResumable(storageRef, file);
+              const imageUrl = await getDownloadURL(storageRef);
+              return { storagePath, imageUrl };
+            } catch (err) {
+              console.error("Storage upload failed:", err);
+              return { storagePath: null, imageUrl: null };
+            }
+          })(),
+          // Offline safety net: resolve with null after timeout
+          new Promise(resolve =>
+            setTimeout(() => resolve({ storagePath: null, imageUrl: null }), uploadTimeoutMs)
+          )
+        ]);
       }
 
       // 2. OCR Analysis
@@ -140,7 +149,9 @@ function Receipts() {
             reader.onload = async () => {
               try {
                 const base64DataWithPrefix = reader.result;
-                const base64Raw = base64DataWithPrefix.split(',')[1];
+                const commaIndex = base64DataWithPrefix.indexOf(',');
+                const base64Raw = commaIndex !== -1 ? base64DataWithPrefix.substring(commaIndex + 1) : null;
+
 
                 if (!base64Raw) throw new Error("Could not extract raw base64 from image.");
 
@@ -267,11 +278,16 @@ function Receipts() {
       });
 
       // 🤖 AI Enrichment: Use Gemini 2.5 Flash-Lite to detect brand, type, and size
+      // Uses Promise.race with an 8-second timeout — works correctly in all browsers
+      // and offline scenarios (navigator.onLine is unreliable in Firefox DevTools).
       let enrichedItems = matchedItems;
       if (shouldAnalyzeWithLLM) {
         try {
           setStatusText(t('common.msg_ai_enriching'));
-          enrichedItems = await enrichItemsWithGemini(matchedItems, '', language);
+          enrichedItems = await Promise.race([
+            enrichItemsWithGemini(matchedItems, '', language),
+            new Promise(resolve => setTimeout(() => resolve(matchedItems), 8000))
+          ]);
         } catch (aiError) {
           console.warn('AI enrichment failed, using raw OCR items:', aiError);
         }
@@ -294,10 +310,22 @@ function Receipts() {
     };
 
     try {
-      // Run OCR on all images concurrently
-      const results = await Promise.all(filesToProcess.map(processFile));
+      const results = [];
+      for (let i = 0; i < filesToProcess.length; i++) {
+        // Update the status text for sequential processing
+        setStatusText(
+          t('common.msg_analyzing_receipt')
+            .replace('{{current}}', String(i + 1))
+            .replace('{{total}}', String(filesToProcess.length))
+        );
+        
+        const result = await processFile(filesToProcess[i]);
+        results.push(result);
+        
+        // Progress updates incrementally as each file finishes
+        setUploadProgress(((i + 1) / filesToProcess.length) * 100);
+      }
 
-      setUploadProgress(100);
       setStatusText(t('common.msg_preparing_queue'));
 
       setTimeout(() => {
@@ -334,15 +362,22 @@ function Receipts() {
       setCropFile(filesToProcess[0]);
       setCropModalVisible(true);
     } else {
-      processFiles(filesToProcess);
+      // Defer processing by 150ms to yield the main thread to Android OS focus/resume event loop
+      setTimeout(() => {
+        processFiles(filesToProcess);
+      }, 150);
     }
   }, [user, t, processFiles]);
 
   const handleCropConfirm = (croppedFile) => {
     setCropModalVisible(false);
     setCropFile(null);
-    processFiles([croppedFile]);
+    // Defer processing by 150ms to yield the main thread to Android OS focus/resume event loop
+    setTimeout(() => {
+      processFiles([croppedFile]);
+    }, 150);
   };
+
 
   const handleCropCancel = () => {
     setCropModalVisible(false);
