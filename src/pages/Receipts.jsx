@@ -359,8 +359,24 @@ function Receipts() {
     const filesToProcess = acceptedFiles.slice(0, 10);
 
     if (filesToProcess.length === 1) {
-      setCropFile(filesToProcess[0]);
-      setCropModalVisible(true);
+      setIsUploading(true);
+      setStatusText(t('common.msg_preparing_image') || 'Preparing image...');
+      // Defer crop modal opening by 150ms to yield the main thread to Android OS focus/resume event loop
+      setTimeout(async () => {
+        try {
+          // Pre-resize image before showing in crop modal to drastically reduce memory usage
+          const resized = await resizeImage(filesToProcess[0], 1000, 1300);
+          setCropFile(resized);
+          setCropModalVisible(true);
+        } catch (err) {
+          console.error("Resize failed:", err);
+          setCropFile(filesToProcess[0]);
+          setCropModalVisible(true);
+        } finally {
+          setIsUploading(false);
+          setStatusText('');
+        }
+      }, 150);
     } else {
       // Defer processing by 150ms to yield the main thread to Android OS focus/resume event loop
       setTimeout(() => {
