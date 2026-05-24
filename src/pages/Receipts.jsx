@@ -38,6 +38,7 @@ function Receipts() {
   const [verifyData, setVerifyData] = useState(null);
   const { allReceipts, setAllReceipts, loadingReceipts, deleteReceipt, hasMore, loadMoreReceipts } = useReceipts(user);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [cropModalVisible, setCropModalVisible] = useState(false);
   const [cropFile, setCropFile] = useState(null);
@@ -361,7 +362,7 @@ function Receipts() {
     if (filesToProcess.length === 1) {
       setIsUploading(true);
       setStatusText(t('common.msg_preparing_image') || 'Preparing image...');
-      // Defer crop modal opening by 150ms to yield the main thread to Android OS focus/resume event loop
+      // Defer crop modal opening by 700ms to yield the main thread to Android OS focus/resume event loop
       setTimeout(async () => {
         try {
           // Pre-resize image before showing in crop modal to drastically reduce memory usage
@@ -376,22 +377,22 @@ function Receipts() {
           setIsUploading(false);
           setStatusText('');
         }
-      }, 150);
+      }, 700);
     } else {
-      // Defer processing by 150ms to yield the main thread to Android OS focus/resume event loop
+      // Defer processing by 700ms to yield the main thread to Android OS focus/resume event loop
       setTimeout(() => {
         processFiles(filesToProcess);
-      }, 150);
+      }, 700);
     }
   }, [user, t, processFiles]);
 
   const handleCropConfirm = (croppedFile) => {
     setCropModalVisible(false);
     setCropFile(null);
-    // Defer processing by 150ms to yield the main thread to Android OS focus/resume event loop
+    // Defer processing by 700ms to yield the main thread to Android OS focus/resume event loop
     setTimeout(() => {
       processFiles([croppedFile]);
-    }, 150);
+    }, 700);
   };
 
 
@@ -430,20 +431,26 @@ function Receipts() {
 
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
+    if (isSaving) return;
     if (!verifyData.fileName || !verifyData.fileName.trim()) {
       alert(t('common.msg_enter_store_before_save'));
       return;
     }
 
     try {
+      setIsSaving(true);
       const itemsToSave = (verifyData.items || []).map(item => ({
         ...item,
         name: item.name ? trTitleCase(cleanItemName(item.name)) : item.name,
         price: parseFloat(item.price) || 0
       }));
 
-      // 🔥 Wait for the background upload to finish before saving to Firestore
-      const uploadResult = verifyData.uploadPromise ? await verifyData.uploadPromise : { imageUrl: null, storagePath: null };
+      // 🔥 If offline, skip waiting for the background storage upload entirely to make saving instantaneous
+      const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      let uploadResult = { imageUrl: null, storagePath: null };
+      if (!isOffline && verifyData.uploadPromise) {
+        uploadResult = await verifyData.uploadPromise;
+      }
 
       const newReceiptData = {
         userId: verifyData.userId,
@@ -474,6 +481,8 @@ function Receipts() {
     } catch (e) {
       console.error("Error saving document: ", e);
       setError(t('common.msg_save_failed'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -567,6 +576,7 @@ function Receipts() {
         handleSendToManual={handleSendToManual}
         handleCancelSave={handleCancelSave}
         handleConfirmSave={handleConfirmSave}
+        isSaving={isSaving}
       />
 
       <ImageCropModal
