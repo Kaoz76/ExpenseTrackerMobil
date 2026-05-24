@@ -547,12 +547,14 @@ function Receipts() {
         handleConfirmSave={handleConfirmSave}
       />
 
-      <ImageCropModal
-        show={cropModalVisible}
-        file={cropFile}
-        onConfirm={handleCropConfirm}
-        onCancel={handleCropCancel}
-      />
+      {cropFile && cropModalVisible && (
+        <PerspectiveCropModal
+          visible={cropModalVisible}
+          imageSrc={URL.createObjectURL(cropFile)}
+          onClose={handleCropCancel}
+          onCropComplete={handleCropConfirm}
+        />
+      )}
 
     </div>
   );
