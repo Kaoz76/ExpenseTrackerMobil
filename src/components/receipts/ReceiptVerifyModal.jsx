@@ -13,7 +13,8 @@ function ReceiptVerifyModal({
   handleCloseAll,
   handleSendToManual,
   handleCancelSave,
-  handleConfirmSave
+  handleConfirmSave,
+  isSavingDoc
 }) {
   const { currency, favoriteCurrencies } = useCurrency();
   const { t } = useLanguage();
@@ -214,15 +215,24 @@ function ReceiptVerifyModal({
             </div>
 
             <div className="modal-footer bg-light d-flex justify-content-between">
-              <button className="btn btn-outline-info border-0 d-flex align-items-center" onClick={handleSendToManual}>
+              <button className="btn btn-outline-info border-0 d-flex align-items-center" onClick={handleSendToManual} disabled={isSavingDoc}>
                 <FaEdit className="me-1" /> {t('common.use_manual_form')}
               </button>
               <div className="d-flex gap-2">
-                <button type="button" className="btn btn-outline-secondary" onClick={handleCancelSave}>
+                <button type="button" className="btn btn-outline-secondary" onClick={handleCancelSave} disabled={isSavingDoc}>
                   <FaTimes className="me-2" /> {t('common.discard')}
                 </button>
-                <button type="button" className="btn btn-success px-4" onClick={handleConfirmSave}>
-                  <FaCheck className="me-2" /> {t('common.save_next')}
+                <button type="button" className="btn btn-success px-4" onClick={handleConfirmSave} disabled={isSavingDoc}>
+                  {isSavingDoc ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      {t('common.processing')}...
+                    </>
+                  ) : (
+                    <>
+                      <FaCheck className="me-2" /> {t('common.save_next')}
+                    </>
+                  )}
                 </button>
               </div>
             </div>

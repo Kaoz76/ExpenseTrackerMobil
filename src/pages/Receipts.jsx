@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus, FaEdit } from 'react-icons/fa';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +43,14 @@ function Receipts() {
 
   const [cropModalVisible, setCropModalVisible] = useState(false);
   const [cropFile, setCropFile] = useState(null);
+
+  // Prevention for offline duplicate saves
+  const activeVerifyRef = useRef(null);
+  const [isSavingDoc, setIsSavingDoc] = useState(false);
+
+  useEffect(() => {
+    activeVerifyRef.current = verifyData;
+  }, [verifyData]);
 
   const filteredReceipts = useMemo(() => {
     let result = allReceipts;
@@ -109,33 +117,44 @@ function Receipts() {
     setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', '1').replace('{{total}}', filesToProcess.length));
 
     const processFile = async (originalFile) => {
-      let processedFile = cropFile || originalFile;
+      let processedFile = originalFile;
         
       // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
       // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
       if (Capacitor.isNativePlatform()) {
         processedFile = await resizeImage(processedFile, 800, 1200, 500, 500);
       } else {
-        processedFile = await resizeImage(processedFile, 1500, 2000, 1000, 1000);
+        processedFile = await resizeImage(processedFile, 1000, 1300, 1000, 1000);
       }
 
       // 1. Background Firebase Upload
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
       if (!privacyMode) {
-        uploadPromise = (async () => {
-          try {
-            const timestamp = Date.now();
-            const safeFileName = processedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-            const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
-            const storageRef = ref(storage, storagePath);
-            await uploadBytesResumable(storageRef, processedFile);
-            const imageUrl = await getDownloadURL(storageRef);
-            return { storagePath, imageUrl };
-          } catch (err) {
-            console.error("Storage upload failed:", err);
-            return { storagePath: null, imageUrl: null };
-          }
-        })();
+        // Skip waiting 10 seconds if we already know we are offline
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
+        } else {
+          const uploadTimeoutMs = 10000;
+          uploadPromise = Promise.race([
+          (async () => {
+            try {
+              const timestamp = Date.now();
+              const safeFileName = processedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
+              const storageRef = ref(storage, storagePath);
+              await uploadBytesResumable(storageRef, processedFile);
+              const imageUrl = await getDownloadURL(storageRef);
+              return { storagePath, imageUrl };
+            } catch (err) {
+              console.error("Storage upload failed:", err);
+              return { storagePath: null, imageUrl: null };
+            }
+          })(),
+          new Promise(resolve =>
+            setTimeout(() => resolve({ storagePath: null, imageUrl: null }), uploadTimeoutMs)
+          )
+        ]);
+        }
       }
 
       // 2. OCR Analysis
@@ -149,7 +168,8 @@ function Receipts() {
             reader.onload = async () => {
               try {
                 const base64DataWithPrefix = reader.result;
-                const base64Raw = base64DataWithPrefix.split(',')[1];
+                const commaIndex = base64DataWithPrefix.indexOf(',');
+                const base64Raw = commaIndex !== -1 ? base64DataWithPrefix.substring(commaIndex + 1) : null;
 
                 if (!base64Raw) throw new Error("Could not extract raw base64 from image.");
 
@@ -280,7 +300,10 @@ function Receipts() {
       if (shouldAnalyzeWithLLM) {
         try {
           setStatusText(t('common.msg_ai_enriching'));
-          enrichedItems = await enrichItemsWithGemini(matchedItems, '', language);
+          enrichedItems = await Promise.race([
+            enrichItemsWithGemini(matchedItems, '', language),
+            new Promise(resolve => setTimeout(() => resolve(matchedItems), 8000))
+          ]);
         } catch (aiError) {
           console.warn('AI enrichment failed, using raw OCR items:', aiError);
         }
@@ -307,10 +330,20 @@ function Receipts() {
     };
 
     try {
-      // Run OCR on all images concurrently
-      const results = await Promise.all(filesToProcess.map(processFile));
+      const results = [];
+      for (let i = 0; i < filesToProcess.length; i++) {
+        setStatusText(
+          t('common.msg_analyzing_receipt')
+            .replace('{{current}}', String(i + 1))
+            .replace('{{total}}', String(filesToProcess.length))
+        );
+        
+        const result = await processFile(filesToProcess[i]);
+        results.push(result);
+        
+        setUploadProgress(((i + 1) / filesToProcess.length) * 100);
+      }
 
-      setUploadProgress(100);
       setStatusText(t('common.msg_preparing_queue'));
 
       setTimeout(() => {
@@ -331,7 +364,7 @@ function Receipts() {
       setError("An error occurred while processing the files.");
     }
 
-  }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames, currency?.code, language, cropFile]);
+  }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames, currency?.code, language]);
 
   const onDrop = useCallback(async (acceptedFiles) => {
     if (!acceptedFiles || acceptedFiles.length === 0) return;
@@ -347,14 +380,18 @@ function Receipts() {
       setCropFile(filesToProcess[0]);
       setCropModalVisible(true);
     } else {
-      processFiles(filesToProcess);
+      setTimeout(() => {
+        processFiles(filesToProcess);
+      }, 150);
     }
   }, [user, t, processFiles]);
 
   const handleCropConfirm = (croppedFile) => {
     setCropModalVisible(false);
     setCropFile(null);
-    processFiles([croppedFile]);
+    setTimeout(() => {
+      processFiles([croppedFile]);
+    }, 150);
   };
 
   const handleCropCancel = () => {
@@ -421,7 +458,15 @@ function Receipts() {
       });
 
       // 🔥 Wait for the background upload to finish before saving to Firestore
+      setIsSavingDoc(true);
       const uploadResult = verifyData.uploadPromise ? await verifyData.uploadPromise : { imageUrl: null, storagePath: null };
+
+      // 🔥 Abort if user clicked Cancel or the modal changed while we were waiting!
+      if (activeVerifyRef.current !== verifyData) {
+         console.warn("Save aborted because the modal was closed or changed.");
+         setIsSavingDoc(false);
+         return;
+      }
 
       const newReceiptData = {
         userId: verifyData.userId,
@@ -452,6 +497,8 @@ function Receipts() {
     } catch (e) {
       console.error("Error saving document: ", e);
       setError(t('common.msg_save_failed'));
+    } finally {
+      setIsSavingDoc(false);
     }
   };
 
@@ -545,6 +592,7 @@ function Receipts() {
         handleSendToManual={handleSendToManual}
         handleCancelSave={handleCancelSave}
         handleConfirmSave={handleConfirmSave}
+        isSavingDoc={isSavingDoc}
       />
 
       {cropFile && cropModalVisible && (

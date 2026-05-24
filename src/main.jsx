@@ -9,7 +9,10 @@ import { CurrencyProvider } from './context/CurrencyContext';
 import { LanguageProvider } from './context/LanguageContext';
 
 import { registerSW } from 'virtual:pwa-register';
-registerSW({ immediate: true });
+// Only register the PWA service worker on web browsers, NOT inside the native Capacitor app
+if (typeof window !== 'undefined' && !window.Capacitor) {
+  registerSW({ immediate: true });
+}
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';

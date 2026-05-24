@@ -69,10 +69,25 @@ const levenshtein = (s, t) => {
   for (let i = 0; i <= t.length; i++) {
     arr[i] = [i];
     for (let j = 1; j <= s.length; j++) {
+      let cost = 1;
+      if (i > 0) {
+        const charS = s[j - 1].toLowerCase();
+        const charT = t[i - 1].toLowerCase();
+        if (charS === charT) {
+          cost = 0;
+        } else {
+          const ocrMistakes = new Set([
+            '0o', 'o0', '1l', 'l1', '1i', 'i1', '5s', 's5', '8b', 'b8', 'ce', 'ec', 'rn', 'nr', '2z', 'z2'
+          ]);
+          if (ocrMistakes.has(charS + charT)) {
+            cost = 0.4;
+          }
+        }
+      }
       arr[i][j] = i === 0 ? j : Math.min(
         arr[i - 1][j] + 1,
         arr[i][j - 1] + 1,
-        arr[i - 1][j - 1] + (s[j - 1] === t[i - 1] ? 0 : 1)
+        arr[i - 1][j - 1] + cost
       );
     }
   }
@@ -116,15 +131,23 @@ export const cleanItemName = (name) => {
   // 5. Tekrarlayan boşlukları tek boşluğa indir
   cleaned = cleaned.replace(/\s{2,}/g, ' ').trim();
 
-  // 6. Sadece sayılardan oluşan kelimeleri ve tek harfli kelimeleri sil
-  //    (OCR artıkları: stray "X", "A" vb. tek harf token'ları da dahil)
-  const words = cleaned.split(' ').filter(w => {
-    if (w.length <= 1) return false; // tek karakterli her şeyi sil (sayı veya harf)
-    if (/^\d+[.,]?\d*$/.test(w)) return false; // tamamen sayı olan kelimeler
+  // 6. Sadece baştaki ve sondaki tekil anlamsız karakterleri sil (tamamen ortadaki kelimeleri yok etme!)
+  // Çünkü "1200 B TUKLIMA" gibi isimlerde 1200 ve B'nin silinmesi veriyi bozar.
+  const words = cleaned.split(' ');
+  const filteredWords = words.filter(w => {
+    // Keep everything if it's the only word
+    if (words.length === 1) return true;
+    
+    // If it's a single character at the very beginning or end, and it's not a number, maybe drop it
+    // But honestly, it's safer to keep most things since we already stripped garbage symbols.
+    // Let's only drop isolated single non-alphanumeric characters if they survived
+    if (w.length === 1 && !/[a-zA-Z0-9çğıöşüÇĞİÖŞÜ]/.test(w)) return false;
+    
+    // Don't drop purely numeric words like "1200" or single letters like "B" because they might be model numbers!
     return true;
   });
 
-  cleaned = words.join(' ').trim();
+  cleaned = filteredWords.join(' ').trim();
 
   // Eğer temizleme sonrası tamamen boş kaldıysa, bu kelimenin tamamen çöp/çarpan olduğunu anlarız.
   // Sadece eğer orijinal isim harf içeriyorsa geri döndür (sayı/çöp değilse)

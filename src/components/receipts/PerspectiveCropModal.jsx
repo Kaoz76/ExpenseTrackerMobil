@@ -36,7 +36,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
   }, [visible, imageSrc]);
 
   const handlePointerDown = (e, idx) => {
-    e.preventDefault();
+    if (e.preventDefault) e.preventDefault();
     setDraggingIdx(idx);
   };
 
@@ -45,8 +45,21 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
     
     const rect = containerRef.current.getBoundingClientRect();
     // Calculate new position bounded by container
-    let x = e.clientX - rect.left;
-    let y = e.clientY - rect.top;
+    let clientX = e.clientX;
+    let clientY = e.clientY;
+    
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    }
+
+    if (clientX === undefined || clientY === undefined) return;
+
+    let x = clientX - rect.left;
+    let y = clientY - rect.top;
     
     x = Math.max(0, Math.min(x, imageSize.width));
     y = Math.max(0, Math.min(y, imageSize.height));
@@ -175,7 +188,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
                 <div
                   key={idx}
                   onPointerDown={(e) => handlePointerDown(e, idx)}
-                  onTouchStart={(e) => handlePointerDown(e.touches[0], idx)} // Fallback for some mobile browsers
+                  onTouchStart={(e) => handlePointerDown(e, idx)} // Fallback for some mobile browsers
                   style={{
                     position: 'absolute',
                     left: corner.x,
