@@ -109,8 +109,15 @@ function Receipts() {
     setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', '1').replace('{{total}}', filesToProcess.length));
 
     const processFile = async (originalFile) => {
-      // 0. Resize Image to reduce memory footprint and speed up OCR
-      const file = await resizeImage(originalFile, 1500, 2000);
+      let processedFile = cropFile || originalFile;
+        
+      // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
+      // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
+      if (Capacitor.isNativePlatform()) {
+        processedFile = await resizeImage(processedFile, 800, 1200, 500, 500);
+      } else {
+        processedFile = await resizeImage(processedFile, 1500, 2000, 1000, 1000);
+      }
 
       // 1. Background Firebase Upload
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
@@ -118,10 +125,10 @@ function Receipts() {
         uploadPromise = (async () => {
           try {
             const timestamp = Date.now();
-            const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const safeFileName = processedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
             const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
             const storageRef = ref(storage, storagePath);
-            await uploadBytesResumable(storageRef, file);
+            await uploadBytesResumable(storageRef, processedFile);
             const imageUrl = await getDownloadURL(storageRef);
             return { storagePath, imageUrl };
           } catch (err) {
@@ -136,7 +143,7 @@ function Receipts() {
       try {
         if (Capacitor.isNativePlatform()) {
           const reader = new FileReader();
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(processedFile);
 
           const base64Text = await new Promise((resolve, reject) => {
             reader.onload = async () => {
@@ -241,7 +248,7 @@ function Receipts() {
 
           extractedData = extractDataFromText(base64Text);
         } else {
-          const fileUrl = URL.createObjectURL(file);
+          const fileUrl = URL.createObjectURL(processedFile);
           const Tesseract = (await import('tesseract.js')).default;
           const result = await Tesseract.recognize(
             fileUrl,
@@ -285,9 +292,9 @@ function Receipts() {
       return {
         userId: user.uid,
         uploadPromise, // Save the background upload promise to await it during final save
-        tempImageUrl: URL.createObjectURL(file), // Provide a local object URL for immediate display
+        tempImageUrl: URL.createObjectURL(processedFile), // Provide a local object URL for immediate display
         fileName: '',
-        originalFileName: file.name,
+        originalFileName: processedFile.name,
         createdAt: Timestamp.now(),
         title: '',
         date: new Date().toLocaleDateString(),
@@ -324,7 +331,7 @@ function Receipts() {
       setError("An error occurred while processing the files.");
     }
 
-  }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames, currency?.code, language]);
+  }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames, currency?.code, language, cropFile]);
 
   const onDrop = useCallback(async (acceptedFiles) => {
     if (!acceptedFiles || acceptedFiles.length === 0) return;

@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { perspectiveWarp } from '../../utils/perspectiveTransform';
-import { useLanguage } from '../../context/LanguageContext';
 
 const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) => {
-  const { t } = useLanguage();
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
