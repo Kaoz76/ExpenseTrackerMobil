@@ -1,29 +1,41 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { perspectiveWarp } from '../../utils/perspectiveTransform';
+import { getSmartCropBox, rotateImage90Deg } from '../../utils/imageUtils';
+import { FaSyncAlt } from 'react-icons/fa';
 
 const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) => {
   const containerRef = useRef(null);
   const imageRef = useRef(null);
+  const [currentImageSrc, setCurrentImageSrc] = useState(imageSrc);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [corners, setCorners] = useState([]); // TL, TR, BR, BL in visual pixels
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    if (visible && imageRef.current) {
+    if (visible) {
+      setCurrentImageSrc(imageSrc);
+    }
+  }, [visible, imageSrc]);
+
+  useEffect(() => {
+    if (visible && imageRef.current && currentImageSrc) {
       const handleLoad = () => {
         const { width, height } = imageRef.current.getBoundingClientRect();
         setImageSize({ width, height });
         
-        // Default corners 10% from edges
-        const insetX = width * 0.1;
-        const insetY = height * 0.1;
+        const smartCrop = getSmartCropBox(imageRef.current);
         
+        const pxX = (smartCrop.x / 100) * width;
+        const pxY = (smartCrop.y / 100) * height;
+        const pxW = (smartCrop.width / 100) * width;
+        const pxH = (smartCrop.height / 100) * height;
+
         setCorners([
-          { x: insetX, y: insetY }, // TL
-          { x: width - insetX, y: insetY }, // TR
-          { x: width - insetX, y: height - insetY }, // BR
-          { x: insetX, y: height - insetY } // BL
+          { x: pxX, y: pxY }, // TL
+          { x: pxX + pxW, y: pxY }, // TR
+          { x: pxX + pxW, y: pxY + pxH }, // BR
+          { x: pxX, y: pxY + pxH } // BL
         ]);
       };
       
@@ -33,10 +45,9 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
         imageRef.current.onload = handleLoad;
       }
     }
-  }, [visible, imageSrc]);
+  }, [visible, currentImageSrc]);
 
   const handlePointerDown = (e, idx) => {
-    if (e.preventDefault) e.preventDefault();
     setDraggingIdx(idx);
   };
 
@@ -66,6 +77,23 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
     
     setCorners(prev => {
       const next = [...prev];
+      const gap = 20; // Minimum distance between corners to prevent collapse
+
+      // Restrict dragging so corners cannot cross each other (Anti-Crazy User Protection)
+      if (draggingIdx === 0) { // Top-Left
+        x = Math.min(x, prev[1].x - gap, prev[2].x - gap);
+        y = Math.min(y, prev[3].y - gap, prev[2].y - gap);
+      } else if (draggingIdx === 1) { // Top-Right
+        x = Math.max(x, prev[0].x + gap, prev[3].x + gap);
+        y = Math.min(y, prev[2].y - gap, prev[3].y - gap);
+      } else if (draggingIdx === 2) { // Bottom-Right
+        x = Math.max(x, prev[3].x + gap, prev[0].x + gap);
+        y = Math.max(y, prev[1].y + gap, prev[0].y + gap);
+      } else if (draggingIdx === 3) { // Bottom-Left
+        x = Math.min(x, prev[2].x - gap, prev[1].x - gap);
+        y = Math.max(y, prev[0].y + gap, prev[1].y + gap);
+      }
+
       next[draggingIdx] = { x, y };
       return next;
     });
@@ -124,6 +152,18 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
     }
   };
 
+  const handleRotate = async () => {
+    setIsProcessing(true);
+    try {
+      const newSrc = await rotateImage90Deg(currentImageSrc);
+      setCurrentImageSrc(newSrc);
+    } catch (e) {
+      console.error("Rotation failed", e);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (!visible) return null;
 
   const polygonPoints = corners.length === 4 
@@ -149,7 +189,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
             >
               <img
                 ref={imageRef}
-                src={imageSrc}
+                src={currentImageSrc}
                 alt="Original"
                 style={{
                   maxWidth: '100%',
@@ -215,11 +255,16 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
             </div>
             
           </div>
-          <div className="modal-footer border-secondary">
-            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isProcessing}>İptal</button>
-            <button type="button" className="btn btn-primary" onClick={handleCrop} disabled={isProcessing || corners.length !== 4}>
-              {isProcessing ? 'Düzleştiriliyor...' : 'Kes ve Düzleştir'}
+          <div className="modal-footer border-secondary d-flex justify-content-between">
+            <button type="button" className="btn btn-outline-light" onClick={handleRotate} disabled={isProcessing}>
+              <FaSyncAlt className="me-2" /> Döndür
             </button>
+            <div>
+              <button type="button" className="btn btn-secondary me-2" onClick={onClose} disabled={isProcessing}>İptal</button>
+              <button type="button" className="btn btn-primary" onClick={handleCrop} disabled={isProcessing || corners.length !== 4}>
+                {isProcessing ? 'İşleniyor...' : 'Kes ve Düzleştir'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

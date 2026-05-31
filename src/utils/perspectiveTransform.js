@@ -83,15 +83,24 @@ function solveLinearSystem(A, B) {
  */
 export function perspectiveWarp(img, corners) {
   // Estimate destination width and height
-  // Width is max of top width or bottom width
   const wTop = Math.hypot(corners[1].x - corners[0].x, corners[1].y - corners[0].y);
   const wBot = Math.hypot(corners[2].x - corners[3].x, corners[2].y - corners[3].y);
-  const width = Math.round(Math.max(wTop, wBot));
+  let width = Math.max(wTop, wBot);
   
-  // Height is max of left height or right height
   const hLeft = Math.hypot(corners[3].x - corners[0].x, corners[3].y - corners[0].y);
   const hRight = Math.hypot(corners[2].x - corners[1].x, corners[2].y - corners[1].y);
-  const height = Math.round(Math.max(hLeft, hRight));
+  let height = Math.max(hLeft, hRight);
+
+  // Cap the resolution to 1600px max dimension for optimal OCR performance and JS memory safety
+  const MAX_DIMENSION = 1600;
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    const scale = MAX_DIMENSION / Math.max(width, height);
+    width *= scale;
+    height *= scale;
+  }
+
+  width = Math.round(width);
+  height = Math.round(height);
   
   const dstCorners = [
     { x: 0, y: 0 },

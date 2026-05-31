@@ -205,9 +205,6 @@ function Receipts() {
                   });
                   slopes.sort((a, b) => a - b);
                   let medianSlope = slopes.length > 0 ? slopes[Math.floor(slopes.length / 2)] : 0;
-                  
-                  // Clamp medianSlope to 0 for small tilts to enforce strict, stable vertical sorting
-                  if (Math.abs(medianSlope) < 0.05) medianSlope = 0;
 
                   // Sort items by their projected Y-intercept (where X=0) to ensure strict top-to-bottom order
                   detections.sort((a, b) => {
@@ -225,8 +222,8 @@ function Receipts() {
 
                     let added = false;
                     for (let group of lineGroups) {
-                      // Project expected Y using the group's initial vector slope
-                      let projectedY = group.startY + group.slope * (center.x - group.startX);
+                      // Project expected Y using the global median slope for stability
+                      let projectedY = group.startY + medianSlope * (center.x - group.startX);
 
                       // If the item's center is close to the projected line vector, add it!
                       if (Math.abs(center.y - projectedY) < height * 0.6) {
@@ -443,7 +440,7 @@ function Receipts() {
         
         // Detect user corrections for Learning Memory
         const originalItem = verifyData.originalItems && verifyData.originalItems[index];
-        if (originalItem && !item._isLearned) { // Don't re-learn things we already applied
+        if (originalItem) { 
           if (originalItem.name !== item.name || originalItem.type !== item.type) {
             saveCorrection(originalItem.name, cleanedName, item.type);
           }

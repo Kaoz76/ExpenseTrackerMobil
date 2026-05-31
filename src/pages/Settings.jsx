@@ -354,7 +354,6 @@ function Settings() {
                     <option value="EUR">EUR (€) - {t('settings.currency_eur')}</option>
                     <option value="TRY">TRY (₺) - {t('settings.currency_try')}</option>
                     <option value="GBP">GBP (£) - {t('settings.currency_gbp')}</option>
-                    <option value="JPY">JPY (¥) - {t('settings.currency_jpy')}</option>
                   </select>
 
                   <label className="form-label text-muted small fw-bold d-block mb-2">{t('settings.favorite_currencies').toUpperCase()}</label>
