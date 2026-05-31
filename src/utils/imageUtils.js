@@ -90,15 +90,28 @@ export const preprocessForOCR = (file) => {
         data[i + 2] = gray;
       }
 
-      // 2) Contrast enhancement (histogram stretch)
-      let minVal = 255, maxVal = 0;
+      // 2) Contrast enhancement (percentile-based histogram stretch, ignoring outlier pixels)
+      const histogram = new Uint32Array(256);
       for (let i = 0; i < data.length; i += 4) {
-        if (data[i] < minVal) minVal = data[i];
-        if (data[i] > maxVal) maxVal = data[i];
+        histogram[Math.round(data[i])]++;
+      }
+      const totalPixels = w * h;
+      const lowCut = totalPixels * 0.01;  // ignore darkest 1%
+      const highCut = totalPixels * 0.99; // ignore brightest 1%
+      let cumulative = 0;
+      let minVal = 0, maxVal = 255;
+      for (let i = 0; i < 256; i++) {
+        cumulative += histogram[i];
+        if (cumulative >= lowCut) { minVal = i; break; }
+      }
+      cumulative = 0;
+      for (let i = 0; i < 256; i++) {
+        cumulative += histogram[i];
+        if (cumulative >= highCut) { maxVal = i; break; }
       }
       const range = maxVal - minVal || 1;
       for (let i = 0; i < data.length; i += 4) {
-        const stretched = ((data[i] - minVal) / range) * 255;
+        const stretched = Math.min(255, Math.max(0, ((data[i] - minVal) / range) * 255));
         data[i] = stretched;
         data[i + 1] = stretched;
         data[i + 2] = stretched;
@@ -128,7 +141,17 @@ export const preprocessForOCR = (file) => {
 
       ctx.putImageData(imageData, 0, 0);
 
-      canvas.toBlob((blob) => {
+      // 4) Add white padding border so ML Kit doesn't miss edge text
+      const padding = 30;
+      const paddedCanvas = document.createElement('canvas');
+      paddedCanvas.width = w + padding * 2;
+      paddedCanvas.height = h + padding * 2;
+      const paddedCtx = paddedCanvas.getContext('2d');
+      paddedCtx.fillStyle = '#ffffff';
+      paddedCtx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
+      paddedCtx.drawImage(canvas, padding, padding);
+
+      paddedCanvas.toBlob((blob) => {
         if (!blob) {
           resolve(file);
           return;

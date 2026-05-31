@@ -19,9 +19,11 @@ export const levenshteinDistance = (s, t) => {
 };
 
 export const isFuzzyMatch = (line, targetWords, maxDist = 2) => {
-  const words = line.replace(/[^a-z0-9ğüşöçığ]/gi, ' ').split(/\s+/).filter(w => w.length > 3);
+  const words = line.replace(/[^a-z0-9ğüşöçığ]/gi, ' ').split(/\s+/).filter(w => w.length > 4);
   for (let word of words) {
     for (let target of targetWords) {
+      // Word must be similar length to target (within ±2 chars) to avoid false positives
+      if (Math.abs(word.length - target.length) > 2) continue;
       const allowedDist = target.length <= 5 ? 1 : maxDist;
       if (levenshteinDistance(word, target) <= allowedDist) {
         return true;

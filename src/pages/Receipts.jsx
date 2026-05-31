@@ -122,9 +122,9 @@ function Receipts() {
       // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
       // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
       if (Capacitor.isNativePlatform()) {
-        processedFile = await resizeImage(processedFile, 800, 1200, 500, 500);
+        processedFile = await resizeImage(processedFile, 1200, 1600);
       } else {
-        processedFile = await resizeImage(processedFile, 1000, 1300, 1000, 1000);
+        processedFile = await resizeImage(processedFile, 1400, 1800);
       }
 
       // Enhance image for better OCR: grayscale + contrast + sharpening
