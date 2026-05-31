@@ -7,6 +7,8 @@
 export const brandDictionary = {
   // --- GROCERY & ZİNCİR MAĞAZALAR ---
   'mlgros': 'Migros',
+  'higros': 'Migros',
+  'hıgros': 'Migros',
   'mıgros': 'Migros',
   'migroş': 'Migros',
   'mm migros': 'Migros',
@@ -684,8 +686,8 @@ export const suggestedBrands = [...new Set(Object.values(brandDictionary))].sort
  */
 export const commonMisreads = [
   // --- MAĞAZA VE KİMLİK DÜZELTMELERİ (Uzun ve Özel İfadeler Önce) ---
-  { wrong: /\bjet\s+[m|n][iıuüoö]gro[s|ş]/gi, right: 'Jet Migros' },
-  { wrong: /\b[m|n][iıuüoö]gro[s|ş]/gi, right: 'Migros' },
+  { wrong: /\bjet\s+[m|n|h][iıuüoö]gro[s|ş]/gi, right: 'Jet Migros' },
+  { wrong: /\b[m|n|h][iıuüoö]gro[s|ş]/gi, right: 'Migros' },
   
   { wrong: /\b[b|8][iı1l][m|n]\b/gi, right: 'BİM' },
   { wrong: /\ba[-.]?[1|l|i|ı][0|o][-.]?[1|l|i|ı]\b/gi, right: 'A101' },
@@ -736,4 +738,5 @@ export const commonMisreads = [
   { wrong: /\bgr\b/gi, right: 'G' }, // Gram kısaltması
   { wrong: /\bkg\b/gi, right: 'KG' },
   { wrong: /\bad\b/gi, right: 'ADET' },
+  { wrong: /\b(cay|çay)[tl1]\b/gi, right: 'çayı' },
 ];

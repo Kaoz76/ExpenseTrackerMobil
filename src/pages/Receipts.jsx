@@ -11,7 +11,7 @@ import { Capacitor } from '@capacitor/core';
 import { Ocr } from '@carviz/capacitor-ocr';
 import { extractDataFromText } from '../utils/ocrUtils';
 import { enrichItemsWithGemini } from '../services/geminiService';
-import { trTitleCase, cleanItemName, findBestProductMatch, cleanStoreName } from '../utils/stringUtils';
+import { trTitleCase, cleanItemName, findBestProductMatch, cleanStoreName, brandAutoCorrect } from '../utils/stringUtils';
 import { useReceipts } from '../hooks/useReceipts';
 import ReceiptList from '../components/receipts/ReceiptList';
 import ReceiptScanZone from '../components/receipts/ReceiptScanZone';
@@ -37,11 +37,17 @@ function Receipts() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyData, setVerifyData] = useState(null);
   const { allReceipts, setAllReceipts, loadingReceipts, deleteReceipt, hasMore, loadMoreReceipts } = useReceipts(user);
+<<<<<<< Updated upstream
   const [searchTerm, setSearchTerm] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+=======
+>>>>>>> Stashed changes
   const [cropModalVisible, setCropModalVisible] = useState(false);
   const [cropFile, setCropFile] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+
 
   const filteredReceipts = useMemo(() => {
     let result = allReceipts;
@@ -78,7 +84,7 @@ function Receipts() {
             data.items.forEach(item => {
               if (item.name && item.name.trim().length > 2) {
                 // Clean the stored name so fuzzy matching works against clean names
-                const cleanedName = trTitleCase(cleanItemName(item.name.trim()));
+                const cleanedName = trTitleCase(cleanItemName(brandAutoCorrect(item.name.trim())));
                 if (cleanedName.length > 2) names.add(cleanedName);
               }
             });
@@ -177,6 +183,18 @@ function Receipts() {
                     return Math.abs(bl[1] - tl[1]);
                   };
 
+                  // Detect Y-axis orientation dynamically from detections.
+                  // In flipped Y coordinates (native iOS/Android), the bottom of the word has a smaller Y than the top of the word.
+                  let isYFlipped = false;
+                  for (let det of detections) {
+                    if (det.topLeft && det.bottomLeft && typeof det.topLeft[1] === 'number' && typeof det.bottomLeft[1] === 'number') {
+                      if (det.bottomLeft[1] < det.topLeft[1]) {
+                        isYFlipped = true;
+                        break;
+                      }
+                    }
+                  }
+
                   // Calculate median slope to correctly sort items top-to-bottom despite skew
                   let slopes = [];
                   detections.forEach(item => {
@@ -189,30 +207,45 @@ function Receipts() {
                   slopes.sort((a, b) => a - b);
                   let medianSlope = slopes.length > 0 ? slopes[Math.floor(slopes.length / 2)] : 0;
 
-                  // Sort items by their projected Y-intercept (where X=0) to ensure strict top-to-bottom order
+                  // Clamp medianSlope to 0 for small tilts to enforce strict, stable vertical sorting
+                  if (Math.abs(medianSlope) < 0.05) medianSlope = 0;
+
+                  // Sort items by their projected Y-intercept (where X=0) to ensure strict top-to-bottom order.
+                  // If Y is flipped (Y=1 is top, Y=0 is bottom), sort descending.
+                  // Otherwise (Y=0 is top, Y=1 is bottom), sort ascending.
                   detections.sort((a, b) => {
                     let cA = getCenter(a);
                     let cB = getCenter(b);
-                    return (cA.y - medianSlope * cA.x) - (cB.y - medianSlope * cB.x);
+                    let valA = cA.y - medianSlope * cA.x;
+                    let valB = cB.y - medianSlope * cB.x;
+                    return isYFlipped ? (valB - valA) : (valA - valB);
                   });
 
                   let lineGroups = [];
 
                   detections.forEach(item => {
                     let center = getCenter(item);
-                    let height = getHeight(item);
-                    if (height < 0.001) height = 0.02;
+                    let itemHeight = getHeight(item);
+                    // Determine coordinate scale: normalized coords (< 1) use 0.02 min height, pixels (>= 1) use 15px min height
+                    const minHeight = itemHeight < 1 ? 0.02 : 15;
+                    const effectiveHeight = Math.max(itemHeight, minHeight);
 
                     let added = false;
                     for (let group of lineGroups) {
                       // Project expected Y using the group's initial vector slope
                       let projectedY = group.startY + group.slope * (center.x - group.startX);
+<<<<<<< Updated upstream
+=======
+
+                      // Use the maximum of the group's height and the current item's height for tolerance calculation
+                      const compareHeight = Math.max(effectiveHeight, group.height || effectiveHeight);
+                      const tolerance = compareHeight * 0.5; // 0.5 multiplier to separate adjacent receipt lines
+>>>>>>> Stashed changes
 
                       // If the item's center is close to the projected line vector, add it!
-                      if (Math.abs(center.y - projectedY) < height * 0.6) {
+                      if (Math.abs(center.y - projectedY) < tolerance) {
                         group.items.push(item);
-                        // Optional: Could update group.startX/Y to gracefully curve along the receipt, 
-                        // but sticking to the origin slope is mathematically cleaner for most receipts.
+                        group.height = Math.max(group.height || 0, effectiveHeight);
                         added = true;
                         break;
                       }
@@ -228,6 +261,7 @@ function Receipts() {
                         startX: center.x,
                         startY: center.y,
                         slope: itemSlope,
+                        height: effectiveHeight,
                         items: [item]
                       });
                     }
@@ -438,12 +472,36 @@ function Receipts() {
     }
 
     try {
+<<<<<<< Updated upstream
       setIsSaving(true);
       const itemsToSave = (verifyData.items || []).map(item => ({
         ...item,
         name: item.name ? trTitleCase(cleanItemName(item.name)) : item.name,
         price: parseFloat(item.price) || 0
       }));
+=======
+      const itemsToSave = (verifyData.items || []).map((item, index) => {
+        const cleanedName = item.name ? trTitleCase(cleanItemName(brandAutoCorrect(item.name))) : item.name;
+        
+        // Detect user corrections for Learning Memory
+        const originalItem = verifyData.originalItems && verifyData.originalItems[index];
+        if (originalItem) { 
+          if (originalItem.name !== item.name || originalItem.type !== item.type) {
+            saveCorrection(originalItem.name, cleanedName, item.type);
+          }
+        }
+        
+        // Remove internal tracking fields before saving to Firebase
+        const finalItem = { ...item };
+        delete finalItem._isLearned;
+        
+        return {
+          ...finalItem,
+          name: cleanedName,
+          price: parseFloat(item.price) || 0
+        };
+      });
+>>>>>>> Stashed changes
 
       // 🔥 If offline, skip waiting for the background storage upload entirely to make saving instantaneous
       const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
