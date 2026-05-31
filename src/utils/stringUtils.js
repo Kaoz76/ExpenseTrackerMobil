@@ -149,6 +149,12 @@ export const cleanItemName = (name) => {
 
   cleaned = filteredWords.join(' ').trim();
 
+  // 7. Strip trailing 1-2 char garbage words (OCR artifacts from adjacent text: "Ai", "Bi", "Da")
+  cleaned = cleaned.replace(/\s+[a-zA-ZçğıöşüÇĞİÖŞÜ]{1,2}\s*$/, '').trim();
+
+  // 8. Strip trailing number+period artifacts like "10006." (misread sizes like 1000G.)
+  cleaned = cleaned.replace(/\s+\d{3,}[.,]?\s*$/, '').trim();
+
   // Eğer temizleme sonrası tamamen boş kaldıysa, bu kelimenin tamamen çöp/çarpan olduğunu anlarız.
   // Sadece eğer orijinal isim harf içeriyorsa geri döndür (sayı/çöp değilse)
   if (cleaned.length === 0) {
@@ -170,7 +176,7 @@ export const cleanItemName = (name) => {
  * @param {number} maxDistanceRatio - Kabul edilebilir max hata oranı (0-1), varsayılan 0.35
  * @returns {string} Eşleşen ürün ismi veya orijinal isim
  */
-export const findBestProductMatch = (ocrName, existingNames, maxDistanceRatio = 0.35) => {
+export const findBestProductMatch = (ocrName, existingNames, maxDistanceRatio = 0.25) => {
   if (!ocrName || !existingNames || existingNames.length === 0) return ocrName;
 
   const normalizedOcr = trToLower(ocrName).trim();

@@ -215,7 +215,7 @@ export const getCroppedImg = (imageElement, crop, fileName) => {
  */
 export const getSmartCropBox = (imageElement) => {
   const canvas = document.createElement('canvas');
-  const size = 150; 
+  const size = 200; // Higher resolution for better edge detection
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
@@ -232,7 +232,8 @@ export const getSmartCropBox = (imageElement) => {
   }
   const avgBrightness = totalBrightness / (size * size);
 
-  const threshold = Math.max(avgBrightness + 20, 130);
+  // Lower threshold to catch shadowed receipt edges
+  const threshold = Math.max(avgBrightness * 0.85, 90);
 
   let minX = size, minY = size, maxX = 0, maxY = 0;
   let brightPixels = 0;
@@ -255,11 +256,12 @@ export const getSmartCropBox = (imageElement) => {
 
   // Fallback if bounds are meaningless
   if (brightPixels < (size * size * 0.05) || brightPixels > (size * size * 0.95)) {
-    return { unit: '%', x: 5, y: 5, width: 90, height: 90 };
+    return { unit: '%', x: 3, y: 3, width: 94, height: 94 };
   }
 
-  const marginX = size * 0.03;
-  const marginY = size * 0.03;
+  // Generous margin (8%) to ensure no text is clipped at edges
+  const marginX = size * 0.08;
+  const marginY = size * 0.08;
 
   minX = Math.max(0, minX - marginX);
   minY = Math.max(0, minY - marginY);
