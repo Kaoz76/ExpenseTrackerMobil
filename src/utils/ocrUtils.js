@@ -122,25 +122,13 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
     }
 
     const num = parseFloat(cleanStr);
-    return (!isNaN(num) && num > 0) ? num : null;
+    return !isNaN(num) ? num : null;
   };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
     if (multiplierRegex.test(line)) continue;
-
-    if (excludeRegex.test(line)) {
-      if (isUSStyleTax && /(sales\s*tax|state\s*tax|^tax\b)/i.test(line)) {
-        let taxMatches = line.match(priceRegex);
-        if (taxMatches && taxMatches.length > 0) {
-          const parsed = cleanAndParseNumber(taxMatches[taxMatches.length - 1]);
-          if (parsed) extractedTaxAmount += parsed;
-        }
-      } else {
-        continue;
-      }
-    }
 
     const hasKeyword = keywordRegex.test(line) || isFuzzyMatch(line, fuzzyKeywords);
 
@@ -151,6 +139,20 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           const parsed = cleanAndParseNumber(m);
           if (parsed) possibleTotals.push(parsed);
         });
+      }
+      // If it has a keyword, do not let excludeRegex skip it, but we can still extract tax from it.
+      // We don't 'continue' because we might want to extract tax or it might be a valid total line.
+      // Wait, if we 'continue' we won't add it as an item. Totals shouldn't be items.
+      continue;
+    }
+
+    if (excludeRegex.test(line)) {
+      if (isUSStyleTax && /(sales\s*tax|state\s*tax|^tax\b)/i.test(line)) {
+        let taxMatches = line.match(priceRegex);
+        if (taxMatches && taxMatches.length > 0) {
+          const parsed = cleanAndParseNumber(taxMatches[taxMatches.length - 1]);
+          if (parsed) extractedTaxAmount += Math.abs(parsed);
+        }
       }
       continue;
     }

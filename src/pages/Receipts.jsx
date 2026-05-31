@@ -266,7 +266,7 @@ function Receipts() {
             reader.onerror = (error) => reject(error);
           });
 
-          extractedData = extractDataFromText(base64Text);
+          extractedData = extractDataFromText(base64Text, language, currency?.code);
         } else {
           const fileUrl = URL.createObjectURL(processedFile);
           const Tesseract = (await import('tesseract.js')).default;
