@@ -61,9 +61,15 @@ export const getCroppedImg = (imageElement, crop, fileName) => {
   const canvas = document.createElement('canvas');
   const scaleX = imageElement.naturalWidth / imageElement.width;
   const scaleY = imageElement.naturalHeight / imageElement.height;
-  canvas.width = crop.width;
-  canvas.height = crop.height;
+  // Add padding so ML Kit doesn't struggle with edge text
+  const padding = 40;
+  canvas.width = crop.width + (padding * 2);
+  canvas.height = crop.height + (padding * 2);
   const ctx = canvas.getContext('2d');
+
+  // Fill background with white
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.drawImage(
     imageElement,
@@ -71,8 +77,8 @@ export const getCroppedImg = (imageElement, crop, fileName) => {
     crop.y * scaleY,
     crop.width * scaleX,
     crop.height * scaleY,
-    0,
-    0,
+    padding,
+    padding,
     crop.width,
     crop.height
   );

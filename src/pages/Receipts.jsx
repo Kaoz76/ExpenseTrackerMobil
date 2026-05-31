@@ -205,6 +205,9 @@ function Receipts() {
                   });
                   slopes.sort((a, b) => a - b);
                   let medianSlope = slopes.length > 0 ? slopes[Math.floor(slopes.length / 2)] : 0;
+                  
+                  // Clamp medianSlope to 0 for small tilts to enforce strict, stable vertical sorting
+                  if (Math.abs(medianSlope) < 0.05) medianSlope = 0;
 
                   // Sort items by their projected Y-intercept (where X=0) to ensure strict top-to-bottom order
                   detections.sort((a, b) => {
