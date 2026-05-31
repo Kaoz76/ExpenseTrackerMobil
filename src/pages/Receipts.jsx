@@ -20,7 +20,7 @@ import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
 import PerspectiveCropModal from '../components/receipts/PerspectiveCropModal';
 
 
-import { resizeImage } from '../utils/imageUtils';
+import { resizeImage, preprocessForOCR } from '../utils/imageUtils';
 import { applyLearnedCorrections, saveCorrection } from '../utils/learningUtils';
 
 
@@ -126,6 +126,9 @@ function Receipts() {
       } else {
         processedFile = await resizeImage(processedFile, 1000, 1300, 1000, 1000);
       }
+
+      // Enhance image for better OCR: grayscale + contrast + sharpening
+      processedFile = await preprocessForOCR(processedFile);
 
       // 1. Background Firebase Upload
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });

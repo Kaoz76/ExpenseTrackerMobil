@@ -55,6 +55,96 @@ export const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
 };
 
 /**
+ * Preprocesses an image for optimal OCR accuracy.
+ * Applies: Grayscale → Contrast Enhancement → Sharpening
+ * @param {File} file - Image file to preprocess
+ * @returns {Promise<File>} Preprocessed image file
+ */
+export const preprocessForOCR = (file) => {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
+
+      // 1) Convert to grayscale
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        data[i] = gray;
+        data[i + 1] = gray;
+        data[i + 2] = gray;
+      }
+
+      // 2) Contrast enhancement (histogram stretch)
+      let minVal = 255, maxVal = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] < minVal) minVal = data[i];
+        if (data[i] > maxVal) maxVal = data[i];
+      }
+      const range = maxVal - minVal || 1;
+      for (let i = 0; i < data.length; i += 4) {
+        const stretched = ((data[i] - minVal) / range) * 255;
+        data[i] = stretched;
+        data[i + 1] = stretched;
+        data[i + 2] = stretched;
+      }
+
+      // 3) Sharpening (unsharp mask: original + strength * (original - blurred))
+      ctx.putImageData(imageData, 0, 0);
+
+      // Create a blurred copy
+      const blurCanvas = document.createElement('canvas');
+      blurCanvas.width = w;
+      blurCanvas.height = h;
+      const blurCtx = blurCanvas.getContext('2d');
+      blurCtx.filter = 'blur(1px)';
+      blurCtx.drawImage(canvas, 0, 0);
+      const blurData = blurCtx.getImageData(0, 0, w, h).data;
+
+      // Apply unsharp mask
+      const sharpStrength = 0.5;
+      for (let i = 0; i < data.length; i += 4) {
+        const diff = data[i] - blurData[i];
+        const sharpened = Math.min(255, Math.max(0, data[i] + sharpStrength * diff));
+        data[i] = sharpened;
+        data[i + 1] = sharpened;
+        data[i + 2] = sharpened;
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          resolve(file);
+          return;
+        }
+        resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+      }, 'image/jpeg', 0.92);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+};
+
+/**
  * Extract cropped portion of image
  */
 export const getCroppedImg = (imageElement, crop, fileName) => {
