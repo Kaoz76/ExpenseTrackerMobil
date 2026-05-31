@@ -45,8 +45,8 @@ function ReceiptVerifyModal({
 
   return (
     <>
-      <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
-      <div className="modal fade show d-block" style={{ zIndex: 1055 }} tabIndex="-1">
+      <div className="modal-backdrop fade show" style={{ zIndex: 1055 }}></div>
+      <div className="modal fade show d-block" style={{ zIndex: 1060 }} tabIndex="-1">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content shadow-lg border-0">
 
