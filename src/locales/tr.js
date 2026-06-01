@@ -306,6 +306,7 @@ export const tr = {
     login_forgot: "Şifremi Unuttum?",
     login_logging_in: "Giriş yapılıyor...",
     login_error: "Geçersiz e-posta veya şifre",
+    login_lockout: "Çok fazla başarısız deneme. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
     login_no_account: "Hesabınız yok mu?",
     login_signup_link: "Kayıt Ol",
     login_reset_title: "Şifre Sıfırla",

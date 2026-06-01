@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaPlus, FaEdit, FaExclamationCircle, FaCalendarCheck, FaArrowUp, FaArrowDown } from 'react-icons/fa';
 import { dashboardData } from '../data/dashboardData';
@@ -8,8 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
-import { parseDate } from '../utils/dateFormatter';
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit } from "firebase/firestore";
 
 // Image loading wrapper component for smoother UX
 const DashboardImage = ({ src, alt }) => {
@@ -56,17 +55,10 @@ function Dashboard() {
   const [loadingScans, setLoadingScans] = useState(true);
   const [budgetLimit, setBudgetLimit] = useState(0);
 
-  const [monthlyStats, setMonthlyStats] = useState({
-    totalSpent: 0,
-    receiptCount: 0,
-    averageSpend: 0
-  });
-
-  const [lastMonthStats, setLastMonthStats] = useState({
-    totalSpent: 0
-  });
-
-  const [subscriptionTotal, setSubscriptionTotal] = useState(0);
+  // Raw Firestore data — currency conversion happens in useMemo, not in the listener
+  const [currentMonthRawReceipts, setCurrentMonthRawReceipts] = useState([]);
+  const [lastMonthRawReceipts, setLastMonthRawReceipts] = useState([]);
+  const [rawSubscriptions, setRawSubscriptions] = useState([]);
 
   const [isImageModalShowing, setIsImageModalShowing] = useState(false);
   const [selectedImage, setSelectedImage] = useState({ url: '', alt: '' });
@@ -101,97 +93,120 @@ function Dashboard() {
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        let total = 0;
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          const subPrice = Number(data.price) || 0;
-          total += convertPrice(subPrice, data.currency || currency?.code || 'USD', currency?.code || 'USD');
-        });
-        setSubscriptionTotal(total);
+        setRawSubscriptions(snapshot.docs.map(d => d.data()));
       });
 
       return () => unsubscribe();
     } else {
-      setSubscriptionTotal(0);
+      setRawSubscriptions([]);
     }
-  }, [user, currency?.code, convertPrice]);
+  }, [user]);
 
-  // AYLIK HARCAMALARI VE SON KAYITLARI ÇEKME (TEK DİNLEYİCİ)
+  // AYLIK HARCAMALARI ÇEKME — Sadece bu ayın fişlerini indir
   useEffect(() => {
-    if (user) {
-      setLoadingScans(true);
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    if (!user) {
+      setCurrentMonthRawReceipts([]);
+      return;
+    }
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const q = query(
+      collection(db, "receipts"),
+      where("userId", "==", user.uid),
+      where("createdAt", ">=", startOfMonth),
+      where("createdAt", "<=", endOfMonth)
+    );
 
-      const q = query(
-        collection(db, "receipts"),
-        where("userId", "==", user.uid)
-      );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setCurrentMonthRawReceipts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      console.error("Error fetching current month receipts:", error);
+    });
 
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        let total = 0;
-        let lastMonthTotal = 0;
-        let count = 0;
-        const scansData = [];
+    return () => unsubscribe();
+  }, [user]);
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          scansData.push({ id: doc.id, ...data });
+  // GEÇMİŞ AY HARCAMALARI — Tek seferlik çekim, trend karşılaştırması için
+  useEffect(() => {
+    if (!user) {
+      setLastMonthRawReceipts([]);
+      return;
+    }
+    const now = new Date();
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-          const createdAtDate = data.createdAt ? parseDate(data.createdAt) : null;
-          
-          if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
-            const priceVal = Number(data.price) || 0;
-            const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
-            total += convertedPrice;
-            count++;
-          } else if (createdAtDate && createdAtDate >= startOfLastMonth && createdAtDate <= endOfLastMonth) {
-            const priceVal = Number(data.price) || 0;
-            const convertedPrice = convertPrice(priceVal, data.currency || currency.code || 'USD', currency.code);
-            lastMonthTotal += convertedPrice;
-          }
-        });
+    const q = query(
+      collection(db, "receipts"),
+      where("userId", "==", user.uid),
+      where("createdAt", ">=", startOfLastMonth),
+      where("createdAt", "<=", endOfLastMonth)
+    );
 
-        // Aylık istatistikleri güncelle
-        setMonthlyStats({
-          totalSpent: total,
-          receiptCount: count,
-          averageSpend: count > 0 ? total / count : 0
-        });
+    getDocs(q).then((snapshot) => {
+      setLastMonthRawReceipts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }).catch(err => console.error("Error fetching last month receipts:", err));
+  }, [user]);
 
-        setLastMonthStats({
-          totalSpent: lastMonthTotal
-        });
-
-        // Son 3 kaydı bulmak için sırala
-        scansData.sort((a, b) => {
-          const getMillis = (t) => {
-            if (!t) return 0;
-            return parseDate(t).getTime();
-          };
-          return getMillis(b.createdAt) - getMillis(a.createdAt);
-        });
-
-        setRecentScans(scansData.slice(0, 3));
-        setLoadingScans(false);
-
-      }, (error) => {
-        console.error("Error fetching receipts data:", error);
-        setLoadingScans(false);
-      });
-
-      return () => unsubscribe();
-    } else {
-      setMonthlyStats({ totalSpent: 0, receiptCount: 0, averageSpend: 0 });
-      setLastMonthStats({ totalSpent: 0 });
+  // SON 3 KAYIT — Dashboard kartları için gerçek zamanlı
+  useEffect(() => {
+    if (!user) {
       setRecentScans([]);
       setLoadingScans(false);
+      return;
     }
-  }, [user, currency?.code, convertPrice]);
+    setLoadingScans(true);
+
+    const q = query(
+      collection(db, "receipts"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(3)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setRecentScans(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoadingScans(false);
+    }, (error) => {
+      console.error("Error fetching recent scans:", error);
+      setLoadingScans(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // HESAPLANAN DEĞERLER — Döviz kuru değiştiğinde sadece hesaplama yenilenir, Firestore sorgusu tekrar çalışmaz
+  const subscriptionTotal = useMemo(() => {
+    return rawSubscriptions.reduce((acc, data) => {
+      const subPrice = Number(data.price) || 0;
+      return acc + convertPrice(subPrice, data.currency || currency?.code || 'USD', currency?.code || 'USD');
+    }, 0);
+  }, [rawSubscriptions, convertPrice, currency?.code]);
+
+  const monthlyStats = useMemo(() => {
+    let total = 0;
+    currentMonthRawReceipts.forEach(data => {
+      const priceVal = Number(data.price) || 0;
+      total += convertPrice(priceVal, data.currency || currency?.code || 'USD', currency?.code || 'USD');
+    });
+    const count = currentMonthRawReceipts.length;
+    return {
+      totalSpent: total,
+      receiptCount: count,
+      averageSpend: count > 0 ? total / count : 0
+    };
+  }, [currentMonthRawReceipts, convertPrice, currency?.code]);
+
+  const lastMonthStats = useMemo(() => {
+    let total = 0;
+    lastMonthRawReceipts.forEach(data => {
+      const priceVal = Number(data.price) || 0;
+      total += convertPrice(priceVal, data.currency || currency?.code || 'USD', currency?.code || 'USD');
+    });
+    return { totalSpent: total };
+  }, [lastMonthRawReceipts, convertPrice, currency?.code]);
 
   const closeImageModal = () => { setIsImageModalShowing(false); setSelectedImage({ url: '', alt: '' }); };
   const handleCardClick = (scan) => { navigate(`/receipts/${scan.id}`); };

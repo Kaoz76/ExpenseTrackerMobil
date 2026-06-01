@@ -306,6 +306,7 @@ export const en = {
     login_forgot: "Forgot Password?",
     login_logging_in: "Logging in...",
     login_error: "Invalid email or password",
+    login_lockout: "Too many failed attempts. Please try again in {{seconds}} seconds.",
     login_no_account: "Don't have an account?",
     login_signup_link: "Sign Up",
     login_reset_title: "Reset Password",
