@@ -293,7 +293,12 @@ function Settings() {
         chunk.forEach(item => {
           if (item.userId && item.items) {
              const docRef = doc(collection(db, "receipts"));
-             batch.set(docRef, item);
+             // Override item.userId with user.uid to guarantee ownership
+             const importedItem = {
+               ...item,
+               userId: user.uid
+             };
+             batch.set(docRef, importedItem);
           }
         });
 
