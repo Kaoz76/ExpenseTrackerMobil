@@ -471,10 +471,16 @@ function Receipts() {
         // Remove internal tracking fields before saving to Firebase
         const finalItem = { ...item };
         delete finalItem._isLearned;
+
+        let finalBrand = finalItem.brand ? finalItem.brand.trim() : '';
+        if (!finalBrand || finalBrand.toLowerCase() === 'unknown brand') {
+          finalBrand = verifyData.fileName.trim();
+        }
         
         return {
           ...finalItem,
           name: cleanedName,
+          brand: finalBrand,
           price: parseFloat(item.price) || 0
         };
       });
