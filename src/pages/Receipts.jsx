@@ -118,27 +118,28 @@ function Receipts() {
     setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', '1').replace('{{total}}', filesToProcess.length));
 
     const processFile = async (originalFile) => {
-      let processedFile = originalFile;
+      let resizedColorFile = originalFile;
         
       // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
       // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
       if (Capacitor.isNativePlatform()) {
-        processedFile = await resizeImage(processedFile, 1200, 1600);
+        resizedColorFile = await resizeImage(resizedColorFile, 1200, 1600);
       } else {
         // Higher resolution for Tesseract — it needs 300+ DPI effective
-        processedFile = await resizeImage(processedFile, 2000, 2800);
+        resizedColorFile = await resizeImage(resizedColorFile, 2000, 2800);
       }
 
-      // Enhance image for better OCR
+      // Enhance image ONLY for OCR
+      let processedFile;
       if (Capacitor.isNativePlatform()) {
         // ML Kit: standard preprocessing (grayscale + contrast + sharpening)
-        processedFile = await preprocessForOCR(processedFile);
+        processedFile = await preprocessForOCR(resizedColorFile);
       } else {
         // Tesseract: aggressive preprocessing (upscale + adaptive threshold + noise reduction)
-        processedFile = await preprocessForTesseract(processedFile);
+        processedFile = await preprocessForTesseract(resizedColorFile);
       }
 
-      // 1. Background Firebase Upload
+      // 1. Background Firebase Upload (Upload the COLORED resized image!)
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
       if (!privacyMode) {
         // Skip waiting 10 seconds if we already know we are offline
@@ -150,10 +151,10 @@ function Receipts() {
           (async () => {
             try {
               const timestamp = Date.now();
-              const safeFileName = processedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const safeFileName = resizedColorFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
               const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
               const storageRef = ref(storage, storagePath);
-              await uploadBytesResumable(storageRef, processedFile);
+              await uploadBytesResumable(storageRef, resizedColorFile);
               const imageUrl = await getDownloadURL(storageRef);
               return { storagePath, imageUrl };
             } catch (err) {
@@ -337,9 +338,9 @@ function Receipts() {
       return {
         userId: user.uid,
         uploadPromise, // Save the background upload promise to await it during final save
-        tempImageUrl: URL.createObjectURL(processedFile), // Provide a local object URL for immediate display
+        tempImageUrl: URL.createObjectURL(resizedColorFile), // Provide a local object URL for immediate display
         fileName: '',
-        originalFileName: processedFile.name,
+        originalFileName: originalFile.name,
         createdAt: Timestamp.now(),
         title: '',
         date: new Date().toLocaleDateString(),
