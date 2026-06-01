@@ -44,6 +44,16 @@ function Receipts() {
 
   const [cropModalVisible, setCropModalVisible] = useState(false);
   const [cropFile, setCropFile] = useState(null);
+  const [cropImageUrl, setCropImageUrl] = useState('');
+
+  // Revoke cropImageUrl on unmount
+  useEffect(() => {
+    return () => {
+      if (cropImageUrl) {
+        URL.revokeObjectURL(cropImageUrl);
+      }
+    };
+  }, [cropImageUrl]);
 
   // Prevention for offline duplicate saves
   const activeVerifyRef = useRef(null);
@@ -400,7 +410,9 @@ function Receipts() {
     const filesToProcess = acceptedFiles.slice(0, 10);
 
     if (filesToProcess.length === 1) {
-      setCropFile(filesToProcess[0]);
+      const file = filesToProcess[0];
+      setCropFile(file);
+      setCropImageUrl(URL.createObjectURL(file));
       setCropModalVisible(true);
     } else {
       setTimeout(() => {
@@ -412,6 +424,10 @@ function Receipts() {
   const handleCropConfirm = (croppedFile) => {
     setCropModalVisible(false);
     setCropFile(null);
+    if (cropImageUrl) {
+      URL.revokeObjectURL(cropImageUrl);
+      setCropImageUrl('');
+    }
     setTimeout(() => {
       processFiles([croppedFile]);
     }, 150);
@@ -420,6 +436,10 @@ function Receipts() {
   const handleCropCancel = () => {
     setCropModalVisible(false);
     setCropFile(null);
+    if (cropImageUrl) {
+      URL.revokeObjectURL(cropImageUrl);
+      setCropImageUrl('');
+    }
   };
 
   const moveToNextOrClose = (currentQueue) => {
@@ -624,10 +644,10 @@ function Receipts() {
         isSavingDoc={isSavingDoc}
       />
 
-      {cropFile && cropModalVisible && (
+      {cropFile && cropModalVisible && cropImageUrl && (
         <PerspectiveCropModal
           visible={cropModalVisible}
-          imageSrc={URL.createObjectURL(cropFile)}
+          imageSrc={cropImageUrl}
           onClose={handleCropCancel}
           onCropComplete={handleCropConfirm}
         />

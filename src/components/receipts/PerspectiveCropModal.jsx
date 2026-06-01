@@ -18,6 +18,15 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
     }
   }, [visible, imageSrc]);
 
+  // Cleanup rotated images on unmount or change
+  useEffect(() => {
+    return () => {
+      if (currentImageSrc && currentImageSrc.startsWith('blob:') && currentImageSrc !== imageSrc) {
+        URL.revokeObjectURL(currentImageSrc);
+      }
+    };
+  }, [currentImageSrc, imageSrc]);
+
   useEffect(() => {
     if (visible && imageRef.current && currentImageSrc) {
       const handleLoad = () => {
