@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { localizeCategory } from '../utils/categoryMap';
+import { parseDate } from '../utils/dateFormatter';
 
 export function useExpenseAnalysis(user, timeRange) {
   const { currency, convertPrice } = useCurrency();
@@ -109,16 +110,16 @@ export function useExpenseAnalysis(user, timeRange) {
             const rawPrice = Number(data.price) || 0;
             const price = convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
 
-            if (startDate && data.createdAt && typeof data.createdAt.toDate === 'function') {
-              const docDate = data.createdAt.toDate();
+            if (startDate && data.createdAt) {
+              const docDate = parseDate(data.createdAt);
               if (docDate < startDate) return;
             }
 
             total += price;
 
             let groupKey = "Unknown";
-            if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-              const date = data.createdAt.toDate();
+            if (data.createdAt) {
+              const date = parseDate(data.createdAt);
               const y = date.getFullYear();
               
               if (y < minYear) minYear = y;

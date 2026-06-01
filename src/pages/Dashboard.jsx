@@ -9,6 +9,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { parseDate } from '../utils/dateFormatter';
 
 // Image loading wrapper component for smoother UX
 const DashboardImage = ({ src, alt }) => {
@@ -141,14 +142,7 @@ function Dashboard() {
           const data = doc.data();
           scansData.push({ id: doc.id, ...data });
 
-          let createdAtDate = null;
-          if (data.createdAt) {
-            if (typeof data.createdAt.toDate === 'function') createdAtDate = data.createdAt.toDate();
-            else if (data.createdAt.seconds) createdAtDate = new Date(data.createdAt.seconds * 1000);
-            else if (data.createdAt instanceof Date) createdAtDate = data.createdAt;
-          } else {
-            createdAtDate = new Date();
-          }
+          const createdAtDate = data.createdAt ? parseDate(data.createdAt) : null;
           
           if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
             const priceVal = Number(data.price) || 0;
@@ -176,12 +170,8 @@ function Dashboard() {
         // Son 3 kaydı bulmak için sırala
         scansData.sort((a, b) => {
           const getMillis = (t) => {
-            if (!t) return Date.now();
-            if (typeof t.toMillis === 'function') return t.toMillis();
-            if (t.seconds) return t.seconds * 1000;
-            if (t instanceof Date) return t.getTime();
-            if (typeof t === 'number') return t;
-            return 0;
+            if (!t) return 0;
+            return parseDate(t).getTime();
           };
           return getMillis(b.createdAt) - getMillis(a.createdAt);
         });

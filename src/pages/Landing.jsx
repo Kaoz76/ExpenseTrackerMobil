@@ -6,6 +6,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { parseDate } from '../utils/dateFormatter';
 
 // Scroll animasyonu için custom hook
 function useScrollReveal() {
@@ -101,7 +102,7 @@ function Landing() {
       let count = 0;
       snapshot.forEach((doc) => {
         const data = doc.data();
-        const createdAtDate = data.createdAt?.toDate ? data.createdAt.toDate() : null;
+        const createdAtDate = data.createdAt ? parseDate(data.createdAt) : null;
         if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
           const rawPrice = Number(data.price) || 0;
           total += convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
