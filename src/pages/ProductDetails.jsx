@@ -145,7 +145,9 @@ function ProductDetails() {
 
   // Başlık Formatı Oluşturma
   // Örn: "Sütaş Tam Yağlı Süt"
-  const fullName = `${brandName ? brandName + ' ' : ''}${productName}`;
+  const fullName = (brandName && !productName.toLowerCase().startsWith(brandName.toLowerCase()))
+    ? `${brandName} ${productName}`
+    : productName;
 
   return (
     <div className="dashboard-page-wrapper p-4">
