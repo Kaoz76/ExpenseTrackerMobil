@@ -163,7 +163,7 @@ function ReceiptVerifyModal({
                                   inputMode="decimal"
                                   className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0"
                                   value={item.price}
-                                  onChange={(e) => handleItemChange(idx, 'price', e.target.value.replace(/[^0-9.,]/g, ''))}
+                                  onChange={(e) => handleItemChange(idx, 'price', e.target.value.replace(/[^0-9.,-]/g, ''))}
                                   placeholder={t('common.price')}
                                 />
                               </div>
