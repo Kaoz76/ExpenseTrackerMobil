@@ -12,11 +12,17 @@ import { isFuzzyMatch } from './receiptUtils';
 export const extractDataFromText = (text, language, defaultCurrencyCode) => {
   if (!text) return { total: 0, items: [] };
 
+  // Remove spaces between digits and dots/commas (e.g. "135, 00" -> "135,00")
+  // Also remove spaces after a minus sign followed by a digit (e.g. "- 47,25" -> "-47,25")
+  const cleanedText = text
+    .replace(/(\d+)\s*([.,])\s*(\d+)/g, '$1$2$3')
+    .replace(/-\s*(\d+)/g, '-$1');
+
   let usTaxScore = 0;
   let ukTaxScore = 0;
   let extractedTaxAmount = 0;
 
-  const normalizedText = trToLower(text.replace(/\r/g, '\n'));
+  const normalizedText = trToLower(cleanedText.replace(/\r/g, '\n'));
   const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
   // Currency detection from OCR text
@@ -58,11 +64,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
 
   const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart)/i;
   const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'totale', 'balance', 'due', 'nakit', 'kredi'];
-  const excludeRegex = /(kdv|topkdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][sş]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\s*no|z\s*no)/i;
-
-  // Names that are purely discount/metadata keywords — should NOT become product items
-  // Catches: "İndirim", "İndirim X-", "İndirim %25", "Discount", "Kampanya" etc.
-  const discountOnlyNameRegex = /^\s*([iı]nd[iı]r[iı]m|ndirim|iskonto|discount|saving|promo|promosyon|kampanya)\s*([xX%\\-\d.,\s]*)?\s*$/i;
+  const excludeRegex = /(kdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][sş]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\s*no|z\s*no)/i;
   const multiplierRegex = /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX*]|tl\/(?:kg|gr|kc)|tg|[\d.,]+(?:\s*tg)?)/i;
   const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
   const itemSizeRegex = /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b/i;
@@ -167,7 +169,10 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
       let parsedPrice = cleanAndParseNumber(lastMatch);
 
       if (parsedPrice) {
-        const isDiscountLine = /(indirim|ndirim|iskonto|discount|saving|promo)/i.test(line) || lastMatch.includes('-');
+        const priceIndex = line.lastIndexOf(lastMatch);
+        const charBefore = priceIndex > 0 ? line[priceIndex - 1] : '';
+        const charAfter = (priceIndex + lastMatch.length) < line.length ? line[priceIndex + lastMatch.length] : '';
+        const isDiscountLine = /(indirim|ndirim|iskonto|discount|saving|promo)/i.test(line) || charBefore === '-' || charAfter === '-';
         if (isDiscountLine) {
           parsedPrice = -Math.abs(parsedPrice);
         }
@@ -210,7 +215,6 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
           const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
-          const isDiscountOnlyName = discountOnlyNameRegex.test(formattedName);
           
           // Ensure the name has at least 2 actual alphabet letters to filter out pure numbers/punctuation (e.g. "3.995")
           const letterMatchFormatted = formattedName.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
@@ -256,7 +260,6 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
           const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
-          const isDiscountOnlyName = discountOnlyNameRegex.test(formattedName);
 
           // Ensure the name has at least 2 actual alphabet letters to filter out pure numbers/punctuation (e.g. "3.995")
           const letterMatchFormatted = formattedName.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);

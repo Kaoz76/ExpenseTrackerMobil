@@ -20,9 +20,9 @@ import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
 import PerspectiveCropModal from '../components/receipts/PerspectiveCropModal';
 
 
-import { resizeImage, preprocessForOCR, preprocessForTesseract } from '../utils/imageUtils';
+import { resizeImage, preprocessForOCR } from '../utils/imageUtils';
+import { resizeImageForTesseract } from '../utils/tesseractImageUtils';
 import { applyLearnedCorrections, saveCorrection } from '../utils/learningUtils';
-import { postProcessTesseractResult, getOcrConfidence } from '../utils/ocrPostProcess';
 
 
 function Receipts() {
@@ -128,28 +128,21 @@ function Receipts() {
     setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', '1').replace('{{total}}', filesToProcess.length));
 
     const processFile = async (originalFile) => {
-      let resizedColorFile = originalFile;
+      let processedFile = originalFile;
         
       // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
       // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
       if (Capacitor.isNativePlatform()) {
-        resizedColorFile = await resizeImage(resizedColorFile, 1200, 1600);
+        processedFile = await resizeImage(processedFile, 1200, 1600);
+        // Enhance image for better OCR: grayscale + contrast + sharpening (only for ML Kit on mobile)
+        processedFile = await preprocessForOCR(processedFile);
       } else {
-        // Higher resolution for Tesseract — it needs 300+ DPI effective
-        resizedColorFile = await resizeImage(resizedColorFile, 2000, 2800);
+        // Web: Use a higher resolution (1600x2000) and high quality (0.95) to preserve details for Tesseract
+        processedFile = await resizeImageForTesseract(processedFile, 1600, 2000, 0.95);
+        // No preprocessForOCR for Tesseract as requested (original color & high resolution scans better)
       }
 
-      // Enhance image ONLY for OCR
-      let processedFile;
-      if (Capacitor.isNativePlatform()) {
-        // ML Kit: standard preprocessing (grayscale + contrast + sharpening)
-        processedFile = await preprocessForOCR(resizedColorFile);
-      } else {
-        // Tesseract: aggressive preprocessing (upscale + adaptive threshold + noise reduction)
-        processedFile = await preprocessForTesseract(resizedColorFile);
-      }
-
-      // 1. Background Firebase Upload (Upload the COLORED resized image!)
+      // 1. Background Firebase Upload
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
       if (!privacyMode) {
         // Skip waiting 10 seconds if we already know we are offline
@@ -161,10 +154,10 @@ function Receipts() {
           (async () => {
             try {
               const timestamp = Date.now();
-              const safeFileName = resizedColorFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const safeFileName = processedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
               const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
               const storageRef = ref(storage, storagePath);
-              await uploadBytesResumable(storageRef, resizedColorFile);
+              await uploadBytesResumable(storageRef, processedFile);
               const imageUrl = await getDownloadURL(storageRef);
               return { storagePath, imageUrl };
             } catch (err) {
@@ -181,6 +174,7 @@ function Receipts() {
 
       // 2. OCR Analysis
       let extractedData = { total: 0, items: [] };
+      let rawOcrText = "";
       try {
         if (Capacitor.isNativePlatform()) {
           const reader = new FileReader();
@@ -288,9 +282,9 @@ function Receipts() {
             reader.onerror = (error) => reject(error);
           });
 
+          rawOcrText = base64Text;
           extractedData = extractDataFromText(base64Text, language, currency?.code);
         } else {
-          // Web: Tesseract.js with optimized configuration for receipt scanning
           const fileUrl = URL.createObjectURL(processedFile);
           const Tesseract = (await import('tesseract.js')).default;
           const result = await Tesseract.recognize(
@@ -299,22 +293,15 @@ function Receipts() {
             {
               logger: m => {
                 if (m.status === 'recognizing text') {
-                  setUploadProgress(parseInt(m.progress * 100));
+                  setUploadProgress(parseInt(m.progress * 100)); // Update progress (approximate, max 100)
                 }
-              }
+              },
+              tessedit_pageseg_mode: '6' // Force single block line-by-line reading to prevent column-splitting errors
             }
           );
-
-          // Apply Tesseract-specific post-processing (character fixes, confidence filtering, line merging)
-          const postProcessedText = postProcessTesseractResult(result);
-
-          // Log OCR confidence for debugging
-          const confidence = getOcrConfidence(result);
-          if (confidence < 40) {
-            console.warn(`Low OCR confidence (${confidence}%). Results may be inaccurate.`);
-          }
-
-          extractedData = extractDataFromText(postProcessedText, language, currency?.code || 'USD');
+          console.log("Raw Tesseract OCR Text:\n", result.data.text);
+          rawOcrText = result.data.text;
+          extractedData = extractDataFromText(result.data.text, language, currency?.code || 'USD');
           URL.revokeObjectURL(fileUrl);
         }
       } catch (ocrError) {
@@ -348,9 +335,9 @@ function Receipts() {
       return {
         userId: user.uid,
         uploadPromise, // Save the background upload promise to await it during final save
-        tempImageUrl: URL.createObjectURL(resizedColorFile), // Provide a local object URL for immediate display
+        tempImageUrl: URL.createObjectURL(processedFile), // Provide a local object URL for immediate display
         fileName: '',
-        originalFileName: originalFile.name,
+        originalFileName: processedFile.name,
         createdAt: Timestamp.now(),
         title: '',
         date: new Date().toLocaleDateString(),
@@ -358,7 +345,8 @@ function Receipts() {
         originalItems: JSON.parse(JSON.stringify(enrichedItems)), // Deep copy for learning comparison
         items: enrichedItems,
         totalPrice: extractedData.total || 0,
-        currency: extractedData.currency || currency?.code || 'USD'
+        currency: extractedData.currency || currency?.code || 'USD',
+        rawOcrText: rawOcrText
       };
     };
 
@@ -492,16 +480,10 @@ function Receipts() {
         // Remove internal tracking fields before saving to Firebase
         const finalItem = { ...item };
         delete finalItem._isLearned;
-
-        let finalBrand = finalItem.brand ? finalItem.brand.trim() : '';
-        if (!finalBrand || finalBrand.toLowerCase() === 'unknown brand') {
-          finalBrand = verifyData.fileName.trim();
-        }
         
         return {
           ...finalItem,
           name: cleanedName,
-          brand: finalBrand,
           price: parseFloat(item.price) || 0
         };
       });
