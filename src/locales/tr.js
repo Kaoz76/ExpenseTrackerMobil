@@ -371,6 +371,7 @@ export const tr = {
     msg_delete_entry_confirm: "Bu kaydı silmek istediğinizden emin misiniz?",
     msg_delete_entry_failed: "Kayıt silinemedi.",
     msg_delete_receipt_full_confirm: "Bu fişi tamamen silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    msg_day_invalid: "Yenileme günü 1 ile 31 arasında olmalıdır.",
     msg_budget_negative: "Bütçe negatif olamaz!",
     msg_budget_success: "Bütçe başarıyla güncellendi!",
     msg_budget_failed: "Bütçe kaydedilemedi.",

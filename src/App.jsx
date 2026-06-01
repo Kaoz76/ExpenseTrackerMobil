@@ -33,22 +33,22 @@ const PageLoader = () => (
   </div>
 );
 
+const checkIsMobile = () => {
+  // 1. Klasik Mobil Tarayıcı Kontrolü
+  const isMobileUA = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  // 2. Masaüstü/Dokunmatik Bilgisayar Ayrımı
+  const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const hasMouse = window.matchMedia('(pointer: fine)').matches; // Cihazda bir fare/touchpad var mı?
+  
+  // Eğer cihaz dokunmatikse AMA faresi YOKSA, bu kesinlikle bir tablet veya telefondur.
+  // (Böylece dokunmatik ekranlı Windows bilgisayarlar mobil sanılmaz!)
+  const isPureTouchDevice = hasTouch && !hasMouse;
+
+  return window.innerWidth < 768 && (isMobileUA || isPureTouchDevice);
+};
+
 function App() {
-  const checkIsMobile = () => {
-    // 1. Klasik Mobil Tarayıcı Kontrolü
-    const isMobileUA = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    // 2. Masaüstü/Dokunmatik Bilgisayar Ayrımı
-    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    const hasMouse = window.matchMedia('(pointer: fine)').matches; // Cihazda bir fare/touchpad var mı?
-    
-    // Eğer cihaz dokunmatikse AMA faresi YOKSA, bu kesinlikle bir tablet veya telefondur.
-    // (Böylece dokunmatik ekranlı Windows bilgisayarlar mobil sanılmaz!)
-    const isPureTouchDevice = hasTouch && !hasMouse;
-
-    return window.innerWidth < 768 && (isMobileUA || isPureTouchDevice);
-  };
-
   const [isMobile, setIsMobile] = useState(checkIsMobile());
 
   useEffect(() => {
@@ -91,8 +91,8 @@ function App() {
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
-            {/* 🔥 GELİŞTİRME 2: 404 Catch-All (Bilinmeyen bir URL girilirse Dashboard'a geri fırlat) */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {/* 🔥 GELİŞTİRME 2: 404 Catch-All (Bilinmeyen bir URL girilirse ana sayfaya yönlendir) */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </main>

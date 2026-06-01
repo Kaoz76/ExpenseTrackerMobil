@@ -371,6 +371,7 @@ export const en = {
     msg_delete_entry_confirm: "Are you sure you want to delete this entry?",
     msg_delete_entry_failed: "Failed to delete entry.",
     msg_delete_receipt_full_confirm: "Are you sure you want to delete this entire receipt? This action cannot be undone.",
+    msg_day_invalid: "Day of month must be between 1 and 31.",
     msg_budget_negative: "Budget cannot be negative!",
     msg_budget_success: "Budget updated successfully!",
     msg_budget_failed: "Failed to save budget.",

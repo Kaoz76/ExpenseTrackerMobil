@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaHistory, FaStore, FaChartPie, FaMoneyBillWave, FaShoppingBasket, FaReceipt, FaFileAlt, FaPlus } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
@@ -19,13 +19,6 @@ function StoreDetails() {
   const [loading, setLoading] = useState(true);
   const [displayLimit, setDisplayLimit] = useState(20);
 
-  const [stats, setStats] = useState({
-    totalSpent: 0,
-    avgSpend: 0,
-    visitCount: 0,
-    mostFrequentItem: null
-  });
-
   const targetStoreName = decodeURIComponent(storeId || '');
 
   useEffect(() => {
@@ -40,65 +33,68 @@ function StoreDetails() {
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        let receiptsData = [];
-        let total = 0;
-        const itemFrequency = {};
-
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          receiptsData.push({
-            id: doc.id,
-            ...data
-          });
-
-          const rawPrice = Number(data.price) || 0;
-          total += convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
-
-          if (data.items && Array.isArray(data.items)) {
-            data.items.forEach(item => {
-              if (item.name && item.name.length > 1) {
-                const key = trToLower(`${item.brand || 'Unknown'}-${item.name}`);
-
-                if (!itemFrequency[key]) {
-                  itemFrequency[key] = {
-                    count: 0,
-                    details: {
-                      name: item.name,
-                      brand: item.brand || 'Unknown',
-                      type: item.type || 'General'
-                    }
-                  };
-                }
-                itemFrequency[key].count += 1;
-              }
-            });
-          }
-        });
-
-        let mostFrequent = null;
-        let maxCount = 0;
-
-        Object.values(itemFrequency).forEach(entry => {
-          if (entry.count > maxCount) {
-            maxCount = entry.count;
-            mostFrequent = entry.details;
-          }
-        });
+        const receiptsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
 
         setHistory(receiptsData);
-        setStats({
-          totalSpent: total,
-          visitCount: receiptsData.length,
-          avgSpend: receiptsData.length > 0 ? total / receiptsData.length : 0,
-          mostFrequentItem: mostFrequent
-        });
-
+        setLoading(false);
+      }, (error) => {
+        console.error("Error fetching store receipts:", error);
         setLoading(false);
       });
 
       return () => unsubscribe();
     }
-  }, [user, targetStoreName, currency?.code, convertPrice]);
+  }, [user, targetStoreName]);
+
+  const stats = useMemo(() => {
+    let total = 0;
+    const itemFrequency = {};
+
+    history.forEach((data) => {
+      const rawPrice = Number(data.price) || 0;
+      total += convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
+
+      if (data.items && Array.isArray(data.items)) {
+        data.items.forEach(item => {
+          if (item.name && item.name.length > 1) {
+            const key = trToLower(`${item.brand || 'Unknown'}-${item.name}`);
+
+            if (!itemFrequency[key]) {
+              itemFrequency[key] = {
+                count: 0,
+                details: {
+                  name: item.name,
+                  brand: item.brand || 'Unknown',
+                  type: item.type || 'General'
+                }
+              };
+            }
+            itemFrequency[key].count += 1;
+          }
+        });
+      }
+    });
+
+    let mostFrequent = null;
+    let maxCount = 0;
+
+    Object.values(itemFrequency).forEach(entry => {
+      if (entry.count > maxCount) {
+        maxCount = entry.count;
+        mostFrequent = entry.details;
+      }
+    });
+
+    return {
+      totalSpent: total,
+      visitCount: history.length,
+      avgSpend: history.length > 0 ? total / history.length : 0,
+      mostFrequentItem: mostFrequent
+    };
+  }, [history, convertPrice, currency?.code]);
 
   // 🔥 Tıklayınca Çökmeyi Engelleyen Akıllı Yönlendirme
   const handleRowClick = (record) => {
