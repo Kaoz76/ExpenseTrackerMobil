@@ -20,8 +20,9 @@ import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
 import PerspectiveCropModal from '../components/receipts/PerspectiveCropModal';
 
 
-import { resizeImage, preprocessForOCR } from '../utils/imageUtils';
+import { resizeImage, preprocessForOCR, preprocessForTesseract } from '../utils/imageUtils';
 import { applyLearnedCorrections, saveCorrection } from '../utils/learningUtils';
+import { postProcessTesseractResult, getOcrConfidence } from '../utils/ocrPostProcess';
 
 
 function Receipts() {
@@ -124,11 +125,18 @@ function Receipts() {
       if (Capacitor.isNativePlatform()) {
         processedFile = await resizeImage(processedFile, 1200, 1600);
       } else {
-        processedFile = await resizeImage(processedFile, 1400, 1800);
+        // Higher resolution for Tesseract — it needs 300+ DPI effective
+        processedFile = await resizeImage(processedFile, 2000, 2800);
       }
 
-      // Enhance image for better OCR: grayscale + contrast + sharpening
-      processedFile = await preprocessForOCR(processedFile);
+      // Enhance image for better OCR
+      if (Capacitor.isNativePlatform()) {
+        // ML Kit: standard preprocessing (grayscale + contrast + sharpening)
+        processedFile = await preprocessForOCR(processedFile);
+      } else {
+        // Tesseract: aggressive preprocessing (upscale + adaptive threshold + noise reduction)
+        processedFile = await preprocessForTesseract(processedFile);
+      }
 
       // 1. Background Firebase Upload
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
@@ -271,6 +279,7 @@ function Receipts() {
 
           extractedData = extractDataFromText(base64Text, language, currency?.code);
         } else {
+          // Web: Tesseract.js with optimized configuration for receipt scanning
           const fileUrl = URL.createObjectURL(processedFile);
           const Tesseract = (await import('tesseract.js')).default;
           const result = await Tesseract.recognize(
@@ -279,12 +288,22 @@ function Receipts() {
             {
               logger: m => {
                 if (m.status === 'recognizing text') {
-                  setUploadProgress(parseInt(m.progress * 100)); // Update progress (approximate, max 100)
+                  setUploadProgress(parseInt(m.progress * 100));
                 }
               }
             }
           );
-          extractedData = extractDataFromText(result.data.text, language, currency?.code || 'USD');
+
+          // Apply Tesseract-specific post-processing (character fixes, confidence filtering, line merging)
+          const postProcessedText = postProcessTesseractResult(result);
+
+          // Log OCR confidence for debugging
+          const confidence = getOcrConfidence(result);
+          if (confidence < 40) {
+            console.warn(`Low OCR confidence (${confidence}%). Results may be inaccurate.`);
+          }
+
+          extractedData = extractDataFromText(postProcessedText, language, currency?.code || 'USD');
           URL.revokeObjectURL(fileUrl);
         }
       } catch (ocrError) {

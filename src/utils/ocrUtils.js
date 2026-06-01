@@ -59,6 +59,9 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
   const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart)/i;
   const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'totale', 'balance', 'due', 'nakit', 'kredi'];
   const excludeRegex = /(kdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][sş]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\s*no|z\s*no)/i;
+
+  // Names that are purely discount/metadata keywords — should NOT become product items
+  const discountOnlyNameRegex = /^\s*([iı]nd[iı]r[iı]m|ndirim|iskonto|discount|saving|promo|promosyon|kampanya|%\s*\d+)\s*$/i;
   const multiplierRegex = /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX]|tl\/(?:kg|gr|kc)|tg|[\d.,]+(?:\s*tg)?)/i;
   const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
   const itemSizeRegex = /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b/i;
@@ -206,8 +209,9 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
           const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
+          const isDiscountOnlyName = discountOnlyNameRegex.test(formattedName);
           
-          if (formattedName.length >= 2 && !isJustUnitOrMultiplier) {
+          if (formattedName.length >= 2 && !isJustUnitOrMultiplier && !isDiscountOnlyName) {
             extractedItems.push({
               name: formattedName,
               price: parsedPrice,
@@ -247,8 +251,9 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
           const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
+          const isDiscountOnlyName = discountOnlyNameRegex.test(formattedName);
 
-          if (formattedName.length >= 2 && !isJustUnitOrMultiplier) {
+          if (formattedName.length >= 2 && !isJustUnitOrMultiplier && !isDiscountOnlyName) {
             extractedItems.push({
               name: formattedName,
               price: itemPrice,
@@ -267,23 +272,28 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
 
   let finalTotal = 0;
   const itemsSum = extractedItems.reduce((acc, item) => acc + item.price, 0);
+  const positiveItemsSum = extractedItems.filter(i => i.price > 0).reduce((acc, item) => acc + item.price, 0);
   const targetSum = isUSStyleTax ? (itemsSum + extractedTaxAmount) : itemsSum;
 
   if (possibleTotals.length > 0) {
+    // Filter out negative totals — a receipt total is always positive
+    const positiveTotals = possibleTotals.filter(t => t > 0);
+    const totalsToUse = positiveTotals.length > 0 ? positiveTotals : possibleTotals;
+
     if (itemsSum > 0) {
-      let closest = possibleTotals[0];
-      let minDiff = Math.abs(possibleTotals[0] - targetSum);
-      for (let i = 1; i < possibleTotals.length; i++) {
-        const diff = Math.abs(possibleTotals[i] - targetSum);
+      let closest = totalsToUse[0];
+      let minDiff = Math.abs(totalsToUse[0] - targetSum);
+      for (let i = 1; i < totalsToUse.length; i++) {
+        const diff = Math.abs(totalsToUse[i] - targetSum);
         if (diff < minDiff) {
           minDiff = diff;
-          closest = possibleTotals[i];
+          closest = totalsToUse[i];
         }
       }
       
       finalTotal = closest;
     } else {
-      finalTotal = Math.max(...possibleTotals);
+      finalTotal = Math.max(...totalsToUse);
     }
   } else {
     if (itemsSum > 0) {
@@ -292,6 +302,25 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
       const allMatches = normalizedText.match(priceRegex);
       if (allMatches) {
         const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null);
+        if (allNumbers.length > 0) {
+          finalTotal = Math.max(...allNumbers);
+        }
+      }
+    }
+  }
+
+  // 🛡️ NEGATIVE TOTAL PROTECTION
+  // A receipt total can NEVER be negative. If it is, something went wrong
+  // (e.g., only discount lines were detected, real products were missed).
+  if (finalTotal <= 0) {
+    // Try to use the sum of positive-priced items
+    if (positiveItemsSum > 0) {
+      finalTotal = positiveItemsSum;
+    } else {
+      // Last resort: scan all numbers in the text and use the largest one
+      const allMatches = normalizedText.match(priceRegex);
+      if (allMatches) {
+        const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null && num > 0);
         if (allNumbers.length > 0) {
           finalTotal = Math.max(...allNumbers);
         }

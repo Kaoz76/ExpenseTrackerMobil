@@ -168,6 +168,187 @@ export const preprocessForOCR = (file) => {
 };
 
 /**
+ * Web-specific preprocessing pipeline optimized for Tesseract.js OCR.
+ * More aggressive than preprocessForOCR() because Tesseract needs:
+ * - Higher resolution (300+ DPI effective)
+ * - Cleaner binarization (adaptive thresholding)
+ * - Less noise (median filter)
+ * 
+ * Does NOT affect ML Kit (mobile) — this is only called on web.
+ * @param {File} file - Image file to preprocess
+ * @returns {Promise<File>} Preprocessed image file optimized for Tesseract
+ */
+export const preprocessForTesseract = (file) => {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const origW = img.naturalWidth || img.width;
+      const origH = img.naturalHeight || img.height;
+
+      // 1) Upscale 2x for better Tesseract accuracy (effective 300+ DPI)
+      // Cap at 4000px max dimension to avoid memory issues
+      const scaleFactor = Math.min(2, 4000 / Math.max(origW, origH));
+      const w = Math.round(origW * scaleFactor);
+      const h = Math.round(origH * scaleFactor);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      
+      // Use high-quality image smoothing for upscaling
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const data = imageData.data;
+
+      // 2) Convert to grayscale
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        data[i] = gray;
+        data[i + 1] = gray;
+        data[i + 2] = gray;
+      }
+
+      // 3) Median filter for noise reduction (3x3 kernel)
+      // Creates a copy, applies median to reduce salt-and-pepper noise
+      const filtered = new Uint8ClampedArray(data.length);
+      for (let i = 0; i < data.length; i++) filtered[i] = data[i];
+      
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const neighbors = [];
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const idx = ((y + dy) * w + (x + dx)) * 4;
+              neighbors.push(data[idx]);
+            }
+          }
+          neighbors.sort((a, b) => a - b);
+          const median = neighbors[4]; // Middle of 9 values
+          const idx = (y * w + x) * 4;
+          filtered[idx] = median;
+          filtered[idx + 1] = median;
+          filtered[idx + 2] = median;
+        }
+      }
+      
+      // Copy filtered data back
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = filtered[i];
+        data[i + 1] = filtered[i + 1];
+        data[i + 2] = filtered[i + 2];
+      }
+
+      // 4) Adaptive thresholding (local mean with window)
+      // Better than global threshold for receipts with uneven lighting/shadows
+      const blockSize = 25; // Size of local neighborhood
+      const C = 12; // Constant subtracted from mean (controls sensitivity)
+      const halfBlock = Math.floor(blockSize / 2);
+      
+      // Build integral image for fast local mean computation
+      const integral = new Float64Array(w * h);
+      for (let y = 0; y < h; y++) {
+        let rowSum = 0;
+        for (let x = 0; x < w; x++) {
+          rowSum += data[(y * w + x) * 4];
+          integral[y * w + x] = rowSum + (y > 0 ? integral[(y - 1) * w + x] : 0);
+        }
+      }
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const x1 = Math.max(0, x - halfBlock);
+          const y1 = Math.max(0, y - halfBlock);
+          const x2 = Math.min(w - 1, x + halfBlock);
+          const y2 = Math.min(h - 1, y + halfBlock);
+          
+          const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+          
+          // Sum using integral image
+          let sum = integral[y2 * w + x2];
+          if (x1 > 0) sum -= integral[y2 * w + (x1 - 1)];
+          if (y1 > 0) sum -= integral[(y1 - 1) * w + x2];
+          if (x1 > 0 && y1 > 0) sum += integral[(y1 - 1) * w + (x1 - 1)];
+          
+          const localMean = sum / count;
+          const idx = (y * w + x) * 4;
+          const pixel = data[idx];
+          
+          // Binarize: black text on white background
+          const threshold = localMean - C;
+          const val = pixel < threshold ? 0 : 255;
+          data[idx] = val;
+          data[idx + 1] = val;
+          data[idx + 2] = val;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // 5) Morphological dilation (1px) — thicken thin receipt font strokes
+      // Receipt printers produce very thin characters that Tesseract struggles with.
+      // Dilation expands black pixels by 1px, making characters bolder.
+      const dilatedData = ctx.getImageData(0, 0, w, h);
+      const dilPx = dilatedData.data;
+      const origSnapshot = new Uint8ClampedArray(dilPx.length);
+      for (let i = 0; i < dilPx.length; i++) origSnapshot[i] = dilPx[i];
+
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const idx = (y * w + x) * 4;
+          // If any neighbor in 3x3 is black (0), set this pixel to black
+          let hasBlack = false;
+          for (let dy = -1; dy <= 1 && !hasBlack; dy++) {
+            for (let dx = -1; dx <= 1 && !hasBlack; dx++) {
+              const nIdx = ((y + dy) * w + (x + dx)) * 4;
+              if (origSnapshot[nIdx] === 0) hasBlack = true;
+            }
+          }
+          if (hasBlack) {
+            dilPx[idx] = 0;
+            dilPx[idx + 1] = 0;
+            dilPx[idx + 2] = 0;
+          }
+        }
+      }
+      ctx.putImageData(dilatedData, 0, 0);
+
+      // 6) Add generous white padding (Tesseract performs better with padding)
+      const padding = 40;
+      const paddedCanvas = document.createElement('canvas');
+      paddedCanvas.width = w + padding * 2;
+      paddedCanvas.height = h + padding * 2;
+      const paddedCtx = paddedCanvas.getContext('2d');
+      paddedCtx.fillStyle = '#ffffff';
+      paddedCtx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
+      paddedCtx.drawImage(canvas, padding, padding);
+
+      paddedCanvas.toBlob((blob) => {
+        if (!blob) {
+          resolve(file);
+          return;
+        }
+        resolve(new File([blob], file.name, { type: 'image/png', lastModified: Date.now() }));
+      }, 'image/png'); // PNG for lossless — critical for binarized text
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+};
+
+/**
  * Extract cropped portion of image
  */
 export const getCroppedImg = (imageElement, crop, fileName) => {
