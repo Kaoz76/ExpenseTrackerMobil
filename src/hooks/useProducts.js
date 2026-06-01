@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { localizeCategory } from '../utils/categoryMap';
 import { trToLower } from '../utils/stringUtils';
 
 export function useProducts(user, currency, language) {
-  const [products, setProducts] = useState([]);
+  const [rawReceipts, setRawReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,56 +19,62 @@ export function useProducts(user, currency, language) {
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        const productMap = {};
-
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.items && Array.isArray(data.items)) {
-            data.items.forEach(item => {
-              // Skip items with negative prices (discounts/sales)
-              const itemPrice = Number(item.price) || 0;
-              if (itemPrice < 0) return;
-
-              // Marka veya isim yoksa undefined olmasını engelle
-              const safeBrand = item.brand || 'Unknown Brand';
-              const safeName = item.name || 'Unnamed Product';
-              const uniqueKey = trToLower(`${safeBrand}-${safeName}`);
-
-              if (!productMap[uniqueKey]) {
-                productMap[uniqueKey] = {
-                  id: uniqueKey,
-                  name: safeName,
-                  brand: safeBrand,
-                  type: localizeCategory(item.type || 'Other', language),
-                  latestPrice: Number(item.price) || 0,
-                  latestPriceCurrency: data.currency || currency?.code || 'USD',
-                  latestDate: data.date,
-                  createdAt: data.createdAt,
-                  historyCount: 1
-                };
-              } else {
-                if (data.createdAt > productMap[uniqueKey].createdAt) {
-                  productMap[uniqueKey].latestPrice = Number(item.price) || 0;
-                  productMap[uniqueKey].latestPriceCurrency = data.currency || currency?.code || 'USD';
-                  productMap[uniqueKey].latestDate = data.date;
-                  productMap[uniqueKey].createdAt = data.createdAt;
-                }
-                productMap[uniqueKey].historyCount += 1;
-              }
-            });
-          }
-        });
-
-        setProducts(Object.values(productMap));
+        setRawReceipts(snapshot.docs.map(doc => doc.data()));
+        setLoading(false);
+      }, (error) => {
+        console.error("Error fetching products receipts:", error);
         setLoading(false);
       });
 
       return () => unsubscribe();
     } else {
-      setProducts([]);
+      setRawReceipts([]);
       setLoading(false);
     }
-  }, [user, currency?.code, language]);
+  }, [user]);
+
+  const products = useMemo(() => {
+    const productMap = {};
+
+    rawReceipts.forEach((data) => {
+      if (data.items && Array.isArray(data.items)) {
+        data.items.forEach(item => {
+          // Skip items with negative prices (discounts/sales)
+          const itemPrice = Number(item.price) || 0;
+          if (itemPrice < 0) return;
+
+          // Marka veya isim yoksa undefined olmasını engelle
+          const safeBrand = item.brand || 'Unknown Brand';
+          const safeName = item.name || 'Unnamed Product';
+          const uniqueKey = trToLower(`${safeBrand}-${safeName}`);
+
+          if (!productMap[uniqueKey]) {
+            productMap[uniqueKey] = {
+              id: uniqueKey,
+              name: safeName,
+              brand: safeBrand,
+              type: localizeCategory(item.type || 'Other', language),
+              latestPrice: Number(item.price) || 0,
+              latestPriceCurrency: data.currency || currency?.code || 'USD',
+              latestDate: data.date,
+              createdAt: data.createdAt,
+              historyCount: 1
+            };
+          } else {
+            if (data.createdAt > productMap[uniqueKey].createdAt) {
+              productMap[uniqueKey].latestPrice = Number(item.price) || 0;
+              productMap[uniqueKey].latestPriceCurrency = data.currency || currency?.code || 'USD';
+              productMap[uniqueKey].latestDate = data.date;
+              productMap[uniqueKey].createdAt = data.createdAt;
+            }
+            productMap[uniqueKey].historyCount += 1;
+          }
+        });
+      }
+    });
+
+    return Object.values(productMap);
+  }, [rawReceipts, currency?.code, language]);
 
   return { products, loading };
 }

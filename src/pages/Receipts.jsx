@@ -128,21 +128,23 @@ function Receipts() {
     setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', '1').replace('{{total}}', filesToProcess.length));
 
     const processFile = async (originalFile) => {
-      let processedFile = originalFile;
+      let processedFileForSave = originalFile;
+      let processedFileForOCR = originalFile;
         
       // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
       // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
       if (Capacitor.isNativePlatform()) {
-        processedFile = await resizeImage(processedFile, 1200, 1600);
+        processedFileForSave = await resizeImage(originalFile, 1200, 1600);
         // Enhance image for better OCR: grayscale + contrast + sharpening (only for ML Kit on mobile)
-        processedFile = await preprocessForOCR(processedFile);
+        processedFileForOCR = await preprocessForOCR(processedFileForSave);
       } else {
         // Web: Use a higher resolution (1600x2000) and high quality (0.95) to preserve details for Tesseract
-        processedFile = await resizeImageForTesseract(processedFile, 1600, 2000, 0.95);
+        processedFileForSave = await resizeImageForTesseract(originalFile, 1600, 2000, 0.95);
+        processedFileForOCR = processedFileForSave;
         // No preprocessForOCR for Tesseract as requested (original color & high resolution scans better)
       }
 
-      // 1. Background Firebase Upload
+      // 1. Background Firebase Upload (Uses the resized colored image)
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
       if (!privacyMode) {
         // Skip waiting 10 seconds if we already know we are offline
@@ -154,10 +156,10 @@ function Receipts() {
           (async () => {
             try {
               const timestamp = Date.now();
-              const safeFileName = processedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const safeFileName = processedFileForSave.name.replace(/[^a-zA-Z0-9._-]/g, '_');
               const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
               const storageRef = ref(storage, storagePath);
-              await uploadBytesResumable(storageRef, processedFile);
+              await uploadBytesResumable(storageRef, processedFileForSave);
               const imageUrl = await getDownloadURL(storageRef);
               return { storagePath, imageUrl };
             } catch (err) {
@@ -172,13 +174,13 @@ function Receipts() {
         }
       }
 
-      // 2. OCR Analysis
+      // 2. OCR Analysis (Runs on the preprocessed black/white image for higher accuracy)
       let extractedData = { total: 0, items: [] };
       let rawOcrText = "";
       try {
         if (Capacitor.isNativePlatform()) {
           const reader = new FileReader();
-          reader.readAsDataURL(processedFile);
+          reader.readAsDataURL(processedFileForOCR);
 
           const base64Text = await new Promise((resolve, reject) => {
             reader.onload = async () => {
@@ -285,7 +287,7 @@ function Receipts() {
           rawOcrText = base64Text;
           extractedData = extractDataFromText(base64Text, language, currency?.code);
         } else {
-          const fileUrl = URL.createObjectURL(processedFile);
+          const fileUrl = URL.createObjectURL(processedFileForOCR);
           const Tesseract = (await import('tesseract.js')).default;
           const result = await Tesseract.recognize(
             fileUrl,
@@ -335,9 +337,9 @@ function Receipts() {
       return {
         userId: user.uid,
         uploadPromise, // Save the background upload promise to await it during final save
-        tempImageUrl: URL.createObjectURL(processedFile), // Provide a local object URL for immediate display
+        tempImageUrl: URL.createObjectURL(processedFileForSave), // Provide a local object URL for immediate display (colored image)
         fileName: '',
-        originalFileName: processedFile.name,
+        originalFileName: processedFileForSave.name,
         createdAt: Timestamp.now(),
         title: '',
         date: new Date().toLocaleDateString(),

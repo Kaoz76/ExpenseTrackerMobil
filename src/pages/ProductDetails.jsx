@@ -17,9 +17,8 @@ function ProductDetails() {
   const { user } = useAuth();
   const { formatPrice, currency, convertPrice } = useCurrency();
   const { t } = useLanguage();
-  const [history, setHistory] = useState([]);
+  const [rawReceipts, setRawReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [productType, setProductType] = useState(''); // Ürün türü için yeni state
 
   // İsim Temizleme Fonksiyonu
   const cleanName = (name) => {
@@ -42,7 +41,7 @@ function ProductDetails() {
   const productName = cleanName(rawProductName);
 
   useEffect(() => {
-    if (user && productName) {
+    if (user) {
       setLoading(true);
 
       // Query all receipts (not just manual) — consistent with Products page
@@ -54,71 +53,84 @@ function ProductDetails() {
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        let foundItems = [];
-        let typeFound = ''; // Döngü içinde türü yakalamak için
-
-        console.log('=== ProductDetails Debug ===');
-        console.log('Looking for productName:', JSON.stringify(productName));
-        console.log('Looking for brandName:', JSON.stringify(brandName));
-
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.items && Array.isArray(data.items)) {
-            data.items.forEach(item => {
-              const itemPrice = Number(item.price);
-              // Skip items with negative prices (discounts/sales)
-              if (itemPrice < 0) return;
-
-              // Normalize brand comparison: treat null/undefined/empty as equivalent
-              const itemBrand = item.brand || '';
-              const matchBrand = brandName || '';
-              const cleanedItemName = cleanName(item.name);
-
-              console.log(`  Item: ${JSON.stringify(item.name)} -> cleaned: ${JSON.stringify(cleanedItemName)} | brand: ${JSON.stringify(itemBrand)} | nameMatch: ${cleanedItemName === productName} | brandMatch: ${itemBrand === matchBrand}`);
-
-              if (cleanedItemName === productName && itemBrand === matchBrand) {
-                // Tür bilgisini ilk bulduğumuz kayıttan alalım
-                if (!typeFound && item.type) {
-                  typeFound = item.type;
-                }
-
-                foundItems.push({
-                  id: doc.id,
-                  receiptId: doc.id,
-                  price: itemPrice,
-                  currency: data.currency || currency?.code || 'USD',
-                  store: data.fileName,
-                  date: data.date,
-                  createdAt: data.createdAt,
-                  size: item.size
-                });
-              }
-            });
-          }
-        });
-
-        console.log('Found items count:', foundItems.length);
-        console.log('=== End Debug ===');
-
-        // Sort client-side by createdAt descending
-        foundItems.sort((a, b) => {
-          const aTime = a.createdAt?.toMillis?.() || 0;
-          const bTime = b.createdAt?.toMillis?.() || 0;
-          return bTime - aTime;
-        });
-
-        setHistory(foundItems);
-        setProductType(typeFound);
+        setRawReceipts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        setLoading(false);
+      }, (error) => {
+        console.error("Error fetching product receipts:", error);
         setLoading(false);
       });
 
       return () => unsubscribe();
+    } else {
+      setRawReceipts([]);
+      setLoading(false);
     }
-  }, [user, productName, brandName, currency?.code, convertPrice]);
+  }, [user]);
 
-  const convertedHistoryPrices = history.map(h => 
-    convertPrice(h.price, h.currency || currency.code || 'USD', currency.code)
-  );
+  const filteredData = useMemo(() => {
+    let foundItems = [];
+    let typeFound = ''; // Döngü içinde türü yakalamak için
+
+    console.log('=== ProductDetails Debug ===');
+    console.log('Looking for productName:', JSON.stringify(productName));
+    console.log('Looking for brandName:', JSON.stringify(brandName));
+
+    rawReceipts.forEach((data) => {
+      if (data.items && Array.isArray(data.items)) {
+        data.items.forEach(item => {
+          const itemPrice = Number(item.price);
+          // Skip items with negative prices (discounts/sales)
+          if (itemPrice < 0) return;
+
+          // Normalize brand comparison: treat null/undefined/empty as equivalent
+          const itemBrand = item.brand || '';
+          const matchBrand = brandName || '';
+          const cleanedItemName = cleanName(item.name);
+
+          console.log(`  Item: ${JSON.stringify(item.name)} -> cleaned: ${JSON.stringify(cleanedItemName)} | brand: ${JSON.stringify(itemBrand)} | nameMatch: ${cleanedItemName === productName} | brandMatch: ${itemBrand === matchBrand}`);
+
+          if (cleanedItemName === productName && itemBrand === matchBrand) {
+            // Tür bilgisini ilk bulduğumuz kayıttan alalım
+            if (!typeFound && item.type) {
+              typeFound = item.type;
+            }
+
+            foundItems.push({
+              id: data.id,
+              receiptId: data.id,
+              price: itemPrice,
+              currency: data.currency || currency?.code || 'USD',
+              store: data.fileName,
+              date: data.date,
+              createdAt: data.createdAt,
+              size: item.size
+            });
+          }
+        });
+      }
+    });
+
+    console.log('Found items count:', foundItems.length);
+    console.log('=== End Debug ===');
+
+    // Sort client-side by createdAt descending
+    foundItems.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
+
+    return { history: foundItems, productType: typeFound };
+  }, [rawReceipts, productName, brandName, currency?.code]);
+
+  const history = filteredData.history;
+  const productType = filteredData.productType;
+
+  const convertedHistoryPrices = useMemo(() => {
+    return history.map(h => 
+      convertPrice(h.price, h.currency || currency.code || 'USD', currency.code)
+    );
+  }, [history, convertPrice, currency?.code]);
 
   const avgPrice = convertedHistoryPrices.length > 0
     ? (convertedHistoryPrices.reduce((a, b) => a + b, 0) / convertedHistoryPrices.length)
