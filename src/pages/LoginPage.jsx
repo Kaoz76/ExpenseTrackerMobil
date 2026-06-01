@@ -22,9 +22,46 @@ function LoginPage() {
   const [resetError, setResetError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
+  const [lockoutTime, setLockoutTime] = useState(0);
+
+  // Check lockout on mount
+  useEffect(() => {
+    const lockoutUntil = localStorage.getItem('login_lockout_until');
+    if (lockoutUntil) {
+      const remaining = Math.ceil((parseInt(lockoutUntil, 10) - Date.now()) / 1000);
+      if (remaining > 0) {
+        setLockoutTime(remaining);
+        setError(t('common.login_lockout').replace('{{seconds}}', remaining.toString()));
+      } else {
+        localStorage.removeItem('login_lockout_until');
+        localStorage.setItem('login_attempts', '0');
+      }
+    }
+  }, [t]);
+
+  // Handle lockout countdown timer
+  useEffect(() => {
+    if (lockoutTime <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutTime((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          localStorage.removeItem('login_lockout_until');
+          localStorage.setItem('login_attempts', '0');
+          setError('');
+          return 0;
+        }
+        const next = prev - 1;
+        setError(t('common.login_lockout').replace('{{seconds}}', next.toString()));
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutTime, t]);
+
   // GELİŞTİRME 1: Kullanıcı yazmaya başladığında login hatasını temizle
   useEffect(() => {
-    if (error) setError('');
+    if (error && lockoutTime === 0) setError('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, password]);
 
@@ -49,14 +86,28 @@ function LoginPage() {
   // GİRİŞ İŞLEMİ
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (lockoutTime > 0) return;
     setError('');
 
     try {
       setLoading(true);
       await login(email, password);
+      localStorage.removeItem('login_attempts');
+      localStorage.removeItem('login_lockout_until');
       navigate('/');
     } catch (err) {
-      setError(t('common.login_error'));
+      const attempts = parseInt(localStorage.getItem('login_attempts') || '0', 10) + 1;
+      localStorage.setItem('login_attempts', attempts.toString());
+
+      if (attempts >= 5) {
+        const lockoutDuration = 60 * 1000; // 60 seconds
+        const lockoutUntil = Date.now() + lockoutDuration;
+        localStorage.setItem('login_lockout_until', lockoutUntil.toString());
+        setLockoutTime(60);
+        setError(t('common.login_lockout').replace('{{seconds}}', '60'));
+      } else {
+        setError(t('common.login_error'));
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -107,6 +158,7 @@ function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      disabled={lockoutTime > 0}
                     />
                   </div>
 
@@ -135,6 +187,7 @@ function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        disabled={lockoutTime > 0}
                       />
                       <button
                         type="button"
@@ -148,7 +201,7 @@ function LoginPage() {
                   </div>
 
                   <div className="d-grid mt-4">
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
+                    <button type="submit" className="btn btn-primary" disabled={loading || lockoutTime > 0}>
                       {loading ? t('common.login_logging_in') : t('common.login_title')}
                     </button>
                   </div>
