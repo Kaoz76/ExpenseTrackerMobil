@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { en } from '../locales/en.js';
 import { tr } from '../locales/tr.js';
 
@@ -17,7 +17,7 @@ export const LanguageProvider = ({ children }) => {
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = (key) => {
+  const t = useCallback((key) => {
     const keys = key.split('.');
     let value = translations[language];
     for (const k of keys) {
@@ -37,10 +37,16 @@ export const LanguageProvider = ({ children }) => {
       }
     }
     return value;
-  };
+  }, [language]);
+
+  const contextValue = useMemo(() => ({
+    language,
+    setLanguage,
+    t
+  }), [language, t]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );

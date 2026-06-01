@@ -10,7 +10,6 @@ export const CURRENCY_MAP = {
   TRY: { code: 'TRY', symbol: '₺', locale: 'tr-TR' },
   EUR: { code: 'EUR', symbol: '€', locale: 'de-DE' },
   GBP: { code: 'GBP', symbol: '£', locale: 'en-GB' },
-  JPY: { code: 'JPY', symbol: '¥', locale: 'ja-JP' },
   USD: { code: 'USD', symbol: '$', locale: 'en-US' }
 };
 
@@ -20,7 +19,6 @@ const STATIC_USD_RATES = {
   TRY: 32.5,
   EUR: 0.92,
   GBP: 0.79,
-  JPY: 155.0
 };
 
 const CACHE_KEY = 'currency_rates_cache';

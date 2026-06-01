@@ -170,6 +170,10 @@ function ManualEntry() {
           finalBrand = aiSuggestion.brand;
         }
 
+        if (!finalBrand || finalBrand.toLowerCase() === 'unknown brand') {
+          finalBrand = storeName.trim();
+        }
+
         return {
           name: p.name.trim(),
           size: p.size.trim(),

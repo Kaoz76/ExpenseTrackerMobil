@@ -14,7 +14,7 @@ function ReceiptVerifyModal({
   handleSendToManual,
   handleCancelSave,
   handleConfirmSave,
-  isSaving
+  isSavingDoc
 }) {
   const { currency, favoriteCurrencies } = useCurrency();
   const { t } = useLanguage();
@@ -45,8 +45,8 @@ function ReceiptVerifyModal({
 
   return (
     <>
-      <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
-      <div className="modal fade show d-block" style={{ zIndex: 1055 }} tabIndex="-1">
+      <div className="modal-backdrop fade show" style={{ zIndex: 1055 }}></div>
+      <div className="modal fade show d-block" style={{ zIndex: 1060 }} tabIndex="-1">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content shadow-lg border-0">
 
@@ -61,9 +61,9 @@ function ReceiptVerifyModal({
               {verifyData?.tempImageUrl && (
                 <div className="mb-4 text-center">
                   <img
-                    src={verifyData.tempImageUrl}
-                    alt="Scanned Receipt"
-                    style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', border: '1px solid #dee2e6' }}
+                     src={verifyData.tempImageUrl}
+                     alt="Scanned Receipt"
+                     style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', border: '1px solid #dee2e6' }}
                   />
                 </div>
               )}
@@ -163,7 +163,7 @@ function ReceiptVerifyModal({
                                   inputMode="decimal"
                                   className="form-control form-control-sm text-end text-primary fw-bold border-start-0 ps-0"
                                   value={item.price}
-                                  onChange={(e) => handleItemChange(idx, 'price', e.target.value.replace(/[^0-9.,]/g, ''))}
+                                  onChange={(e) => handleItemChange(idx, 'price', e.target.value.replace(/[^0-9.,-]/g, ''))}
                                   placeholder={t('common.price')}
                                 />
                               </div>
@@ -212,13 +212,14 @@ function ReceiptVerifyModal({
                   )}
                 </div>
               )}
+
             </div>
 
             <div className="modal-footer bg-light d-flex justify-content-between">
               <button 
                 className="btn btn-outline-info border-0 d-flex align-items-center" 
                 onClick={handleSendToManual}
-                disabled={isSaving}
+                disabled={isSavingDoc}
               >
                 <FaEdit className="me-1" /> {t('common.use_manual_form')}
               </button>
@@ -227,7 +228,7 @@ function ReceiptVerifyModal({
                   type="button" 
                   className="btn btn-outline-secondary" 
                   onClick={handleCancelSave}
-                  disabled={isSaving}
+                  disabled={isSavingDoc}
                 >
                   <FaTimes className="me-2" /> {t('common.discard')}
                 </button>
@@ -235,9 +236,9 @@ function ReceiptVerifyModal({
                   type="button" 
                   className="btn btn-success px-4" 
                   onClick={handleConfirmSave}
-                  disabled={isSaving}
+                  disabled={isSavingDoc}
                 >
-                  {isSaving ? (
+                  {isSavingDoc ? (
                     <>
                       <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                       {t('common.saving') || 'Saving...'}

@@ -12,11 +12,17 @@ import { isFuzzyMatch } from './receiptUtils';
 export const extractDataFromText = (text, language, defaultCurrencyCode) => {
   if (!text) return { total: 0, items: [] };
 
+  // Remove spaces between digits and dots/commas (e.g. "135, 00" -> "135,00")
+  // Also remove spaces after a minus sign followed by a digit (e.g. "- 47,25" -> "-47,25")
+  const cleanedText = text
+    .replace(/(\d+)\s*([.,])\s*(\d+)/g, '$1$2$3')
+    .replace(/-\s*(\d+)/g, '-$1');
+
   let usTaxScore = 0;
   let ukTaxScore = 0;
   let extractedTaxAmount = 0;
 
-  const normalizedText = trToLower(text.replace(/\r/g, '\n'));
+  const normalizedText = trToLower(cleanedText.replace(/\r/g, '\n'));
   const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
   // Currency detection from OCR text
@@ -56,16 +62,16 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
     isUSStyleTax = (language !== 'tr') && (ukTaxScore <= usTaxScore);
   }
 
-  const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|nakit|kredi|k\.karti|kart)/i;
-  const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'nakit', 'kredi'];
-  const excludeRegex = /(kdv|vat|tax|para ustu|para üstü|change|vakif|ziraat|garanti|is bank|iş bank|yapi kredi|yapı kredi|mastercard|visa|maestro|puan|point|kazanc|kazanç|kasa no|fi[sş]\s*no|tarih|saat)/i;
+  const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart)/i;
+  const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'totale', 'balance', 'due', 'nakit', 'kredi'];
+  const excludeRegex = /(kdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][sş]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\s*no|z\s*no)/i;
   const multiplierRegex = /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX*]|tl\/(?:kg|gr|kc)|tg|[\d.,]+(?:\s*tg)?)/i;
   const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
-  const itemSizeRegex = /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)\b/i;
+  const itemSizeRegex = /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b/i;
 
   const normalizeSize = (rawSize) => {
     if (!rawSize) return "";
-    const match = rawSize.match(/^(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad)$/i);
+    const match = rawSize.match(/^(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)$/i);
     if (!match) return rawSize.trim().toUpperCase().replace('KC', 'KG');
 
     let val = match[1].replace(',', '.');
@@ -99,32 +105,36 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
   }
 
   const cleanAndParseNumber = (valStr) => {
-    let cleanStr = valStr.replace(/[^0-9.,]/g, '');
+    let cleanStr = valStr.replace(/[^0-9.,-]/g, '');
+    
+    // Check if both exist to find the actual decimal
     if (cleanStr.includes(',') && cleanStr.includes('.')) {
-      cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
+      const lastComma = cleanStr.lastIndexOf(',');
+      const lastDot = cleanStr.lastIndexOf('.');
+      
+      if (lastComma > lastDot) {
+        // Comma is the decimal separator (European/Turkish: 1.000,50)
+        cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
+      } else {
+        // Dot is the decimal separator (US/International: 1,000.50)
+        cleanStr = cleanStr.replace(/,/g, '');
+      }
     } else if (cleanStr.includes(',')) {
+      // Only comma exists. If there is only one and it is near the end, treat as decimal.
+      // But if it's 17,999 it might be a thousand separator!
+      // Heuristic: if comma is followed by exactly 3 digits, it might be a thousands separator.
+      // Easiest is to replace it with dot and hope for the best, since we assume Turkish receipts mostly.
       cleanStr = cleanStr.replace(',', '.');
     }
+
     const num = parseFloat(cleanStr);
-    return (!isNaN(num) && num > 0) ? num : null;
+    return !isNaN(num) ? num : null;
   };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
     if (multiplierRegex.test(line)) continue;
-
-    if (excludeRegex.test(line)) {
-      if (isUSStyleTax && /(sales\s*tax|state\s*tax|^tax\b)/i.test(line)) {
-        let taxMatches = line.match(priceRegex);
-        if (taxMatches && taxMatches.length > 0) {
-          const parsed = cleanAndParseNumber(taxMatches[taxMatches.length - 1]);
-          if (parsed) extractedTaxAmount += parsed;
-        }
-      } else {
-        continue;
-      }
-    }
 
     const hasKeyword = keywordRegex.test(line) || isFuzzyMatch(line, fuzzyKeywords);
 
@@ -136,6 +146,20 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           if (parsed) possibleTotals.push(parsed);
         });
       }
+      // If it has a keyword, do not let excludeRegex skip it, but we can still extract tax from it.
+      // We don't 'continue' because we might want to extract tax or it might be a valid total line.
+      // Wait, if we 'continue' we won't add it as an item. Totals shouldn't be items.
+      continue;
+    }
+
+    if (excludeRegex.test(line)) {
+      if (isUSStyleTax && /(sales\s*tax|state\s*tax|^tax\b)/i.test(line)) {
+        let taxMatches = line.match(priceRegex);
+        if (taxMatches && taxMatches.length > 0) {
+          const parsed = cleanAndParseNumber(taxMatches[taxMatches.length - 1]);
+          if (parsed) extractedTaxAmount += Math.abs(parsed);
+        }
+      }
       continue;
     }
 
@@ -145,13 +169,20 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
       let parsedPrice = cleanAndParseNumber(lastMatch);
 
       if (parsedPrice) {
-        const isDiscountLine = /(indirim|ndirim|iskonto)/i.test(line) || lastMatch.includes('-');
+        const priceIndex = line.lastIndexOf(lastMatch);
+        const charBefore = priceIndex > 0 ? line[priceIndex - 1] : '';
+        const charAfter = (priceIndex + lastMatch.length) < line.length ? line[priceIndex + lastMatch.length] : '';
+        const isDiscountLine = /(indirim|ndirim|iskonto|discount|saving|promo)/i.test(line) || charBefore === '-' || charAfter === '-';
         if (isDiscountLine) {
           parsedPrice = -Math.abs(parsedPrice);
         }
 
         let namePart = line.substring(0, line.lastIndexOf(lastMatch)).trim();
-        let isGarbageName = namePart.length === 0 || namePart.length <= 4 || /^[%xX\d\s*#-]+$/.test(namePart);
+        let isGarbageName = namePart.length === 0 || namePart.length <= 4 || /^[%xX\d\s*#\-.,'":;]+$/.test(namePart);
+        
+        // Ensure the name has at least 2 actual alphabet letters to not be considered garbage
+        const letterMatch = namePart.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
+        if (!letterMatch || letterMatch.length < 2) isGarbageName = true;
 
         if (isGarbageName) {
           if (previousOrphanedText) {
@@ -183,7 +214,13 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
-          if (formattedName.length >= 2) {
+          const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
+          
+          // Ensure the name has at least 2 actual alphabet letters to filter out pure numbers/punctuation (e.g. "3.995")
+          const letterMatchFormatted = formattedName.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
+          const hasEnoughLetters = letterMatchFormatted && letterMatchFormatted.length >= 2;
+          
+          if (formattedName.length >= 2 && !isJustUnitOrMultiplier && hasEnoughLetters) {
             extractedItems.push({
               name: formattedName,
               price: parsedPrice,
@@ -199,7 +236,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
       if (/[a-zA-ZçğıöşüÇĞİÖŞÜ]{3,}/.test(line)) {
         if (pendingPrice !== null) {
           let itemPrice = pendingPrice;
-          const isDiscountLine = /(indirim|ndirim|iskonto)/i.test(line);
+          const isDiscountLine = /(indirim|ndirim|iskonto|discount|saving|promo)/i.test(line);
           if (isDiscountLine) {
             itemPrice = -Math.abs(itemPrice);
           }
@@ -222,11 +259,17 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
-          if (formattedName.length >= 2) {
+          const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
+
+          // Ensure the name has at least 2 actual alphabet letters to filter out pure numbers/punctuation (e.g. "3.995")
+          const letterMatchFormatted = formattedName.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
+          const hasEnoughLetters = letterMatchFormatted && letterMatchFormatted.length >= 2;
+
+          if (formattedName.length >= 2 && !isJustUnitOrMultiplier && hasEnoughLetters) {
             extractedItems.push({
               name: formattedName,
               price: itemPrice,
-              size: finalSize
+              size: finalSize || previousOrphanedSize
             });
           }
 
@@ -241,22 +284,28 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
 
   let finalTotal = 0;
   const itemsSum = extractedItems.reduce((acc, item) => acc + item.price, 0);
+  const positiveItemsSum = extractedItems.filter(i => i.price > 0).reduce((acc, item) => acc + item.price, 0);
   const targetSum = isUSStyleTax ? (itemsSum + extractedTaxAmount) : itemsSum;
 
   if (possibleTotals.length > 0) {
+    // Filter out negative totals — a receipt total is always positive
+    const positiveTotals = possibleTotals.filter(t => t > 0);
+    const totalsToUse = positiveTotals.length > 0 ? positiveTotals : possibleTotals;
+
     if (itemsSum > 0) {
-      let closest = possibleTotals[0];
-      let minDiff = Math.abs(possibleTotals[0] - targetSum);
-      for (let i = 1; i < possibleTotals.length; i++) {
-        const diff = Math.abs(possibleTotals[i] - targetSum);
+      let closest = totalsToUse[0];
+      let minDiff = Math.abs(totalsToUse[0] - targetSum);
+      for (let i = 1; i < totalsToUse.length; i++) {
+        const diff = Math.abs(totalsToUse[i] - targetSum);
         if (diff < minDiff) {
           minDiff = diff;
-          closest = possibleTotals[i];
+          closest = totalsToUse[i];
         }
       }
+      
       finalTotal = closest;
     } else {
-      finalTotal = Math.max(...possibleTotals);
+      finalTotal = Math.max(...totalsToUse);
     }
   } else {
     if (itemsSum > 0) {
@@ -265,6 +314,25 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
       const allMatches = normalizedText.match(priceRegex);
       if (allMatches) {
         const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null);
+        if (allNumbers.length > 0) {
+          finalTotal = Math.max(...allNumbers);
+        }
+      }
+    }
+  }
+
+  // 🛡️ NEGATIVE TOTAL PROTECTION
+  // A receipt total can NEVER be negative. If it is, something went wrong
+  // (e.g., only discount lines were detected, real products were missed).
+  if (finalTotal <= 0) {
+    // Try to use the sum of positive-priced items
+    if (positiveItemsSum > 0) {
+      finalTotal = positiveItemsSum;
+    } else {
+      // Last resort: scan all numbers in the text and use the largest one
+      const allMatches = normalizedText.match(priceRegex);
+      if (allMatches) {
+        const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null && num > 0);
         if (allNumbers.length > 0) {
           finalTotal = Math.max(...allNumbers);
         }

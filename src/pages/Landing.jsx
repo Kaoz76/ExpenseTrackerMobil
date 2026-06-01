@@ -6,6 +6,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { parseDate } from '../utils/dateFormatter';
 
 // Scroll animasyonu için custom hook
 function useScrollReveal() {
@@ -83,6 +84,14 @@ function Landing() {
   // Canlı istatistikler (sadece giriş yapmış kullanıcılar için)
   const [stats, setStats] = useState({ totalSpent: 0, receiptCount: 0, subscriptionCount: 0 });
 
+  const convertPriceRef = useRef(convertPrice);
+  const currencyCodeRef = useRef(currency?.code);
+
+  useEffect(() => {
+    convertPriceRef.current = convertPrice;
+    currencyCodeRef.current = currency?.code;
+  }, [convertPrice, currency?.code]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -101,10 +110,11 @@ function Landing() {
       let count = 0;
       snapshot.forEach((doc) => {
         const data = doc.data();
-        const createdAtDate = data.createdAt?.toDate ? data.createdAt.toDate() : null;
+        const createdAtDate = data.createdAt ? parseDate(data.createdAt) : null;
         if (createdAtDate && createdAtDate >= startOfMonth && createdAtDate <= endOfMonth) {
           const rawPrice = Number(data.price) || 0;
-          total += convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
+          const currentCode = currencyCodeRef.current || 'USD';
+          total += convertPriceRef.current(rawPrice, data.currency || currentCode, currentCode);
           count++;
         }
       });
@@ -125,7 +135,7 @@ function Landing() {
       unsubReceipts();
       unsubSubs();
     };
-  }, [user, currency?.code, convertPrice]);
+  }, [user]);
 
   return (
     <div className="dashboard-page-wrapper">

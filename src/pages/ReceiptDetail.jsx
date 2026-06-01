@@ -139,7 +139,7 @@ function ReceiptDetail() {
       }));
 
       // 🔥 DÜZELTME 1: Ürünlerin yeni toplamını hesapla ve ana fiş tutarıyla senkronize et!
-      const newItemsTotal = cleanedItems.reduce((sum, item) => sum + item.price, 0);
+      const newItemsTotal = Math.max(0, cleanedItems.reduce((sum, item) => sum + item.price, 0));
 
       await updateDoc(doc(db, "receipts", receiptId), {
         items: cleanedItems,
@@ -180,7 +180,7 @@ function ReceiptDetail() {
 
   // 🔥 DÜZELTME 3: itemsTotal performansı useMemo ile korumaya alındı
   const itemsTotal = useMemo(() => {
-    return items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+    return Math.max(0, items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0));
   }, [items]);
 
   if (loading) {

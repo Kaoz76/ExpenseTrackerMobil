@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { FaCrop, FaTimes, FaCheck } from 'react-icons/fa';
-import { getCroppedImg } from '../../utils/imageUtils';
+import { getCroppedImg, getSmartCropBox } from '../../utils/imageUtils';
 import { useLanguage } from '../../context/LanguageContext';
 
 function ImageCropModal({ show, file, onConfirm, onCancel }) {
@@ -24,6 +24,10 @@ function ImageCropModal({ show, file, onConfirm, onCancel }) {
 
   const onImageLoad = (e) => {
     imgRef.current = e.currentTarget;
+    
+    // Automatically detect the receipt bounds and set the initial crop box
+    const smartCrop = getSmartCropBox(e.currentTarget);
+    setCrop(smartCrop);
   };
 
   const handleConfirm = async () => {

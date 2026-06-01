@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { parseDate } from '../utils/dateFormatter';
 
 const ReportContext = createContext(null);
 
@@ -98,8 +99,8 @@ export const ReportProvider = ({ children }) => {
       querySnapshot.forEach((doc) => allDocs.push(doc.data()));
       
       allDocs.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        const dateA = a.createdAt ? parseDate(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? parseDate(b.createdAt) : new Date(0);
         return dateB - dateA;
       });
 
@@ -108,8 +109,8 @@ export const ReportProvider = ({ children }) => {
       allDocs.forEach((data) => {
 
         let dateStr = data.date || "";
-        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
-          dateStr = data.createdAt.toDate().toLocaleDateString(navigator.language || 'tr-TR');
+        if (data.createdAt) {
+          dateStr = parseDate(data.createdAt).toLocaleDateString(navigator.language || 'tr-TR');
         }
 
         const description = `"${(data.fileName || data.title || "No Title").replace(/"/g, '""')}"`;
@@ -202,8 +203,8 @@ export const ReportProvider = ({ children }) => {
 
       // Client-side sorting
       receipts.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        const dateA = a.createdAt ? parseDate(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? parseDate(b.createdAt) : new Date(0);
         return dateB - dateA;
       });
 
@@ -259,8 +260,8 @@ export const ReportProvider = ({ children }) => {
       receipts.forEach(receipt => {
         let dateStr = "N/A";
         try {
-          if (receipt.createdAt && typeof receipt.createdAt.toDate === 'function') {
-            dateStr = receipt.createdAt.toDate().toLocaleDateString(navigator.language || 'tr-TR');
+          if (receipt.createdAt) {
+            dateStr = parseDate(receipt.createdAt).toLocaleDateString(navigator.language || 'tr-TR');
           } else if (receipt.date) {
             dateStr = receipt.date;
           }

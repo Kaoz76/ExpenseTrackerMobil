@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FaCloudUploadAlt, FaListAlt, FaCheck, FaTimes, FaTrash, FaPlus, FaEdit } from 'react-icons/fa';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -17,9 +17,12 @@ import ReceiptList from '../components/receipts/ReceiptList';
 import ReceiptScanZone from '../components/receipts/ReceiptScanZone';
 import ReceiptFilters from '../components/receipts/ReceiptFilters';
 import ReceiptVerifyModal from '../components/receipts/ReceiptVerifyModal';
-import ImageCropModal from '../components/receipts/ImageCropModal';
+import PerspectiveCropModal from '../components/receipts/PerspectiveCropModal';
 
-import { resizeImage } from '../utils/imageUtils';
+
+import { resizeImage, preprocessForOCR } from '../utils/imageUtils';
+import { resizeImageForTesseract } from '../utils/tesseractImageUtils';
+import { applyLearnedCorrections, saveCorrection } from '../utils/learningUtils';
 
 
 function Receipts() {
@@ -37,17 +40,27 @@ function Receipts() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyData, setVerifyData] = useState(null);
   const { allReceipts, setAllReceipts, loadingReceipts, deleteReceipt, hasMore, loadMoreReceipts } = useReceipts(user);
-<<<<<<< Updated upstream
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-=======
->>>>>>> Stashed changes
+  const [searchTerm, setSearchTerm] = useState('');
   const [cropModalVisible, setCropModalVisible] = useState(false);
   const [cropFile, setCropFile] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [cropImageUrl, setCropImageUrl] = useState('');
 
+  // Revoke cropImageUrl on unmount
+  useEffect(() => {
+    return () => {
+      if (cropImageUrl) {
+        URL.revokeObjectURL(cropImageUrl);
+      }
+    };
+  }, [cropImageUrl]);
 
+  // Prevention for offline duplicate saves
+  const activeVerifyRef = useRef(null);
+  const [isSavingDoc, setIsSavingDoc] = useState(false);
+
+  useEffect(() => {
+    activeVerifyRef.current = verifyData;
+  }, [verifyData]);
 
   const filteredReceipts = useMemo(() => {
     let result = allReceipts;
@@ -114,23 +127,38 @@ function Receipts() {
     setStatusText(t('common.msg_analyzing_receipt').replace('{{current}}', '1').replace('{{total}}', filesToProcess.length));
 
     const processFile = async (originalFile) => {
-      // 0. Resize Image to reduce memory footprint and speed up OCR
-      const file = await resizeImage(originalFile, 1000, 1300);
+      let processedFileForSave = originalFile;
+      let processedFileForOCR = originalFile;
+        
+      // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
+      // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
+      if (Capacitor.isNativePlatform()) {
+        processedFileForSave = await resizeImage(originalFile, 1200, 1600);
+        // Enhance image for better OCR: grayscale + contrast + sharpening (only for ML Kit on mobile)
+        processedFileForOCR = await preprocessForOCR(processedFileForSave);
+      } else {
+        // Web: Use a higher resolution (1600x2000) and high quality (0.95) to preserve details for Tesseract
+        processedFileForSave = await resizeImageForTesseract(originalFile, 1600, 2000, 0.95);
+        processedFileForOCR = processedFileForSave;
+        // No preprocessForOCR for Tesseract as requested (original color & high resolution scans better)
+      }
 
-      // 1. Background Firebase Upload
-      // Wrapped in a 10-second timeout so that if the device is offline,
-      // the resumable upload (which retries indefinitely) doesn't block saving.
+      // 1. Background Firebase Upload (Uses the resized colored image)
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
       if (!privacyMode) {
-        const uploadTimeoutMs = 10000;
-        uploadPromise = Promise.race([
+        // Skip waiting 10 seconds if we already know we are offline
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
+        } else {
+          const uploadTimeoutMs = 10000;
+          uploadPromise = Promise.race([
           (async () => {
             try {
               const timestamp = Date.now();
-              const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const safeFileName = processedFileForSave.name.replace(/[^a-zA-Z0-9._-]/g, '_');
               const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
               const storageRef = ref(storage, storagePath);
-              await uploadBytesResumable(storageRef, file);
+              await uploadBytesResumable(storageRef, processedFileForSave);
               const imageUrl = await getDownloadURL(storageRef);
               return { storagePath, imageUrl };
             } catch (err) {
@@ -138,19 +166,20 @@ function Receipts() {
               return { storagePath: null, imageUrl: null };
             }
           })(),
-          // Offline safety net: resolve with null after timeout
           new Promise(resolve =>
             setTimeout(() => resolve({ storagePath: null, imageUrl: null }), uploadTimeoutMs)
           )
         ]);
+        }
       }
 
-      // 2. OCR Analysis
+      // 2. OCR Analysis (Runs on the preprocessed black/white image for higher accuracy)
       let extractedData = { total: 0, items: [] };
+      let rawOcrText = "";
       try {
         if (Capacitor.isNativePlatform()) {
           const reader = new FileReader();
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(processedFileForOCR);
 
           const base64Text = await new Promise((resolve, reject) => {
             reader.onload = async () => {
@@ -232,15 +261,12 @@ function Receipts() {
 
                     let added = false;
                     for (let group of lineGroups) {
-                      // Project expected Y using the group's initial vector slope
-                      let projectedY = group.startY + group.slope * (center.x - group.startX);
-<<<<<<< Updated upstream
-=======
+                      // Project expected Y using the global median slope for stability
+                      let projectedY = group.startY + medianSlope * (center.x - group.startX);
 
                       // Use the maximum of the group's height and the current item's height for tolerance calculation
                       const compareHeight = Math.max(effectiveHeight, group.height || effectiveHeight);
                       const tolerance = compareHeight * 0.5; // 0.5 multiplier to separate adjacent receipt lines
->>>>>>> Stashed changes
 
                       // If the item's center is close to the projected line vector, add it!
                       if (Math.abs(center.y - projectedY) < tolerance) {
@@ -283,9 +309,10 @@ function Receipts() {
             reader.onerror = (error) => reject(error);
           });
 
-          extractedData = extractDataFromText(base64Text);
+          rawOcrText = base64Text;
+          extractedData = extractDataFromText(base64Text, language, currency?.code);
         } else {
-          const fileUrl = URL.createObjectURL(file);
+          const fileUrl = URL.createObjectURL(processedFileForOCR);
           const Tesseract = (await import('tesseract.js')).default;
           const result = await Tesseract.recognize(
             fileUrl,
@@ -295,9 +322,12 @@ function Receipts() {
                 if (m.status === 'recognizing text') {
                   setUploadProgress(parseInt(m.progress * 100)); // Update progress (approximate, max 100)
                 }
-              }
+              },
+              tessedit_pageseg_mode: '6' // Force single block line-by-line reading to prevent column-splitting errors
             }
           );
+          console.log("Raw Tesseract OCR Text:\n", result.data.text);
+          rawOcrText = result.data.text;
           extractedData = extractDataFromText(result.data.text, language, currency?.code || 'USD');
           URL.revokeObjectURL(fileUrl);
         }
@@ -327,20 +357,25 @@ function Receipts() {
           console.warn('AI enrichment failed, using raw OCR items:', aiError);
         }
       }
+      
+      // Apply User Learning Memory (fixes mistakes AI or OCR consistently make)
+      enrichedItems = applyLearnedCorrections(enrichedItems);
 
       return {
         userId: user.uid,
         uploadPromise, // Save the background upload promise to await it during final save
-        tempImageUrl: URL.createObjectURL(file), // Provide a local object URL for immediate display
+        tempImageUrl: URL.createObjectURL(processedFileForSave), // Provide a local object URL for immediate display (colored image)
         fileName: '',
-        originalFileName: file.name,
+        originalFileName: processedFileForSave.name,
         createdAt: Timestamp.now(),
         title: '',
         date: new Date().toLocaleDateString(),
         isManual: false,
+        originalItems: JSON.parse(JSON.stringify(enrichedItems)), // Deep copy for learning comparison
         items: enrichedItems,
         totalPrice: extractedData.total || 0,
-        currency: extractedData.currency || currency?.code || 'USD'
+        currency: extractedData.currency || currency?.code || 'USD',
+        rawOcrText: rawOcrText
       };
     };
 
@@ -402,10 +437,13 @@ function Receipts() {
           // Pre-resize image before showing in crop modal to drastically reduce memory usage
           const resized = await resizeImage(filesToProcess[0], 1000, 1300);
           setCropFile(resized);
+          setCropImageUrl(URL.createObjectURL(resized));
           setCropModalVisible(true);
         } catch (err) {
           console.error("Resize failed:", err);
-          setCropFile(filesToProcess[0]);
+          const original = filesToProcess[0];
+          setCropFile(original);
+          setCropImageUrl(URL.createObjectURL(original));
           setCropModalVisible(true);
         } finally {
           setIsUploading(false);
@@ -423,6 +461,10 @@ function Receipts() {
   const handleCropConfirm = (croppedFile) => {
     setCropModalVisible(false);
     setCropFile(null);
+    if (cropImageUrl) {
+      URL.revokeObjectURL(cropImageUrl);
+      setCropImageUrl('');
+    }
     // Defer processing by 700ms to yield the main thread to Android OS focus/resume event loop
     setTimeout(() => {
       processFiles([croppedFile]);
@@ -433,6 +475,10 @@ function Receipts() {
   const handleCropCancel = () => {
     setCropModalVisible(false);
     setCropFile(null);
+    if (cropImageUrl) {
+      URL.revokeObjectURL(cropImageUrl);
+      setCropImageUrl('');
+    }
   };
 
   const moveToNextOrClose = (currentQueue) => {
@@ -472,14 +518,7 @@ function Receipts() {
     }
 
     try {
-<<<<<<< Updated upstream
-      setIsSaving(true);
-      const itemsToSave = (verifyData.items || []).map(item => ({
-        ...item,
-        name: item.name ? trTitleCase(cleanItemName(item.name)) : item.name,
-        price: parseFloat(item.price) || 0
-      }));
-=======
+      setIsSavingDoc(true);
       const itemsToSave = (verifyData.items || []).map((item, index) => {
         const cleanedName = item.name ? trTitleCase(cleanItemName(brandAutoCorrect(item.name))) : item.name;
         
@@ -501,13 +540,19 @@ function Receipts() {
           price: parseFloat(item.price) || 0
         };
       });
->>>>>>> Stashed changes
 
       // 🔥 If offline, skip waiting for the background storage upload entirely to make saving instantaneous
       const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
       let uploadResult = { imageUrl: null, storagePath: null };
       if (!isOffline && verifyData.uploadPromise) {
         uploadResult = await verifyData.uploadPromise;
+      }
+
+      // 🔥 Abort if user clicked Cancel or the modal changed while we were waiting!
+      if (activeVerifyRef.current !== verifyData) {
+         console.warn("Save aborted because the modal was closed or changed.");
+         setIsSavingDoc(false);
+         return;
       }
 
       const newReceiptData = {
@@ -540,7 +585,7 @@ function Receipts() {
       console.error("Error saving document: ", e);
       setError(t('common.msg_save_failed'));
     } finally {
-      setIsSaving(false);
+      setIsSavingDoc(false);
     }
   };
 
@@ -634,15 +679,17 @@ function Receipts() {
         handleSendToManual={handleSendToManual}
         handleCancelSave={handleCancelSave}
         handleConfirmSave={handleConfirmSave}
-        isSaving={isSaving}
+        isSavingDoc={isSavingDoc}
       />
 
-      <ImageCropModal
-        show={cropModalVisible}
-        file={cropFile}
-        onConfirm={handleCropConfirm}
-        onCancel={handleCropCancel}
-      />
+      {cropFile && cropModalVisible && cropImageUrl && (
+        <PerspectiveCropModal
+          visible={cropModalVisible}
+          imageSrc={cropImageUrl}
+          onClose={handleCropCancel}
+          onCropComplete={handleCropConfirm}
+        />
+      )}
 
     </div>
   );

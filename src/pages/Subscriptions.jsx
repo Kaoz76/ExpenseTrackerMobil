@@ -78,6 +78,13 @@ function Subscriptions() {
       return;
     }
 
+    // Day of Month Validation (between 1 and 31)
+    const dayValue = parseInt(dayOfMonth, 10);
+    if (isNaN(dayValue) || dayValue < 1 || dayValue > 31) {
+      alert(t('common.msg_day_invalid'));
+      return;
+    }
+
     setAdding(true);
     try {
       await addDoc(collection(db, "subscriptions"), {
