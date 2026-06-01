@@ -116,7 +116,8 @@ function Dashboard() {
       collection(db, "receipts"),
       where("userId", "==", user.uid),
       where("createdAt", ">=", startOfMonth),
-      where("createdAt", "<=", endOfMonth)
+      where("createdAt", "<=", endOfMonth),
+      orderBy("createdAt", "desc")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -142,7 +143,8 @@ function Dashboard() {
       collection(db, "receipts"),
       where("userId", "==", user.uid),
       where("createdAt", ">=", startOfLastMonth),
-      where("createdAt", "<=", endOfLastMonth)
+      where("createdAt", "<=", endOfLastMonth),
+      orderBy("createdAt", "desc")
     );
 
     getDocs(q).then((snapshot) => {
@@ -230,7 +232,7 @@ function Dashboard() {
     if (lastMonthStats.totalSpent === 0) return null;
     const diff = monthlyStats.totalSpent - lastMonthStats.totalSpent;
     const percentage = ((Math.abs(diff) / lastMonthStats.totalSpent) * 100).toFixed(1);
-    
+
     if (diff > 0) {
       return (
         <span className="badge bg-danger bg-opacity-10 text-danger ms-2 px-2 py-1 border border-danger-subtle rounded-pill">
@@ -293,7 +295,7 @@ function Dashboard() {
             <div className="col-12">
               <div className="card shadow-sm">
                 <div className="card-body p-5 text-center">
-                   <h5 className="text-muted"><Link to="/login">{t('common.log_in')}</Link> {t('common.login_to_see')}</h5>
+                  <h5 className="text-muted"><Link to="/login">{t('common.log_in')}</Link> {t('common.login_to_see')}</h5>
                 </div>
               </div>
             </div>
