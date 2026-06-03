@@ -13,9 +13,21 @@ import { isFuzzyMatch } from './receiptUtils';
 export const extractDataFromText = (text, language, defaultCurrencyCode, rules) => {
   if (!text) return { total: 0, items: [] };
 
+  // Pre-clean common Tesseract misreads:
+  // 1. Correct space-separated prices at the end of lines (e.g. "*534   47" -> "*534,47")
+  const spacePriceRegex = /\b(\d+)\s+(\d{2})(\s*[-*%₺$€£]?[a-zA-Z]*)$/gm;
+  let preCleanedText = text.replace(spacePriceRegex, '$1,$2$3');
+
+  // 2. Correct British Pound sign misreads on Turkish receipts (e.g. "£T" -> "TL", "£" -> "TL")
+  if (language === 'tr') {
+    preCleanedText = preCleanedText.replace(/£T/gi, 'TL').replace(/£/g, 'TL');
+  } else {
+    preCleanedText = preCleanedText.replace(/£T/gi, 'TL');
+  }
+
   // Remove spaces between digits and dots/commas (e.g. "135, 00" -> "135,00")
   // Also remove spaces after a minus sign followed by a digit (e.g. "- 47,25" -> "-47,25")
-  const cleanedText = text
+  const cleanedText = preCleanedText
     .replace(/(\d+)\s*([.,])\s*(\d+)/g, '$1$2$3')
     .replace(/-\s*(\d+)/g, '-$1');
 
