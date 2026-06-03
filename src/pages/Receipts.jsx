@@ -138,7 +138,7 @@ function Receipts() {
         // Enhance image for better OCR: grayscale + contrast + sharpening (only for ML Kit on mobile)
         processedFileForOCR = await preprocessForOCR(processedFileForSave);
       } else {
-        // Web: Use a higher resolution (1600x2000) and high quality (0.95) to preserve details for Tesseract
+        // Web: Use a higher resolution (1600x2000) and quality (0.95) to capture small receipt text clearly
         processedFileForSave = await resizeImageForTesseract(originalFile, 1600, 2000, 0.95);
         processedFileForOCR = processedFileForSave;
         // No preprocessForOCR for Tesseract as requested (original color & high resolution scans better)
@@ -315,7 +315,9 @@ function Receipts() {
         } else {
           const fileUrl = URL.createObjectURL(processedFileForOCR);
           const Tesseract = (await import('tesseract.js')).default;
-          const worker = await Tesseract.createWorker('tur+eng', 1, {
+          // Dynamically select language to prevent cross-language vocabulary interference (e.g. English dictionary matching "GO" instead of "80")
+          const ocrLang = language === 'tr' ? 'tur' : 'eng';
+          const worker = await Tesseract.createWorker(ocrLang, 1, {
             logger: m => {
               if (m.status === 'recognizing text') {
                 setUploadProgress(parseInt(m.progress * 100)); // Update progress (approximate, max 100)

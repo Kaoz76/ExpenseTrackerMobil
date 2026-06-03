@@ -24,9 +24,9 @@ function ReceiptList({
       <div className="list-group list-group-flush">
         <div className="list-group-item bg-body-tertiary text-body-secondary fw-bold small text-uppercase d-flex align-items-center">
           <div style={{ flex: 2 }}>{t('common.store_name')}</div>
-          <div style={{ flex: 1 }}>{t('common.date')}</div>
+          <div style={{ flex: 1, paddingRight: '12px' }}>{t('common.date')}</div>
           <div style={{ flex: 1, textAlign: 'right' }}>{t('common.total_price_ocr')}</div>
-          <div style={{ width: '40px' }}></div>
+          <div style={{ width: '50px' }}></div>
         </div>
 
         {loadingReceipts && <div className="p-4 text-center text-muted">{t('common.loading_receipts')}</div>}
@@ -48,7 +48,7 @@ function ReceiptList({
                 <div style={{ flex: 2, minWidth: 0 }} className="d-flex align-items-center pe-2">
                   <span className="fw-bold text-truncate">{receipt.fileName}</span>
                 </div>
-                <div style={{ flex: 1 }} className="text-muted small">{formatDate(receipt.createdAt)}</div>
+                <div style={{ flex: 1, paddingRight: '12px' }} className="text-muted small">{formatDate(receipt.createdAt)}</div>
                 <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary">{formatPrice(receipt.price, receipt.currency)}</div>
                 <div style={{ width: '50px', display: 'flex', justifyContent: 'flex-end' }}>
                   <button
