@@ -543,7 +543,7 @@ function Receipts() {
 
   // KAYDI ONAYLA VE VERİTABANINA YAZ
   const handleConfirmSave = async () => {
-    if (isSaving) return;
+    if (isSavingDoc) return;
     if (!verifyData.fileName || !verifyData.fileName.trim()) {
       alert(t('common.msg_enter_store_before_save'));
       return;
