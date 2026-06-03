@@ -7,9 +7,10 @@ import { isFuzzyMatch } from './receiptUtils';
  * @param {string} text - Raw OCR text
  * @param {string} language - Current app language code (e.g. 'tr', 'en')
  * @param {string} defaultCurrencyCode - Fallback currency code (e.g. 'USD')
+ * @param {Object} [rules] - OCR engine-specific parser rules (from mlKitParserRules or tesseractParserRules)
  * @returns {Object} { total, items, currency }
  */
-export const extractDataFromText = (text, language, defaultCurrencyCode) => {
+export const extractDataFromText = (text, language, defaultCurrencyCode, rules) => {
   if (!text) return { total: 0, items: [] };
 
   // Remove spaces between digits and dots/commas (e.g. "135, 00" -> "135,00")
@@ -62,12 +63,13 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
     isUSStyleTax = (language !== 'tr') && (ukTaxScore <= usTaxScore);
   }
 
-  const keywordRegex = /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart)/i;
-  const fuzzyKeywords = ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'totale', 'balance', 'due', 'nakit', 'kredi'];
-  const excludeRegex = /(kdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][sş]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\s*no|z\s*no)/i;
-  const multiplierRegex = /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX*]|tl\/(?:kg|gr|kc)|tg|[\d.,]+(?:\s*tg)?)/i;
-  const priceRegex = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
-  const itemSizeRegex = /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b/i;
+  // OCR engine'e özel kurallar (dışarıdan verilmezse varsayılan değerler kullanılır)
+  const keywordRegex = rules?.keywordRegex || /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart)/i;
+  const fuzzyKeywords = rules?.fuzzyKeywords || ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'totale', 'balance', 'due', 'nakit', 'kredi'];
+  const excludeRegex = rules?.excludeRegex || /(kdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][şs]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\s*no|z\s*no)/i;
+  const multiplierRegex = rules?.multiplierRegex || /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX]|tl\/(?:kg|gr|kc)|tg)/i;
+  const priceRegex = rules?.priceRegex || /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
+  const itemSizeRegex = rules?.itemSizeRegex || /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b/i;
 
   const normalizeSize = (rawSize) => {
     if (!rawSize) return "";
@@ -93,7 +95,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
   let previousOrphanedSize = "";
   let pendingPrice = null;
   let globalCachedSize = "";
-  
+
   for (let line of lines) {
     const multiMatch = line.match(multiplierRegex);
     if (multiMatch) {
@@ -106,12 +108,12 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
 
   const cleanAndParseNumber = (valStr) => {
     let cleanStr = valStr.replace(/[^0-9.,-]/g, '');
-    
+
     // Check if both exist to find the actual decimal
     if (cleanStr.includes(',') && cleanStr.includes('.')) {
       const lastComma = cleanStr.lastIndexOf(',');
       const lastDot = cleanStr.lastIndexOf('.');
-      
+
       if (lastComma > lastDot) {
         // Comma is the decimal separator (European/Turkish: 1.000,50)
         cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
@@ -145,10 +147,20 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           const parsed = cleanAndParseNumber(m);
           if (parsed) possibleTotals.push(parsed);
         });
+      } else {
+        // Keyword satırında fiyat yok — bir sonraki satıra bak
+        // (ML Kit bazen "TOPLAM" ve "*582.80"'ı farklı satırlara koyabiliyor)
+        if (i + 1 < lines.length) {
+          const nextLine = lines[i + 1];
+          const nextMatches = nextLine.match(priceRegex);
+          if (nextMatches) {
+            nextMatches.forEach(m => {
+              const parsed = cleanAndParseNumber(m);
+              if (parsed) possibleTotals.push(parsed);
+            });
+          }
+        }
       }
-      // If it has a keyword, do not let excludeRegex skip it, but we can still extract tax from it.
-      // We don't 'continue' because we might want to extract tax or it might be a valid total line.
-      // Wait, if we 'continue' we won't add it as an item. Totals shouldn't be items.
       continue;
     }
 
@@ -188,7 +200,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
 
         let namePart = line.substring(0, line.lastIndexOf(lastMatch)).trim();
         let isGarbageName = namePart.length === 0 || namePart.length <= 4 || /^[%xX\d\s*#\-.,'":;]+$/.test(namePart);
-        
+
         // Ensure the name has at least 2 actual alphabet letters to not be considered garbage
         const letterMatch = namePart.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
         if (!letterMatch || letterMatch.length < 2) isGarbageName = true;
@@ -212,23 +224,23 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           }
 
           let cleaned = namePart
-            .replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '') 
-            .replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '') 
-            .replace(/\b\d+\s?[xX]\b/g, '')     
-            .replace(/[*#%]/g, ' ')               
-            .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '') 
-            .replace(/\s+/g, ' ')               
+            .replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '')
+            .replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '')
+            .replace(/\b\d+\s?[xX]\b/g, '')
+            .replace(/[*#%]/g, ' ')
+            .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '')
+            .replace(/\s+/g, ' ')
             .trim();
 
           let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
           let finalSize = (formattedName.toLowerCase().includes("patates") || formattedName.toLowerCase().includes("kg")) ? globalCachedSize : (itemSize || "");
 
           const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
-          
+
           // Ensure the name has at least 2 actual alphabet letters to filter out pure numbers/punctuation (e.g. "3.995")
           const letterMatchFormatted = formattedName.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
           const hasEnoughLetters = letterMatchFormatted && letterMatchFormatted.length >= 2;
-          
+
           if (formattedName.length >= 2 && !isJustUnitOrMultiplier && hasEnoughLetters) {
             extractedItems.push({
               name: formattedName,
@@ -238,7 +250,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           }
 
           previousOrphanedText = "";
-          if (finalSize === globalCachedSize) globalCachedSize = ""; 
+          if (finalSize === globalCachedSize) globalCachedSize = "";
         }
       }
     } else {
@@ -257,12 +269,12 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           }
 
           let cleaned = line
-            .replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '') 
-            .replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '') 
-            .replace(/\b\d+\s?[xX]\b/g, '')     
-            .replace(/[*#%]/g, ' ')               
-            .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '') 
-            .replace(/\s+/g, ' ')               
+            .replace(/[%*]\s?\d+(?:[.,]\d+)?/g, '')
+            .replace(/\b[xX]\s?\d+(?:[.,]\d+)?\b/g, '')
+            .replace(/\b\d+\s?[xX]\b/g, '')
+            .replace(/[*#%]/g, ' ')
+            .replace(/\b(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b\s*$/i, '')
+            .replace(/\s+/g, ' ')
             .trim();
 
           let formattedName = trTitleCase(cleanItemName(brandAutoCorrect(cleaned)));
@@ -311,7 +323,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
           closest = totalsToUse[i];
         }
       }
-      
+
       finalTotal = closest;
     } else {
       finalTotal = Math.max(...totalsToUse);
@@ -348,6 +360,8 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
       }
     }
   }
+
+  finalTotal = Math.round(finalTotal * 100) / 100;
 
   return { total: finalTotal, items: extractedItems, currency: finalCurrency };
 };
