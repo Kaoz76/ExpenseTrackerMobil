@@ -5,8 +5,9 @@ import { useTheme } from '../context/ThemeContext';
 import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { db, storage } from '../firebase';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch, Timestamp } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
 import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExclamationTriangle, FaBell, FaClock, FaTrash, FaFileExport, FaFileImport, FaDatabase } from 'react-icons/fa';
 
 function Settings() {
@@ -221,6 +222,17 @@ function Settings() {
       const querySnapshot = await getDocs(q);
       const docsArray = querySnapshot.docs;
 
+      // 🔥 Delete receipt images from Firebase Storage before removing documents
+      const storageDeletePromises = docsArray
+        .map((document) => document.data().storagePath)
+        .filter(Boolean)
+        .map((storagePath) =>
+          deleteObject(ref(storage, storagePath)).catch((err) =>
+            console.warn("Could not delete storage file:", storagePath, err)
+          )
+        );
+      await Promise.all(storageDeletePromises);
+
       // 🔥 GELİŞTİRME 1: Firebase 500 Belge Sınırı Çözümü (Chunking)
       // Belgeleri 500'lük parçalara ayırarak siliyoruz
       for (let i = 0; i < docsArray.length; i += 500) {
@@ -291,12 +303,29 @@ function Settings() {
         const chunk = data.slice(i, i + 500);
 
         chunk.forEach(item => {
-          if (item.userId && item.items) {
+          if (item.items) {
              const docRef = doc(collection(db, "receipts"));
+             
+             // Convert serialized plain object createdAt to a real Firestore Timestamp
+             let importedCreatedAt = Timestamp.now();
+             if (item.createdAt) {
+               if (item.createdAt.seconds !== undefined) {
+                 importedCreatedAt = new Timestamp(item.createdAt.seconds, item.createdAt.nanoseconds || 0);
+               } else if (item.createdAt._seconds !== undefined) {
+                 importedCreatedAt = new Timestamp(item.createdAt._seconds, item.createdAt._nanoseconds || 0);
+               } else {
+                 const parsed = new Date(item.createdAt);
+                 if (!isNaN(parsed.getTime())) {
+                   importedCreatedAt = Timestamp.fromDate(parsed);
+                 }
+               }
+             }
+
              // Override item.userId with user.uid to guarantee ownership
              const importedItem = {
                ...item,
-               userId: user.uid
+               userId: user.uid,
+               createdAt: importedCreatedAt
              };
              batch.set(docRef, importedItem);
           }

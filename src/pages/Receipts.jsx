@@ -4,7 +4,7 @@ import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { collection, addDoc, query, where, Timestamp, getDocs, orderBy, limit } from "firebase/firestore";
 import { Link, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
@@ -593,10 +593,25 @@ function Receipts() {
     }
   };
 
+  // 🔥 Clean up an orphaned Firebase Storage file when a scan is discarded
+  const cleanupOrphanedUpload = async (scan) => {
+    if (!scan?.uploadPromise) return;
+    try {
+      const result = await scan.uploadPromise;
+      if (result?.storagePath) {
+        await deleteObject(ref(storage, result.storagePath));
+      }
+    } catch (err) {
+      // Upload may have failed/timed-out — nothing to clean up
+      console.warn("Could not clean up orphaned storage file:", err);
+    }
+  };
+
   const handleCancelSave = () => {
     if (verifyData?.tempImageUrl) {
       URL.revokeObjectURL(verifyData.tempImageUrl);
     }
+    cleanupOrphanedUpload(verifyData);
     moveToNextOrClose(processedScans);
   };
 
@@ -605,6 +620,7 @@ function Receipts() {
       if (scan.tempImageUrl) {
         URL.revokeObjectURL(scan.tempImageUrl);
       }
+      cleanupOrphanedUpload(scan);
     });
     setProcessedScans([]);
     setShowVerifyModal(false);

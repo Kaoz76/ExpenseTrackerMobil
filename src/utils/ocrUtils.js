@@ -157,7 +157,16 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
         let taxMatches = line.match(priceRegex);
         if (taxMatches && taxMatches.length > 0) {
           const parsed = cleanAndParseNumber(taxMatches[taxMatches.length - 1]);
-          if (parsed) extractedTaxAmount += Math.abs(parsed);
+          if (parsed) {
+            const taxVal = Math.abs(parsed);
+            extractedTaxAmount += taxVal;
+            extractedItems.push({
+              name: language === 'tr' ? 'Satış Vergisi' : 'Sales Tax',
+              price: taxVal,
+              type: language === 'tr' ? 'Vergiler' : 'Taxes',
+              size: ''
+            });
+          }
         }
       }
       continue;
@@ -285,7 +294,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode) => {
   let finalTotal = 0;
   const itemsSum = extractedItems.reduce((acc, item) => acc + item.price, 0);
   const positiveItemsSum = extractedItems.filter(i => i.price > 0).reduce((acc, item) => acc + item.price, 0);
-  const targetSum = isUSStyleTax ? (itemsSum + extractedTaxAmount) : itemsSum;
+  const targetSum = itemsSum;
 
   if (possibleTotals.length > 0) {
     // Filter out negative totals — a receipt total is always positive
