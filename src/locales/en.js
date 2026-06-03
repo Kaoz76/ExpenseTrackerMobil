@@ -390,6 +390,7 @@ export const en = {
 
     // AI Enrichment
     msg_ai_enriching: "AI is detecting brands, types & sizes...",
+    msg_preparing_image: "Preparing image...",
 
     // Placeholders
     placeholder_store: "e.g., Walmart",
@@ -420,6 +421,14 @@ export const en = {
 
     // Pie Chart
     others_combined: "Others",
-    pie_no_data: "No category data"
+    pie_no_data: "No category data",
+
+    // Perspective Crop Modal
+    perspective_crop_title: "Straighten Receipt (Perspective Crop)",
+    perspective_crop_desc: "Drag the 4 corners to select the exact boundaries of the receipt.",
+    perspective_crop_rotate: "Rotate",
+    perspective_crop_cancel: "Cancel",
+    perspective_crop_processing: "Processing...",
+    perspective_crop_confirm: "Crop & Straighten"
   }
 };
