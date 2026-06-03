@@ -117,7 +117,7 @@ export const ReportProvider = ({ children }) => {
         const type = data.isManual ? "Manual Entry" : "Scanned Receipt";
 
         const rawPrice = Number(data.price) || 0;
-        const priceStr = rawPrice.toFixed(2).replace('.', ',');
+        const priceStr = rawPrice.toFixed(2);
 
         let details = "";
         if (data.items && Array.isArray(data.items)) {
