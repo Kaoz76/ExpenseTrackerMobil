@@ -390,6 +390,7 @@ export const tr = {
 
     // Yapay Zeka Zenginleştirme
     msg_ai_enriching: "Yapay zeka markaları, türleri ve boyutları tespit ediyor...",
+    msg_preparing_image: "Görsel hazırlanıyor...",
 
     // Yer tutucular
     placeholder_store: "örn. Migros",
@@ -420,6 +421,14 @@ export const tr = {
 
     // Pie Chart
     others_combined: "Diğerleri",
-    pie_no_data: "Kategori verisi yok"
+    pie_no_data: "Kategori verisi yok",
+
+    // Perspektif Kırpma Modalı
+    perspective_crop_title: "Fişi Düzleştir (Perspektif Kırpma)",
+    perspective_crop_desc: "4 köşeyi sürükleyerek fişin tam sınırlarını seçin.",
+    perspective_crop_rotate: "Döndür",
+    perspective_crop_cancel: "İptal",
+    perspective_crop_processing: "İşleniyor...",
+    perspective_crop_confirm: "Kes ve Düzleştir"
   }
 };

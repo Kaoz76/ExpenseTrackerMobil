@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { perspectiveWarp } from '../../utils/perspectiveTransform';
 import { getSmartCropBox, rotateImage90Deg } from '../../utils/imageUtils';
+import { useLanguage } from '../../context/LanguageContext';
 import { FaSyncAlt } from 'react-icons/fa';
 
 const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) => {
+  const { t } = useLanguage();
   const containerRef = useRef(null);
   const imageRef = useRef(null);
   const [currentImageSrc, setCurrentImageSrc] = useState(imageSrc);
@@ -184,12 +186,12 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
       <div className="modal-dialog modal-dialog-centered modal-lg">
         <div className="modal-content bg-dark text-white border-secondary">
           <div className="modal-header border-secondary">
-            <h5 className="modal-title">Fişi Düzleştir (Perspektif Kırpma)</h5>
+            <h5 className="modal-title">{t('common.perspective_crop_title')}</h5>
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
           <div className="modal-body text-center p-0 position-relative" style={{ overflow: 'hidden' }}>
             
-            <p className="p-3 mb-0 text-white-50">4 köşeyi sürükleyerek fişin tam sınırlarını seçin.</p>
+            <p className="p-3 mb-0 text-white-50">{t('common.perspective_crop_desc')}</p>
             
             <div 
               className="d-inline-block position-relative" 
@@ -266,12 +268,12 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
           </div>
           <div className="modal-footer border-secondary d-flex justify-content-between">
             <button type="button" className="btn btn-outline-light" onClick={handleRotate} disabled={isProcessing}>
-              <FaSyncAlt className="me-2" /> Döndür
+              <FaSyncAlt className="me-2" /> {t('common.perspective_crop_rotate')}
             </button>
             <div>
-              <button type="button" className="btn btn-secondary me-2" onClick={onClose} disabled={isProcessing}>İptal</button>
+              <button type="button" className="btn btn-secondary me-2" onClick={onClose} disabled={isProcessing}>{t('common.perspective_crop_cancel')}</button>
               <button type="button" className="btn btn-primary" onClick={handleCrop} disabled={isProcessing || corners.length !== 4}>
-                {isProcessing ? 'İşleniyor...' : 'Kes ve Düzleştir'}
+                {isProcessing ? t('common.perspective_crop_processing') : t('common.perspective_crop_confirm')}
               </button>
             </div>
           </div>
