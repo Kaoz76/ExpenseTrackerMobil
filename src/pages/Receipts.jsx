@@ -530,14 +530,18 @@ function Receipts() {
           }
         }
         
-        // Remove internal tracking fields before saving to Firebase
-        const finalItem = { ...item };
-        delete finalItem._isLearned;
+        const priceVal = parseFloat(item.price) || 0;
+        let finalType = item.type || '';
+        if (priceVal < 0) {
+          finalType = verifyData.currency === 'TRY' || language === 'tr' ? 'İndirim' : 'Discount';
+        }
         
         return {
-          ...finalItem,
           name: cleanedName,
-          price: parseFloat(item.price) || 0
+          price: priceVal,
+          type: finalType,
+          brand: item.brand || '',
+          size: item.size || ''
         };
       });
 

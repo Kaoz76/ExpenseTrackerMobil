@@ -78,9 +78,10 @@ function ProductDetails() {
     rawReceipts.forEach((data) => {
       if (data.items && Array.isArray(data.items)) {
         data.items.forEach(item => {
+          // Skip items with negative prices (discounts/sales) or discount categories
           const itemPrice = Number(item.price);
-          // Skip items with negative prices (discounts/sales)
-          if (itemPrice < 0) return;
+          const normalizedType = (item.type || '').trim().toLowerCase();
+          if (itemPrice < 0 || normalizedType === 'discount' || normalizedType === 'indirim' || normalizedType === 'i̇ndirim') return;
 
           // Normalize brand comparison: treat null/undefined/empty as equivalent
           const itemBrand = item.brand || '';

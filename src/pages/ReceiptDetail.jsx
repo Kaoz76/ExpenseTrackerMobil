@@ -17,7 +17,7 @@ function ReceiptDetail() {
   const { receiptId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [receipt, setReceipt] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -101,8 +101,14 @@ function ReceiptDetail() {
   // ─── ITEM CRUD ─────────────────────────────────
   const handleItemChange = (index, field, value) => {
     const updated = [...items];
-    // 🔥 DÜZELTME 2: Gereksiz ternary operatörü temizlendi
-    updated[index] = { ...updated[index], [field]: value };
+    let updatedItem = { ...updated[index], [field]: value };
+
+    const priceVal = parseFloat(updatedItem.price);
+    if (field === 'price' && !isNaN(priceVal) && priceVal < 0) {
+      updatedItem.type = receipt?.currency === 'TRY' || language === 'tr' ? 'İndirim' : 'Discount';
+    }
+
+    updated[index] = updatedItem;
     setItems(updated);
     markChanged();
   };
@@ -116,11 +122,16 @@ function ReceiptDetail() {
 
   const handleAddItem = () => {
     if (!newItem.name.trim()) return;
+    const priceVal = parseFloat(newItem.price) || 0;
+    const itemType = priceVal < 0
+      ? (receipt?.currency === 'TRY' || language === 'tr' ? 'İndirim' : 'Discount')
+      : newItem.type.trim();
+
     const itemToAdd = {
       name: newItem.name.trim(),
-      price: parseFloat(newItem.price) || 0,
+      price: priceVal,
       brand: newItem.brand.trim(),
-      type: newItem.type.trim(),
+      type: itemType,
       size: newItem.size.trim()
     };
     setItems([...items, itemToAdd]);
@@ -133,10 +144,20 @@ function ReceiptDetail() {
   const handleSaveItems = async () => {
     setSaving(true);
     try {
-      const cleanedItems = items.map(item => ({
-        ...item,
-        price: parseFloat(item.price) || 0
-      }));
+      const cleanedItems = items.map(item => {
+        const priceVal = parseFloat(item.price) || 0;
+        let finalType = item.type || '';
+        if (priceVal < 0) {
+          finalType = receipt?.currency === 'TRY' || language === 'tr' ? 'İndirim' : 'Discount';
+        }
+        return {
+          name: item.name || '',
+          price: priceVal,
+          type: finalType,
+          brand: item.brand || '',
+          size: item.size || ''
+        };
+      });
 
       // 🔥 DÜZELTME 1: Ürünlerin yeni toplamını hesapla ve ana fiş tutarıyla senkronize et!
       const newItemsTotal = Math.max(0, cleanedItems.reduce((sum, item) => sum + item.price, 0));
