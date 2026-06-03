@@ -57,3 +57,4 @@ export const resizeImageForTesseract = (file, maxWidth = 1400, maxHeight = 1800,
     img.src = url;
   });
 };
+

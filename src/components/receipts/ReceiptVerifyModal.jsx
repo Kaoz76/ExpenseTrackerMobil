@@ -212,6 +212,19 @@ function ReceiptVerifyModal({
                   )}
                 </div>
               )}
+              
+              {verifyData?.rawOcrText && (
+                <div className="mt-3 mb-2">
+                  <details className="card border-secondary bg-dark text-white p-2" style={{ borderRadius: '6px' }}>
+                    <summary className="fw-bold text-muted" style={{ cursor: 'pointer', fontSize: '12px', outline: 'none' }}>
+                      Show Raw OCR Text / Ham Metni Göster
+                    </summary>
+                    <pre className="mt-2 p-2 bg-light text-dark rounded border text-start mb-0" style={{ fontSize: '10px', maxHeight: '150px', overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                      {verifyData.rawOcrText}
+                    </pre>
+                  </details>
+                </div>
+              )}
 
             </div>
 

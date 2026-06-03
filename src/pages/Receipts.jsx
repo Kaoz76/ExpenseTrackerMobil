@@ -22,6 +22,7 @@ import PerspectiveCropModal from '../components/receipts/PerspectiveCropModal';
 
 import { resizeImage, preprocessForOCR } from '../utils/imageUtils';
 import { resizeImageForTesseract } from '../utils/tesseractImageUtils';
+import { tesseractParserRules } from '../utils/tesseractParserRules';
 import { applyLearnedCorrections, saveCorrection } from '../utils/learningUtils';
 
 
@@ -129,7 +130,7 @@ function Receipts() {
     const processFile = async (originalFile) => {
       let processedFileForSave = originalFile;
       let processedFileForOCR = originalFile;
-        
+
       // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
       // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
       if (Capacitor.isNativePlatform()) {
@@ -152,24 +153,24 @@ function Receipts() {
         } else {
           const uploadTimeoutMs = 10000;
           uploadPromise = Promise.race([
-          (async () => {
-            try {
-              const timestamp = Date.now();
-              const safeFileName = processedFileForSave.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-              const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
-              const storageRef = ref(storage, storagePath);
-              await uploadBytesResumable(storageRef, processedFileForSave);
-              const imageUrl = await getDownloadURL(storageRef);
-              return { storagePath, imageUrl };
-            } catch (err) {
-              console.error("Storage upload failed:", err);
-              return { storagePath: null, imageUrl: null };
-            }
-          })(),
-          new Promise(resolve =>
-            setTimeout(() => resolve({ storagePath: null, imageUrl: null }), uploadTimeoutMs)
-          )
-        ]);
+            (async () => {
+              try {
+                const timestamp = Date.now();
+                const safeFileName = processedFileForSave.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const storagePath = `receipts/${user.uid}/${timestamp}_${safeFileName}`;
+                const storageRef = ref(storage, storagePath);
+                await uploadBytesResumable(storageRef, processedFileForSave);
+                const imageUrl = await getDownloadURL(storageRef);
+                return { storagePath, imageUrl };
+              } catch (err) {
+                console.error("Storage upload failed:", err);
+                return { storagePath: null, imageUrl: null };
+              }
+            })(),
+            new Promise(resolve =>
+              setTimeout(() => resolve({ storagePath: null, imageUrl: null }), uploadTimeoutMs)
+            )
+          ]);
         }
       }
 
@@ -314,21 +315,52 @@ function Receipts() {
         } else {
           const fileUrl = URL.createObjectURL(processedFileForOCR);
           const Tesseract = (await import('tesseract.js')).default;
-          const result = await Tesseract.recognize(
+          const worker = await Tesseract.createWorker('tur+eng', 1, {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                setUploadProgress(parseInt(m.progress * 100)); // Update progress (approximate, max 100)
+              }
+            }
+          });
+
+          await worker.setParameters({
+            tessedit_pageseg_mode: '6' // Force single block line-by-line reading to prevent column-splitting errors
+          });
+
+          const result = await worker.recognize(
             fileUrl,
-            'tur+eng',
+            {},
             {
-              logger: m => {
-                if (m.status === 'recognizing text') {
-                  setUploadProgress(parseInt(m.progress * 100)); // Update progress (approximate, max 100)
-                }
-              },
-              tessedit_pageseg_mode: '6' // Force single block line-by-line reading to prevent column-splitting errors
+              blocks: true,
+              tsv: true
             }
           );
+
+          // Extract words from blocks hierarchy (required in Tesseract.js v5+)
+          const words = [];
+          if (result.data && result.data.blocks) {
+            result.data.blocks.forEach(block => {
+              if (block.paragraphs) {
+                block.paragraphs.forEach(para => {
+                  if (para.lines) {
+                    para.lines.forEach(line => {
+                      if (line.words) {
+                        words.push(...line.words);
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          }
+
           console.log("Raw Tesseract OCR Text:\n", result.data.text);
-          rawOcrText = result.data.text;
-          extractedData = extractDataFromText(result.data.text, language, currency?.code || 'USD');
+          const processedText = groupTesseractWordsIntoLines(words);
+          console.log("Structured Tesseract OCR Text:\n", processedText);
+          rawOcrText = processedText;
+          extractedData = extractDataFromText(processedText, language, currency?.code || 'USD', tesseractParserRules);
+          
+          await worker.terminate();
           URL.revokeObjectURL(fileUrl);
         }
       } catch (ocrError) {
@@ -357,7 +389,7 @@ function Receipts() {
           console.warn('AI enrichment failed, using raw OCR items:', aiError);
         }
       }
-      
+
       // Apply User Learning Memory (fixes mistakes AI or OCR consistently make)
       enrichedItems = applyLearnedCorrections(enrichedItems);
 
@@ -388,10 +420,10 @@ function Receipts() {
             .replace('{{current}}', String(i + 1))
             .replace('{{total}}', String(filesToProcess.length))
         );
-        
+
         const result = await processFile(filesToProcess[i]);
         results.push(result);
-        
+
         // Progress updates incrementally as each file finishes
         setUploadProgress(((i + 1) / filesToProcess.length) * 100);
       }
@@ -521,19 +553,19 @@ function Receipts() {
       setIsSavingDoc(true);
       const itemsToSave = (verifyData.items || []).map((item, index) => {
         const cleanedName = item.name ? trTitleCase(cleanItemName(brandAutoCorrect(item.name))) : item.name;
-        
+
         // Detect user corrections for Learning Memory
         const originalItem = verifyData.originalItems && verifyData.originalItems[index];
-        if (originalItem) { 
+        if (originalItem) {
           if (originalItem.name !== item.name || originalItem.type !== item.type) {
             saveCorrection(originalItem.name, cleanedName, item.type);
           }
         }
-        
+
         // Remove internal tracking fields before saving to Firebase
         const finalItem = { ...item };
         delete finalItem._isLearned;
-        
+
         return {
           ...finalItem,
           name: cleanedName,
@@ -550,9 +582,9 @@ function Receipts() {
 
       // 🔥 Abort if user clicked Cancel or the modal changed while we were waiting!
       if (activeVerifyRef.current !== verifyData) {
-         console.warn("Save aborted because the modal was closed or changed.");
-         setIsSavingDoc(false);
-         return;
+        console.warn("Save aborted because the modal was closed or changed.");
+        setIsSavingDoc(false);
+        return;
       }
 
       const newReceiptData = {
@@ -694,5 +726,117 @@ function Receipts() {
     </div>
   );
 }
+
+/**
+ * Groups Tesseract words into lines based on their spatial alignment.
+ * Uses a similar slope-based projection and proximity clustering as the ML Kit path.
+ * 
+ * @param {Array} words - Array of Tesseract word objects
+ * @returns {string} Grouped and reconstructed text
+ */
+const groupTesseractWordsIntoLines = (words) => {
+  if (!words || words.length === 0) return "";
+
+  // Map Tesseract bbox to standard format: topLeft, topRight, bottomLeft, bottomRight
+  const detections = words.map(w => {
+    const { x0, y0, x1, y1 } = w.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 };
+    return {
+      text: w.text || "",
+      topLeft: [x0, y0],
+      topRight: [x1, y0],
+      bottomLeft: [x0, y1],
+      bottomRight: [x1, y1]
+    };
+  });
+
+  const getCenter = (item) => {
+    const tl = item.topLeft || [0, 0];
+    const br = item.bottomRight || [0, 0];
+    return { x: (tl[0] + br[0]) / 2, y: (tl[1] + br[1]) / 2 };
+  };
+
+  const getHeight = (item) => {
+    const tl = item.topLeft || [0, 0];
+    const bl = item.bottomLeft || [0, 0];
+    return Math.abs(bl[1] - tl[1]);
+  };
+
+  // Detect Y-axis orientation (usually not flipped in Tesseract, but safe to check)
+  let isYFlipped = false;
+  for (let det of detections) {
+    if (det.topLeft && det.bottomLeft && typeof det.topLeft[1] === 'number' && typeof det.bottomLeft[1] === 'number') {
+      if (det.bottomLeft[1] < det.topLeft[1]) {
+        isYFlipped = true;
+        break;
+      }
+    }
+  }
+
+  // Calculate median slope
+  let slopes = [];
+  detections.forEach(item => {
+    if (item.topLeft && item.topRight) {
+      let dx = item.topRight[0] - item.topLeft[0];
+      let dy = item.topRight[1] - item.topLeft[1];
+      if (Math.abs(dx) > 0.0001) slopes.push(dy / dx);
+    }
+  });
+  slopes.sort((a, b) => a - b);
+  let medianSlope = slopes.length > 0 ? slopes[Math.floor(slopes.length / 2)] : 0;
+
+  if (Math.abs(medianSlope) < 0.05) medianSlope = 0;
+
+  // Sort top-to-bottom
+  detections.sort((a, b) => {
+    let cA = getCenter(a);
+    let cB = getCenter(b);
+    let valA = cA.y - medianSlope * cA.x;
+    let valB = cB.y - medianSlope * cB.x;
+    return isYFlipped ? (valB - valA) : (valA - valB);
+  });
+
+  let lineGroups = [];
+
+  detections.forEach(item => {
+    let center = getCenter(item);
+    let itemHeight = getHeight(item);
+    const minHeight = itemHeight < 1 ? 0.02 : 15;
+    const effectiveHeight = Math.max(itemHeight, minHeight);
+
+    let added = false;
+    for (let group of lineGroups) {
+      let projectedY = group.startY + medianSlope * (center.x - group.startX);
+      const compareHeight = Math.max(effectiveHeight, group.height || effectiveHeight);
+      const tolerance = compareHeight * 0.5;
+
+      if (Math.abs(center.y - projectedY) < tolerance) {
+        group.items.push(item);
+        group.height = Math.max(group.height || 0, effectiveHeight);
+        added = true;
+        break;
+      }
+    }
+
+    if (!added) {
+      let dx = (item.topRight && item.topLeft) ? (item.topRight[0] - item.topLeft[0]) : 0;
+      let dy = (item.topRight && item.topLeft) ? (item.topRight[1] - item.topLeft[1]) : 0;
+      let itemSlope = Math.abs(dx) > 0.0001 ? dy / dx : medianSlope;
+
+      lineGroups.push({
+        startX: center.x,
+        startY: center.y,
+        slope: itemSlope,
+        height: effectiveHeight,
+        items: [item]
+      });
+    }
+  });
+
+  // Sort left-to-right within each line and join with triple spaces
+  return lineGroups.map(group => {
+    group.items.sort((a, b) => getCenter(a).x - getCenter(b).x);
+    return group.items.map(i => i.text).join('   ');
+  }).join('\n');
+};
 
 export default Receipts;
