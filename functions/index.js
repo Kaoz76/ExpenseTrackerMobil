@@ -9,7 +9,7 @@ const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const suggestedCategoriesTR = [
   'Abonelik', 'Akaryakıt', 'Alkol & Tütün', 'Ayakkabı', 'Bebek',
   'Diğer', 'Eczane', 'Eğitim', 'Eğlence', 'Elektronik', 'Ev',
-  'Evcil Hayvan', 'Fatura', 'Gıda', 'Giyim', 'Hobi', 'Kafe', 'Kira',
+  'Evcil Hayvan', 'Fatura', 'Gıda', 'Giyim', 'Hobi', 'İndirim', 'Kafe', 'Kira',
   'Kozmetik', 'Kitap', 'Kırtasiye', 'Market', 'Mobilya', 'Moda',
   'Oyun', 'Restoran', 'Sağlık', 'Spor', 'Taksi', 'Teknoloji',
   'Ulaşım', 'Vergiler', 'Yazılım', 'Yemek'
@@ -17,7 +17,7 @@ const suggestedCategoriesTR = [
 
 const suggestedCategoriesEN = [
   'Alcohol & Tobacco', 'Baby', 'Bills', 'Books', 'Cafe', 'Clothing',
-  'Cosmetics', 'Dining', 'Education', 'Electronics', 'Entertainment',
+  'Cosmetics', 'Discount', 'Dining', 'Education', 'Electronics', 'Entertainment',
   'Fashion', 'Food', 'Fuel', 'Furniture', 'Gaming', 'Grocery',
   'Health', 'Hobby', 'Home', 'Other', 'Pet', 'Pharmacy', 'Rent',
   'Restaurant', 'Shoes', 'Software', 'Sports', 'Stationery',

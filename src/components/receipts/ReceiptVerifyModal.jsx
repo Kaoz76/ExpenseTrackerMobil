@@ -17,7 +17,7 @@ function ReceiptVerifyModal({
   isSavingDoc
 }) {
   const { currency, favoriteCurrencies } = useCurrency();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [showItems, setShowItems] = useState(false);
 
   if (!showVerifyModal) return null;
@@ -25,7 +25,14 @@ function ReceiptVerifyModal({
   const handleItemChange = (index, field, value) => {
     if (!verifyData) return;
     const updatedItems = [...verifyData.items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    let updatedItem = { ...updatedItems[index], [field]: value };
+
+    const priceVal = parseFloat(updatedItem.price);
+    if (field === 'price' && !isNaN(priceVal) && priceVal < 0) {
+      updatedItem.type = verifyData.currency === 'TRY' || language === 'tr' ? 'İndirim' : 'Discount';
+    }
+
+    updatedItems[index] = updatedItem;
     setVerifyData({ ...verifyData, items: updatedItems });
   };
 

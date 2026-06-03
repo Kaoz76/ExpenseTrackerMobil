@@ -159,9 +159,12 @@ function ManualEntry() {
       // 3. Merge the AI results back. If the user explicitly typed a brand or category, prioritize their manual text over the AI's suggestion
       const formattedProducts = products.map((p, idx) => {
         const aiSuggestion = enrichedItems[idx];
+        const parsedPrice = parseFloat(p.price || 0);
         
         let finalType = p.type.trim();
-        if (!finalType && aiSuggestion?.type) {
+        if (parsedPrice < 0) {
+          finalType = language === 'tr' ? 'İndirim' : 'Discount';
+        } else if (!finalType && aiSuggestion?.type) {
           finalType = aiSuggestion.type;
         }
 
@@ -177,7 +180,7 @@ function ManualEntry() {
         return {
           name: p.name.trim(),
           size: p.size.trim(),
-          price: Math.abs(parseFloat(p.price || 0)),
+          price: parsedPrice,
           type: finalType ? localizeCategory(finalType, language) : '',
           brand: finalBrand ? finalBrand.charAt(0).toUpperCase() + finalBrand.slice(1) : ''
         };
@@ -369,7 +372,7 @@ function ManualEntry() {
                                 placeholder="0.00"
                                 value={product.price}
                                 onChange={(e) => {
-                                  const val = e.target.value.replace(/[^0-9.,]/g, '');
+                                  const val = e.target.value.replace(/[^0-9.,-]/g, '');
                                   handleInputChange(product.id, 'price', val);
                                 }}
                                 disabled={isDisabled}

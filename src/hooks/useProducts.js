@@ -39,9 +39,10 @@ export function useProducts(user, currency, language) {
     rawReceipts.forEach((data) => {
       if (data.items && Array.isArray(data.items)) {
         data.items.forEach(item => {
-          // Skip items with negative prices (discounts/sales)
+          // Skip items with negative prices (discounts/sales) or discount categories
           const itemPrice = Number(item.price) || 0;
-          if (itemPrice < 0) return;
+          const normalizedType = (item.type || '').trim().toLowerCase();
+          if (itemPrice < 0 || normalizedType === 'discount' || normalizedType === 'indirim' || normalizedType === 'i̇ndirim') return;
 
           // Marka veya isim yoksa undefined olmasını engelle
           const safeBrand = item.brand || 'Unknown Brand';

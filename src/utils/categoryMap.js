@@ -114,6 +114,10 @@ const categoryDictionary = {
   'vergi': { icon: '💸', color: '#f43f5e' },
   'tax': { icon: '💸', color: '#f43f5e' },
 
+  // İndirimler / Discounts
+  'indirim': { icon: '🏷️', color: '#10b981' },
+  'discount': { icon: '🏷️', color: '#10b981' },
+
   // Diğer ve Bilinmeyen
   'diğer': { icon: '📦', color: '#94a3b8' },
   'other': { icon: '📦', color: '#94a3b8' },
@@ -175,7 +179,7 @@ export const suggestedCategoriesTR = [
   'Sağlık', 'Eczane', 'Kozmetik',
   'Eğlence', 'Abonelik', 'Oyun', 'Hobi',
   'Eğitim', 'Kitap', 'Kırtasiye',
-  'Alkol & Tütün', 'Evcil Hayvan', 'Bebek', 'Spor', 'Vergiler', 'Diğer'
+  'Alkol & Tütün', 'Evcil Hayvan', 'Bebek', 'Spor', 'Vergiler', 'Diğer', 'İndirim'
 ].sort();
 
 // İngilizce kategori isimleri
@@ -188,7 +192,7 @@ export const suggestedCategoriesEN = [
   'Health', 'Pharmacy', 'Cosmetics',
   'Entertainment', 'Subscription', 'Gaming', 'Hobby',
   'Education', 'Books', 'Stationery',
-  'Alcohol & Tobacco', 'Pet', 'Baby', 'Sports', 'Taxes', 'Other'
+  'Alcohol & Tobacco', 'Pet', 'Baby', 'Sports', 'Taxes', 'Other', 'Discount'
 ].sort();
 
 // TR ↔ EN Kategori Çeviri Haritası
@@ -228,6 +232,7 @@ export const categoryTranslationMap = {
   'Spor': 'Sports',
   'Vergiler': 'Taxes',
   'Diğer': 'Other',
+  'İndirim': 'Discount',
   // EN -> TR
   'Grocery': 'Market',
   'Food': 'Gıda',
@@ -263,6 +268,7 @@ export const categoryTranslationMap = {
   'Sports': 'Spor',
   'Taxes': 'Vergiler',
   'Other': 'Diğer',
+  'Discount': 'İndirim',
 };
 
 /**
