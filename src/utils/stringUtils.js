@@ -76,11 +76,14 @@ const levenshtein = (s, t) => {
         if (charS === charT) {
           cost = 0;
         } else {
+          // OCR character-swap pairs that should count as near-zero cost
           const ocrMistakes = new Set([
-            '0o', 'o0', '1l', 'l1', '1i', 'i1', '5s', 's5', '8b', 'b8', 'ce', 'ec', 'rn', 'nr', '2z', 'z2'
+            '0o', 'o0', '1l', 'l1', '1i', 'i1', '5s', 's5', '8b', 'b8', 'ce', 'ec', 'rn', 'nr', '2z', 'z2',
+            // Turkish diacritic equivalences (OCR often drops/adds diacritics)
+            'ıi', 'iı', 'öo', 'oö', 'üu', 'uü', 'şs', 'sş', 'çc', 'cç', 'ğg', 'gğ'
           ]);
           if (ocrMistakes.has(charS + charT)) {
-            cost = 0.4;
+            cost = 0;
           }
         }
       }
@@ -213,7 +216,7 @@ export const brandAutoCorrect = (name) => {
 
   const corrections = brandDictionary;
 
-  const lowerName = name.toLowerCase();
+  const lowerName = trToLower(name);
   
   // Tam eşleşme kontrolü
   if (corrections[lowerName]) return corrections[lowerName];
