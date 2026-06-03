@@ -6,7 +6,7 @@ import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch, Timestamp } from 'firebase/firestore';
 import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExclamationTriangle, FaBell, FaClock, FaTrash, FaFileExport, FaFileImport, FaDatabase } from 'react-icons/fa';
 
 function Settings() {
@@ -291,12 +291,29 @@ function Settings() {
         const chunk = data.slice(i, i + 500);
 
         chunk.forEach(item => {
-          if (item.userId && item.items) {
+          if (item.items) {
              const docRef = doc(collection(db, "receipts"));
+             
+             // Convert serialized plain object createdAt to a real Firestore Timestamp
+             let importedCreatedAt = Timestamp.now();
+             if (item.createdAt) {
+               if (item.createdAt.seconds !== undefined) {
+                 importedCreatedAt = new Timestamp(item.createdAt.seconds, item.createdAt.nanoseconds || 0);
+               } else if (item.createdAt._seconds !== undefined) {
+                 importedCreatedAt = new Timestamp(item.createdAt._seconds, item.createdAt._nanoseconds || 0);
+               } else {
+                 const parsed = new Date(item.createdAt);
+                 if (!isNaN(parsed.getTime())) {
+                   importedCreatedAt = Timestamp.fromDate(parsed);
+                 }
+               }
+             }
+
              // Override item.userId with user.uid to guarantee ownership
              const importedItem = {
                ...item,
-               userId: user.uid
+               userId: user.uid,
+               createdAt: importedCreatedAt
              };
              batch.set(docRef, importedItem);
           }
