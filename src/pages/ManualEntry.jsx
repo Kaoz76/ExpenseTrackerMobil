@@ -55,10 +55,10 @@ function ManualEntry() {
       if (items && items.length > 0) {
         const mappedProducts = items.map((item, index) => ({
           id: Date.now() + index,
-          type: '',
-          brand: '',
+          type: item.type || '',
+          brand: item.brand || '',
           name: item.name || '',
-          size: '',
+          size: item.size || '',
           price: item.price || ''
         }));
         setProducts(mappedProducts);

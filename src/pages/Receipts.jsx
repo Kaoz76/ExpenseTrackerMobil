@@ -395,6 +395,20 @@ function Receipts() {
       // Apply User Learning Memory (fixes mistakes AI or OCR consistently make)
       enrichedItems = applyLearnedCorrections(enrichedItems);
 
+      // Fallback category for items that don't have a category assigned (either because LLM was skipped, timed out, failed, or didn't categorize it)
+      const fallbackCategory = language === 'tr' ? 'Bilinmeyen' : 'Unknown';
+      enrichedItems = enrichedItems.map(item => {
+        const priceVal = parseFloat(item.price) || 0;
+        let itemType = item.type;
+        if (priceVal < 0) {
+          itemType = language === 'tr' ? 'İndirim' : 'Discount';
+        }
+        return {
+          ...item,
+          type: itemType || fallbackCategory
+        };
+      });
+
       return {
         userId: user.uid,
         uploadPromise, // Save the background upload promise to await it during final save
