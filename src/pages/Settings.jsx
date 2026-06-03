@@ -5,8 +5,9 @@ import { useTheme } from '../context/ThemeContext';
 import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch, Timestamp } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
 import { FaGlobe, FaPalette, FaUserCog, FaWallet, FaSave, FaTrashRestore, FaExclamationTriangle, FaBell, FaClock, FaTrash, FaFileExport, FaFileImport, FaDatabase } from 'react-icons/fa';
 
 function Settings() {
@@ -220,6 +221,17 @@ function Settings() {
       const q = query(collection(db, "receipts"), where("userId", "==", user.uid));
       const querySnapshot = await getDocs(q);
       const docsArray = querySnapshot.docs;
+
+      // 🔥 Delete receipt images from Firebase Storage before removing documents
+      const storageDeletePromises = docsArray
+        .map((document) => document.data().storagePath)
+        .filter(Boolean)
+        .map((storagePath) =>
+          deleteObject(ref(storage, storagePath)).catch((err) =>
+            console.warn("Could not delete storage file:", storagePath, err)
+          )
+        );
+      await Promise.all(storageDeletePromises);
 
       // 🔥 GELİŞTİRME 1: Firebase 500 Belge Sınırı Çözümü (Chunking)
       // Belgeleri 500'lük parçalara ayırarak siliyoruz
