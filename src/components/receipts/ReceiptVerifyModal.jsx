@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FaCheck, FaTimes, FaListAlt, FaTrash, FaPlus, FaEdit } from 'react-icons/fa';
 import { useCurrency, CURRENCY_MAP } from '../../context/CurrencyContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { Capacitor } from '@capacitor/core';
 
 function ReceiptVerifyModal({
   showVerifyModal,
@@ -129,7 +130,7 @@ function ReceiptVerifyModal({
                 <div className="form-text">{t('common.detected_from_ocr')}</div>
               </div>
 
-              {verifyData && (
+              {verifyData && Capacitor.isNativePlatform() && (
                 <div className="border rounded mb-3 overflow-hidden">
                   <button
                     className="btn btn-light w-100 d-flex justify-content-between align-items-center p-3 text-secondary"
@@ -219,8 +220,19 @@ function ReceiptVerifyModal({
                   )}
                 </div>
               )}
+
+              {!Capacitor.isNativePlatform() && (
+                <div className="alert alert-primary py-2 px-3 mb-3 d-flex align-items-center shadow-sm" style={{ fontSize: '0.85rem', borderRadius: '8px', borderLeft: '4px solid #0d6efd' }}>
+                  <div className="me-2 fs-5">📱</div>
+                  <div>
+                    {language === 'tr' 
+                      ? <span>Daha iyi tarama ve ayrıştırılmış ürünleri elde etmek için <strong>mobil uygulamamızı</strong> indirebilirsiniz.</span>
+                      : <span>Download our <strong>mobile app</strong> for better scanning and fully parsed product lists.</span>}
+                  </div>
+                </div>
+              )}
               
-              {verifyData?.rawOcrText && (
+              {verifyData?.rawOcrText && Capacitor.isNativePlatform() && (
                 <div className="mt-3 mb-2">
                   <details className="card border-secondary bg-dark text-white p-2" style={{ borderRadius: '6px' }}>
                     <summary className="fw-bold text-muted" style={{ cursor: 'pointer', fontSize: '12px', outline: 'none' }}>

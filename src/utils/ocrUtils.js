@@ -186,6 +186,11 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
       continue;
     }
 
+    // Tesseract gibi item çıkarımı kapalı olan durumlarda satırın geri kalanını (ürünleri) atla
+    if (rules && rules.extractItems === false) {
+      continue;
+    }
+
     if (excludeRegex.test(line)) {
       if (isUSStyleTax && /(sales\s*tax|state\s*tax|^tax\b)/i.test(line)) {
         let taxMatches = line.match(priceRegex);
