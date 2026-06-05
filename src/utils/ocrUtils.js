@@ -78,9 +78,9 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
   // OCR engine'e özel kurallar (dışarıdan verilmezse varsayılan değerler kullanılır)
   const keywordRegex = rules?.keywordRegex || /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart)/i;
   const fuzzyKeywords = rules?.fuzzyKeywords || ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'totale', 'balance', 'due', 'nakit', 'kredi'];
-  const excludeRegex = rules?.excludeRegex || /(kdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][şs]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\s*no|z\s*no)/i;
+  const excludeRegex = rules?.excludeRegex || /(kdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][şs]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\.?\s*no|z\s*no|onay\s*no|e-?ar[sş][iı]v|fatura|\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\b)/i;
   const multiplierRegex = rules?.multiplierRegex || /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX]|tl\/(?:kg|gr|kc)|tg)/i;
-  const priceRegex = rules?.priceRegex || /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
+  const priceRegex = rules?.priceRegex || /\d{1,3}(?:[.,]\d{3})+(?![.,]?\d)|\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
   const itemSizeRegex = rules?.itemSizeRegex || /\b(\d+(?:[.,]\d+)?)\s*(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\b/i;
 
   const normalizeSize = (rawSize) => {
@@ -134,11 +134,21 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
         cleanStr = cleanStr.replace(/,/g, '');
       }
     } else if (cleanStr.includes(',')) {
-      // Only comma exists. If there is only one and it is near the end, treat as decimal.
-      // But if it's 17,999 it might be a thousand separator!
-      // Heuristic: if comma is followed by exactly 3 digits, it might be a thousands separator.
-      // Easiest is to replace it with dot and hope for the best, since we assume Turkish receipts mostly.
-      cleanStr = cleanStr.replace(',', '.');
+      // Only comma exists. Check if it's a thousands separator (e.g. 17,999 or 1,234,567)
+      if (/^\d{1,3}(,\d{3})+$/.test(cleanStr)) {
+        // Thousands separator only — remove all commas (17,999 → 17999)
+        cleanStr = cleanStr.replace(/,/g, '');
+      } else {
+        // Decimal separator (17,99 → 17.99)
+        cleanStr = cleanStr.replace(',', '.');
+      }
+    } else if (cleanStr.includes('.')) {
+      // Only dot exists. Check if it's a thousands separator (e.g. 17.999 or 1.234.567)
+      if (/^\d{1,3}(\.\d{3})+$/.test(cleanStr)) {
+        // Thousands separator only — remove all dots (17.999 → 17999)
+        cleanStr = cleanStr.replace(/\./g, '');
+      }
+      // else: decimal dot, leave as is for parseFloat
     }
 
     const num = parseFloat(cleanStr);

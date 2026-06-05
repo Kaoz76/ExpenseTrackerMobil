@@ -90,7 +90,31 @@ export const preprocessForOCR = (file) => {
         data[i + 2] = gray;
       }
 
-      // 2) Contrast enhancement (percentile-based histogram stretch, ignoring outlier pixels)
+      // 2) Shadow Removal / Illumination Equalization
+      // Estimate background illumination via heavy Gaussian blur, then divide
+      // to normalize uneven lighting (phone shadow, desk lamp glare, etc.)
+      ctx.putImageData(imageData, 0, 0);
+      const shadowBlurRadius = Math.max(30, Math.round(Math.min(w, h) * 0.03));
+      const bgCanvas = document.createElement('canvas');
+      bgCanvas.width = w;
+      bgCanvas.height = h;
+      const bgCtx = bgCanvas.getContext('2d');
+      bgCtx.filter = `blur(${shadowBlurRadius}px)`;
+      bgCtx.drawImage(canvas, 0, 0);
+      const bgData = bgCtx.getImageData(0, 0, w, h).data;
+
+      // Divide original by background: result = (pixel / background) * targetWhite
+      // This flattens shadows while preserving text contrast
+      const targetWhite = 200;
+      for (let i = 0; i < data.length; i += 4) {
+        const bg = bgData[i] || 1; // prevent division by zero
+        const normalized = Math.min(255, Math.max(0, (data[i] / bg) * targetWhite));
+        data[i] = normalized;
+        data[i + 1] = normalized;
+        data[i + 2] = normalized;
+      }
+
+      // 3) Contrast enhancement (percentile-based histogram stretch, ignoring outlier pixels)
       const histogram = new Uint32Array(256);
       for (let i = 0; i < data.length; i += 4) {
         histogram[Math.round(data[i])]++;
@@ -117,7 +141,37 @@ export const preprocessForOCR = (file) => {
         data[i + 2] = stretched;
       }
 
-      // 3) Sharpening (unsharp mask: original + strength * (original - blurred))
+      // 4) Dynamic Gamma Correction
+      // Adaptively adjust midtones: brighten dark images, darken washed-out images
+      let sumBrightness = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        sumBrightness += data[i];
+      }
+      const avgBrightness = sumBrightness / (w * h);
+
+      let gamma = 1.0;
+      if (avgBrightness < 100) {
+        // Dark image: gamma < 1 brightens midtones (range: 0.6 → 1.0)
+        gamma = 0.6 + (avgBrightness / 100) * 0.4;
+      } else if (avgBrightness > 200) {
+        // Washed-out image: gamma > 1 darkens midtones (range: 1.0 → 1.5)
+        gamma = 1.0 + ((avgBrightness - 200) / 55) * 0.5;
+      }
+
+      if (Math.abs(gamma - 1.0) > 0.05) {
+        // Pre-compute lookup table for fast per-pixel gamma application
+        const gammaLUT = new Uint8Array(256);
+        for (let v = 0; v < 256; v++) {
+          gammaLUT[v] = Math.min(255, Math.max(0, Math.round(255 * Math.pow(v / 255, gamma))));
+        }
+        for (let i = 0; i < data.length; i += 4) {
+          data[i] = gammaLUT[data[i]];
+          data[i + 1] = gammaLUT[data[i + 1]];
+          data[i + 2] = gammaLUT[data[i + 2]];
+        }
+      }
+
+      // 5) Sharpening (unsharp mask: original + strength * (original - blurred))
       ctx.putImageData(imageData, 0, 0);
 
       // Create a blurred copy
@@ -141,7 +195,7 @@ export const preprocessForOCR = (file) => {
 
       ctx.putImageData(imageData, 0, 0);
 
-      // 4) Add white padding border so ML Kit doesn't miss edge text
+      // 6) Add white padding border so ML Kit doesn't miss edge text
       const padding = 30;
       const paddedCanvas = document.createElement('canvas');
       paddedCanvas.width = w + padding * 2;
