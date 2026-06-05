@@ -9,6 +9,8 @@ import { getCategoryInfo } from '../utils/categoryMap';
 import { useExpenseAnalysis } from '../hooks/useExpenseAnalysis';
 import SpendingChart from '../components/charts/SpendingChart';
 import CategoryChart from '../components/charts/CategoryChart';
+import StoreChart from '../components/charts/StoreChart';
+import BrandChart from '../components/charts/BrandChart';
 
 function AnalyzeExpenses() {
   const { user } = useAuth();
@@ -19,7 +21,7 @@ function AnalyzeExpenses() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Custom hook extracts all Firebase queries and data formatting logic
-  const { loading, chartData, categoryData, totalSpent } = useExpenseAnalysis(user, timeRange);
+  const { loading, chartData, categoryData, storeData, brandData, totalSpent } = useExpenseAnalysis(user, timeRange);
 
   // Detect dark mode for chart theming
   const [isDark, setIsDark] = useState(false);
@@ -145,46 +147,155 @@ function AnalyzeExpenses() {
               </div>
             </div>
 
-            {/* BASİT ANALİZ TABLOSU */}
-            <div className="mb-5">
-              <h3 className="h4 fw-bold mb-4">{t('common.category_breakdown')}</h3>
-              <div className="card border-0 shadow-sm">
-                <div className="table-responsive">
-                  <table className="table table-hover mb-0 align-middle">
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--bs-border-color)' }}>
-                        <th scope="col" className="ps-4 py-3 text-muted fw-normal small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.category')}</th>
-                        <th scope="col" className="py-3 text-muted fw-normal text-end small text-uppercase" style={{ letterSpacing: '0.05em' }}>%</th>
-                        <th scope="col" className="py-3 text-muted fw-normal text-end pe-4 small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.total_amount')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {categoryData.map((item, index) => {
-                        const pct = totalSpent > 0 ? ((item.amount / totalSpent) * 100).toFixed(1) : '0.0';
-                        return (
-                          <tr key={index}>
-                            <td className="ps-4">
-                              <div className="d-flex align-items-center gap-2">
-                                <span style={{
-                                  width: 32, height: 32, borderRadius: '8px',
-                                  backgroundColor: `${getCategoryInfo(item.name).color}15`,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                  fontSize: '1rem'
-                                }}>
-                                  {getCategoryInfo(item.name).icon}
-                                </span>
-                                <span className="fw-bold">{item.name}</span>
-                              </div>
-                            </td>
-                            <td className="text-end text-muted">{pct}%</td>
-                            <td className="text-end pe-4 fw-medium">
-                              {formatPrice(item.amount)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+            <div className="row mb-5">
+              <div className="col-lg-6 mb-4 mb-lg-0">
+                <StoreChart 
+                  data={storeData} 
+                  chartTheme={chartTheme} 
+                  isDark={isDark} 
+                />
+              </div>
+
+              <div className="col-lg-6">
+                <BrandChart 
+                  data={brandData} 
+                  chartTheme={chartTheme} 
+                  isDark={isDark} 
+                />
+              </div>
+            </div>
+
+            {/* BASİT ANALİZ TABLOLARI */}
+            <div className="row mb-5">
+              {/* Category Breakdown */}
+              <div className="col-lg-4 mb-4 mb-lg-0">
+                <h3 className="h4 fw-bold mb-4">{t('common.category_breakdown')}</h3>
+                <div className="card border-0 shadow-sm">
+                  <div className="table-responsive" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                    <table className="table table-hover mb-0 align-middle">
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--bs-border-color)' }}>
+                          <th scope="col" className="ps-4 py-3 text-muted fw-normal small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.category')}</th>
+                          <th scope="col" className="py-3 text-muted fw-normal text-end small text-uppercase" style={{ letterSpacing: '0.05em' }}>%</th>
+                          <th scope="col" className="py-3 text-muted fw-normal text-end pe-4 small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.total_amount')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {categoryData.map((item, index) => {
+                          const pct = totalSpent > 0 ? ((item.amount / totalSpent) * 100).toFixed(1) : '0.0';
+                          return (
+                            <tr key={index}>
+                              <td className="ps-4">
+                                <div className="d-flex align-items-center gap-2">
+                                  <span style={{
+                                    width: 32, height: 32, borderRadius: '8px',
+                                    backgroundColor: `${getCategoryInfo(item.name).color}15`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                    fontSize: '1rem'
+                                  }}>
+                                    {getCategoryInfo(item.name).icon}
+                                  </span>
+                                  <span className="fw-bold text-truncate" style={{ maxWidth: '120px' }} title={item.name}>{item.name}</span>
+                                </div>
+                              </td>
+                              <td className="text-end text-muted">{pct}%</td>
+                              <td className="text-end pe-4 fw-medium">
+                                {formatPrice(item.amount)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Store Breakdown */}
+              <div className="col-lg-4 mb-4 mb-lg-0">
+                <h3 className="h4 fw-bold mb-4">{t('common.store_breakdown')}</h3>
+                <div className="card border-0 shadow-sm">
+                  <div className="table-responsive" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                    <table className="table table-hover mb-0 align-middle">
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--bs-border-color)' }}>
+                          <th scope="col" className="ps-4 py-3 text-muted fw-normal small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.store')}</th>
+                          <th scope="col" className="py-3 text-muted fw-normal text-end small text-uppercase" style={{ letterSpacing: '0.05em' }}>%</th>
+                          <th scope="col" className="py-3 text-muted fw-normal text-end pe-4 small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.total_amount')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {storeData.map((item, index) => {
+                          const pct = totalSpent > 0 ? ((item.amount / totalSpent) * 100).toFixed(1) : '0.0';
+                          return (
+                            <tr key={index}>
+                              <td className="ps-4">
+                                <div className="d-flex align-items-center gap-2">
+                                  <span style={{
+                                    width: 32, height: 32, borderRadius: '8px',
+                                    backgroundColor: `${getCategoryInfo(item.name).color}15`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                    fontSize: '1rem'
+                                  }}>
+                                    🏪
+                                  </span>
+                                  <span className="fw-bold text-truncate" style={{ maxWidth: '120px' }} title={item.name}>{item.name}</span>
+                                </div>
+                              </td>
+                              <td className="text-end text-muted">{pct}%</td>
+                              <td className="text-end pe-4 fw-medium">
+                                {formatPrice(item.amount)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Brand Breakdown */}
+              <div className="col-lg-4">
+                <h3 className="h4 fw-bold mb-4">{t('common.brand_breakdown')}</h3>
+                <div className="card border-0 shadow-sm">
+                  <div className="table-responsive" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                    <table className="table table-hover mb-0 align-middle">
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--bs-border-color)' }}>
+                          <th scope="col" className="ps-4 py-3 text-muted fw-normal small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.brand')}</th>
+                          <th scope="col" className="py-3 text-muted fw-normal text-end small text-uppercase" style={{ letterSpacing: '0.05em' }}>%</th>
+                          <th scope="col" className="py-3 text-muted fw-normal text-end pe-4 small text-uppercase" style={{ letterSpacing: '0.05em' }}>{t('common.total_amount')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {brandData.map((item, index) => {
+                          const pct = totalSpent > 0 ? ((item.amount / totalSpent) * 100).toFixed(1) : '0.0';
+                          return (
+                            <tr key={index}>
+                              <td className="ps-4">
+                                <div className="d-flex align-items-center gap-2">
+                                  <span style={{
+                                    width: 32, height: 32, borderRadius: '8px',
+                                    backgroundColor: `${getCategoryInfo(item.name).color}15`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                    fontSize: '1rem'
+                                  }}>
+                                    🏷️
+                                  </span>
+                                  <span className="fw-bold text-truncate" style={{ maxWidth: '120px' }} title={item.name}>{item.name}</span>
+                                </div>
+                              </td>
+                              <td className="text-end text-muted">{pct}%</td>
+                              <td className="text-end pe-4 fw-medium">
+                                {formatPrice(item.amount)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

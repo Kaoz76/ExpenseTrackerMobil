@@ -3,6 +3,8 @@ import { useAuth } from './AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
+import { useLanguage } from './LanguageContext';
+
 const CurrencyContext = createContext();
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -26,6 +28,7 @@ const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours cache
 
 export const CurrencyProvider = ({ children }) => {
   const { user } = useAuth();
+  const { language } = useLanguage();
 
   // Load Primary Currency
   const [currency, setCurrency] = useState(() => {
@@ -250,16 +253,17 @@ export const CurrencyProvider = ({ children }) => {
     // Determine which currency formatting metadata to use
     const targetCode = specificCurrencyCode || (currency && currency.code) || 'USD';
     const targetMeta = CURRENCY_MAP[targetCode] || CURRENCY_MAP['USD'];
+    const activeLocale = language === 'tr' ? targetMeta.locale : 'en-US';
 
     try {
-      return new Intl.NumberFormat(targetMeta.locale, {
+      return new Intl.NumberFormat(activeLocale, {
         style: 'currency',
         currency: targetMeta.code
       }).format(validAmount);
     } catch {
       return `${targetMeta.symbol}${validAmount.toFixed(2)}`;
     }
-  }, [currency]);
+  }, [currency, language]);
 
   const contextValue = useMemo(() => ({
     currency,
