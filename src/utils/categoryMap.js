@@ -233,6 +233,13 @@ export const categoryTranslationMap = {
   'Vergiler': 'Taxes',
   'Diğer': 'Other',
   'İndirim': 'Discount',
+  'Manuel Giriş': 'Manual Entry',
+  'Taranmış': 'Scanned',
+  'Tarandı': 'Scanned',
+  'Taranan Fiş': 'Scanned Receipt',
+  'Bilinmeyen': 'Unknown',
+  'Bilinmeyen Marka': 'Unknown Brand',
+  'Bilinmeyen Mağaza': 'Unknown Store',
   // EN -> TR
   'Grocery': 'Market',
   'Food': 'Gıda',
@@ -269,6 +276,12 @@ export const categoryTranslationMap = {
   'Taxes': 'Vergiler',
   'Other': 'Diğer',
   'Discount': 'İndirim',
+  'Manual Entry': 'Manuel Giriş',
+  'Scanned': 'Taranmış',
+  'Scanned Receipt': 'Taranan Fiş',
+  'Unknown': 'Bilinmeyen',
+  'Unknown Brand': 'Bilinmeyen Marka',
+  'Unknown Store': 'Bilinmeyen Mağaza',
 };
 
 /**
