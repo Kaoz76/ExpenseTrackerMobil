@@ -458,6 +458,7 @@ export const tr = {
     perspective_crop_rotate: "Döndür",
     perspective_crop_cancel: "İptal",
     perspective_crop_processing: "İşleniyor...",
-    perspective_crop_confirm: "Kes ve Düzleştir"
+    perspective_crop_confirm: "Kes ve Düzleştir",
+    select_month: "Ay Seçiniz"
   }
 };

@@ -168,23 +168,31 @@ export const ReportProvider = ({ children }) => {
   }, [user]);
 
   // PDF OLUŞTURMA (Geliştirme: useCallback eklendi ve pdfDoc isimlendirmesi yapıldı)
-  const generateAndDownloadPDF = useCallback(async () => {
+  const generateAndDownloadPDF = useCallback(async (selectedYearAndMonth = null) => {
     if (!user) return;
     setIsGenerating(true);
 
     try {
-      const now = new Date();
-      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      let startOfMonth, endOfMonth;
 
-      const monthName = startOfLastMonth.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { month: 'long', year: 'numeric' });
+      if (selectedYearAndMonth) {
+        const [year, month] = selectedYearAndMonth.split('-').map(Number);
+        startOfMonth = new Date(year, month - 1, 1);
+        endOfMonth = new Date(year, month, 0, 23, 59, 59);
+      } else {
+        const now = new Date();
+        startOfMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endOfMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      }
+
+      const monthName = startOfMonth.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { month: 'long', year: 'numeric' });
 
       // 1. Fetch Receipts
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
-        where("createdAt", ">=", startOfLastMonth),
-        where("createdAt", "<=", endOfLastMonth),
+        where("createdAt", ">=", startOfMonth),
+        where("createdAt", "<=", endOfMonth),
         orderBy("createdAt", "desc")
       );
 

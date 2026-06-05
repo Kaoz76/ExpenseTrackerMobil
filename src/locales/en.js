@@ -458,6 +458,7 @@ export const en = {
     perspective_crop_rotate: "Rotate",
     perspective_crop_cancel: "Cancel",
     perspective_crop_processing: "Processing...",
-    perspective_crop_confirm: "Crop & Straighten"
+    perspective_crop_confirm: "Crop & Straighten",
+    select_month: "Select Month"
   }
 };
