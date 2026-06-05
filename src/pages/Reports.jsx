@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FaFileAlt, FaReceipt, FaFileCsv, FaFilePdf } from 'react-icons/fa';
+import { FaFileAlt, FaReceipt, FaFileExcel, FaFilePdf } from 'react-icons/fa';
 import { useReport } from '../context/ReportContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -126,7 +126,7 @@ function Reports() {
             </Link>
           </div>
 
-          {/* EXPORT CSV */}
+          {/* EXPORT EXCEL */}
           <div className="col-md-6">
             <div
               className={`card border-0 shadow-sm h-100 p-5 text-center quick-link-card card-hover-effect ${isGenerating ? 'opacity-50' : ''}`}
@@ -135,7 +135,7 @@ function Reports() {
             >
               <div className="mb-4 d-flex justify-content-center">
                 <div className="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px', fontSize: '2.5rem' }}>
-                  <FaFileCsv />
+                  <FaFileExcel />
                 </div>
               </div>
               <h3 className="h4 fw-bold mb-3">{t('common.export_all_data')}</h3>
@@ -146,7 +146,7 @@ function Reports() {
                   className="btn btn-success rounded-pill px-4"
                   disabled={isGenerating}
                 >
-                  {isGenerating ? t('common.exporting') : t('common.download_csv')}
+                  {isGenerating ? t('common.exporting') : t('common.download_excel')}
                 </button>
               </div>
             </div>

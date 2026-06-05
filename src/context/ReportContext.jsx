@@ -76,74 +76,360 @@ export const ReportProvider = ({ children }) => {
     }
   };
 
-  // CSV DIŞA AKTARMA (Geliştirme: useCallback eklendi)
+  // EXCEL EXPORT — Generates an Excel 2003 XML Spreadsheet (.xls)
+  // Uses XML format which natively supports Unicode (all Turkish chars render perfectly)
+  // No external dependencies needed — works with zero npm packages
   const exportAllDataToCSV = useCallback(async () => {
     if (!user) return;
     setIsGenerating(true);
 
     try {
+      // 1. Fetch all receipts
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid)
       );
-
       const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty) {
+      // 2. Fetch all subscriptions
+      const subsQuery = query(
+        collection(db, "subscriptions"),
+        where("userId", "==", user.uid)
+      );
+      const subsSnapshot = await getDocs(subsQuery);
+
+      if (querySnapshot.empty && subsSnapshot.empty) {
         alert(t('common.no_data_period'));
         setIsGenerating(false);
         return;
       }
 
-      // Client-side sorting to avoid composite index requirement
-      const allDocs = [];
-      querySnapshot.forEach((doc) => allDocs.push(doc.data()));
-      
-      allDocs.sort((a, b) => {
+      // Parse and sort receipts by date descending
+      const allReceipts = [];
+      querySnapshot.forEach((docSnap) => {
+        allReceipts.push({
+          ...docSnap.data(),
+          price: Number(docSnap.data().price) || 0
+        });
+      });
+      allReceipts.sort((a, b) => {
         const dateA = a.createdAt ? parseDate(a.createdAt) : new Date(0);
         const dateB = b.createdAt ? parseDate(b.createdAt) : new Date(0);
         return dateB - dateA;
       });
 
-      let csvContent = `${t('common.date')};${t('common.store_name')};${t('common.type')};${t('common.price')};${t('settings.currency')};${t('common.details')}\n`;
-
-      allDocs.forEach((data) => {
-
-        let dateStr = data.date || "";
-        if (data.createdAt) {
-          dateStr = parseDate(data.createdAt).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US');
-        }
-
-        const description = `"${(data.fileName || data.title || "No Title").replace(/"/g, '""')}"`;
-        const type = data.isManual ? t('common.manual_entry_badge') : t('common.scanned_receipt_badge');
-
-        const rawPrice = Number(data.price) || 0;
-        const priceStr = rawPrice.toFixed(2);
-
-        let details = "";
-        if (data.items && Array.isArray(data.items)) {
-          const itemNames = data.items.map(i => i.name).join(", ");
-          details = `"${itemNames.replace(/"/g, '""')}"`;
-        }
-
-        const curStr = data.currency || "TRY";
-        csvContent += `${dateStr};${description};${type};${priceStr};${curStr};${details}\n`;
+      const allSubs = [];
+      subsSnapshot.forEach((docSnap) => {
+        allSubs.push(docSnap.data());
       });
 
-      const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      // ─── Helper: format date for Excel ───
+      const formatExcelDate = (dateVal) => {
+        if (!dateVal) return "-";
+        const dateObj = parseDate(dateVal);
+        if (!dateObj || isNaN(dateObj.getTime())) return "-";
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return language === 'tr' ? `${d}.${m}.${y}` : `${y}-${m}-${d}`;
+      };
+
+      // ─── Helper: escape XML special characters ───
+      const escXml = (val) => {
+        if (val == null) return '';
+        return String(val)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&apos;');
+      };
+
+      // ─── Helper: generate an XML row ───
+      const makeRow = (cells, isHeader = false) => {
+        const styleId = isHeader ? 'header' : 'default';
+        const numStyle = isHeader ? 'header' : 'number';
+        let row = '   <Row ss:AutoFitHeight="0">\n';
+        cells.forEach(cell => {
+          const isNum = !isHeader && typeof cell === 'number';
+          const sid = isNum ? numStyle : styleId;
+          if (isNum) {
+            row += `    <Cell ss:StyleID="${sid}"><Data ss:Type="Number">${cell}</Data></Cell>\n`;
+          } else {
+            row += `    <Cell ss:StyleID="${sid}"><Data ss:Type="String">${escXml(cell)}</Data></Cell>\n`;
+          }
+        });
+        row += '   </Row>\n';
+        return row;
+      };
+
+      // ─── Localized labels ───
+      const labels = {
+        date: t('common.date'),
+        store: t('common.store') || t('common.store_name'),
+        totalPrice: t('common.total_price'),
+        currency: t('settings.currency'),
+        entryType: t('common.entry_type'),
+        itemName: t('common.item_name'),
+        brand: t('common.brand'),
+        category: t('common.category') || t('common.type'),
+        size: t('common.size'),
+        price: t('common.price'),
+        manualEntry: t('common.manual_entry_badge'),
+        scannedReceipt: t('common.scanned_receipt_badge'),
+        noStore: t('common.pdf_no_store'),
+        subscriptionName: t('pdf_sub_name') || (language === 'tr' ? 'Abonelik Adı' : 'Subscription Name'),
+        renewalDay: language === 'tr' ? 'Yenileme Günü' : 'Renewal Day',
+        subscriptions: t('nav.subscriptions'),
+        receiptsSheet: language === 'tr' ? 'Harcamalar' : 'Expenses',
+        subsSheet: t('nav.subscriptions'),
+        summarySheet: language === 'tr' ? 'Özet' : 'Summary',
+        categoryBreakdown: t('common.category_breakdown'),
+        storeBreakdown: t('common.store_breakdown'),
+        brandBreakdown: t('common.brand_breakdown'),
+        totalAmount: t('common.total_amount'),
+        totalSpent: t('common.total_spent'),
+        numberOfReceipts: t('common.number_of_receipts'),
+        numberOfSubs: language === 'tr' ? 'Abonelik Sayısı' : 'Number of Subscriptions',
+        generalSummary: language === 'tr' ? 'Genel Özet' : 'General Summary',
+        amount: t('common.amount'),
+        percentage: language === 'tr' ? 'Yüzde' : 'Percentage',
+        count: language === 'tr' ? 'Adet' : 'Count',
+      };
+
+      // ─── Sheet 1: All Expenses (itemized) ───
+      let sheet1Rows = '';
+      const sheet1Headers = [
+        labels.date, labels.store, labels.totalPrice, labels.currency,
+        labels.entryType, labels.itemName, labels.brand, labels.category,
+        labels.size, labels.price
+      ];
+      sheet1Rows += makeRow(sheet1Headers, true);
+
+      allReceipts.forEach((receipt) => {
+        const dateStr = formatExcelDate(receipt.createdAt || receipt.date);
+        const storeName = receipt.fileName || receipt.title || labels.noStore;
+        const entryType = receipt.isManual ? labels.manualEntry : labels.scannedReceipt;
+        const receiptTotal = receipt.price;
+        const currencyCode = receipt.currency || "TRY";
+
+        if (receipt.items && Array.isArray(receipt.items) && receipt.items.length > 0) {
+          receipt.items.forEach((item) => {
+            sheet1Rows += makeRow([
+              dateStr,
+              storeName,
+              receiptTotal,
+              currencyCode,
+              entryType,
+              item.name || "-",
+              item.brand || "-",
+              item.type ? localizeCategory(item.type, language) : "-",
+              item.size || "-",
+              Number(item.price) || 0
+            ]);
+          });
+        } else {
+          sheet1Rows += makeRow([
+            dateStr, storeName, receiptTotal, currencyCode, entryType,
+            "-", "-", "-", "-", receiptTotal
+          ]);
+        }
+      });
+
+      // ─── Sheet 2: Subscriptions ───
+      let sheet2Rows = '';
+      const sheet2Headers = [
+        labels.subscriptionName || labels.itemName,
+        labels.price,
+        labels.currency,
+        labels.renewalDay
+      ];
+      sheet2Rows += makeRow(sheet2Headers, true);
+
+      allSubs.forEach((sub) => {
+        sheet2Rows += makeRow([
+          sub.name || "-",
+          Number(sub.price) || 0,
+          sub.currency || "TRY",
+          sub.renewalDay ? `${sub.renewalDay}` : "-"
+        ]);
+      });
+
+      // ─── Sheet 3: Summary ───
+      // Build aggregations
+      const categoryTotals = {};
+      const storeTotals = {};
+      const brandTotals = {};
+      let grandTotal = 0;
+
+      allReceipts.forEach((receipt) => {
+        const price = receipt.price;
+        grandTotal += price;
+
+        // Store
+        const storeName = receipt.fileName || receipt.title || labels.noStore;
+        storeTotals[storeName] = (storeTotals[storeName] || 0) + price;
+
+        // Category & Brand from items
+        if (receipt.items && Array.isArray(receipt.items) && receipt.items.length > 0) {
+          receipt.items.forEach(item => {
+            const itemPrice = Number(item.price) || 0;
+            // Category
+            const cat = item.type ? localizeCategory(item.type, language) : (receipt.isManual ? labels.manualEntry : labels.scannedReceipt);
+            categoryTotals[cat] = (categoryTotals[cat] || 0) + itemPrice;
+            // Brand
+            const brand = item.brand && item.brand.trim() ? item.brand.trim() : (language === 'tr' ? 'Bilinmeyen Marka' : 'Unknown Brand');
+            brandTotals[brand] = (brandTotals[brand] || 0) + itemPrice;
+          });
+        } else {
+          const cat = receipt.isManual ? labels.manualEntry : labels.scannedReceipt;
+          categoryTotals[cat] = (categoryTotals[cat] || 0) + price;
+        }
+      });
+
+      // Add subscription totals
+      let subsTotal = 0;
+      allSubs.forEach(sub => {
+        const subPrice = Number(sub.price) || 0;
+        subsTotal += subPrice;
+      });
+      if (subsTotal > 0) {
+        categoryTotals[labels.subscriptions] = (categoryTotals[labels.subscriptions] || 0) + subsTotal;
+        grandTotal += subsTotal;
+      }
+
+      const sortedCats = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+      const sortedStores = Object.entries(storeTotals).sort((a, b) => b[1] - a[1]);
+      const sortedBrands = Object.entries(brandTotals).sort((a, b) => b[1] - a[1]);
+
+      let sheet3Rows = '';
+
+      // General summary section
+      sheet3Rows += makeRow([labels.generalSummary, ''], true);
+      sheet3Rows += makeRow([labels.totalSpent, grandTotal]);
+      sheet3Rows += makeRow([labels.numberOfReceipts, allReceipts.length]);
+      sheet3Rows += makeRow([labels.numberOfSubs, allSubs.length]);
+      sheet3Rows += makeRow(['', '']); // blank row
+
+      // Category breakdown
+      sheet3Rows += makeRow([labels.categoryBreakdown, labels.amount, labels.percentage], true);
+      sortedCats.forEach(([name, amount]) => {
+        const pct = grandTotal > 0 ? `${((amount / grandTotal) * 100).toFixed(1)}%` : '0%';
+        sheet3Rows += makeRow([name, amount, pct]);
+      });
+      sheet3Rows += makeRow(['', '']); // blank row
+
+      // Store breakdown
+      sheet3Rows += makeRow([labels.storeBreakdown, labels.amount, labels.percentage], true);
+      sortedStores.forEach(([name, amount]) => {
+        const receiptGrandTotal = grandTotal - subsTotal; // stores don't include subscriptions
+        const pct = receiptGrandTotal > 0 ? `${((amount / receiptGrandTotal) * 100).toFixed(1)}%` : '0%';
+        sheet3Rows += makeRow([name, amount, pct]);
+      });
+      sheet3Rows += makeRow(['', '']); // blank row
+
+      // Brand breakdown
+      sheet3Rows += makeRow([labels.brandBreakdown, labels.amount, labels.percentage], true);
+      sortedBrands.forEach(([name, amount]) => {
+        const receiptGrandTotal = grandTotal - subsTotal;
+        const pct = receiptGrandTotal > 0 ? `${((amount / receiptGrandTotal) * 100).toFixed(1)}%` : '0%';
+        sheet3Rows += makeRow([name, amount, pct]);
+      });
+
+      // ─── Build Excel 2003 XML Spreadsheet ───
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="default">
+   <Alignment ss:Vertical="Center" ss:WrapText="0"/>
+   <Font ss:FontName="Calibri" ss:Size="11"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="header">
+   <Alignment ss:Vertical="Center" ss:WrapText="0"/>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="#4472C4" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#2F5496"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="number">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="Calibri" ss:Size="11"/>
+   <NumberFormat ss:Format="#,##0.00"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+   </Borders>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="${escXml(labels.receiptsSheet)}">
+  <Table ss:DefaultRowHeight="18">
+   <Column ss:Width="90"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="55"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="160"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="100"/>
+   <Column ss:Width="70"/>
+   <Column ss:Width="80"/>
+${sheet1Rows}  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitHorizontal>1</SplitHorizontal>
+   <TopRowBottomPane>1</TopRowBottomPane>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="${escXml(labels.subsSheet)}">
+  <Table ss:DefaultRowHeight="18">
+   <Column ss:Width="200"/>
+   <Column ss:Width="90"/>
+   <Column ss:Width="70"/>
+   <Column ss:Width="90"/>
+${sheet2Rows}  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitHorizontal>1</SplitHorizontal>
+   <TopRowBottomPane>1</TopRowBottomPane>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="${escXml(labels.summarySheet)}">
+  <Table ss:DefaultRowHeight="18">
+   <Column ss:Width="180"/>
+   <Column ss:Width="120"/>
+   <Column ss:Width="80"/>
+${sheet3Rows}  </Table>
+ </Worksheet>
+</Workbook>`;
+
+      // ─── Download ───
+      const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `Expense_Tracker_All_Data_${new Date().toISOString().slice(0, 10)}.csv`);
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      const fileName = language === 'tr'
+        ? `Harcama_Raporu_${dateStamp}.xls`
+        : `Expense_Report_${dateStamp}.xls`;
+      link.setAttribute("download", fileName);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      // Kullanıcıya indirme başarılı bildirimi veriyoruz
+      URL.revokeObjectURL(url);
+
       setTimeout(() => alert(t('common.msg_export_success')), 300);
 
     } catch (error) {
-      console.error("CSV Export Error:", error);
+      console.error("Excel Export Error:", error);
       alert(t('common.msg_export_failed'));
     } finally {
       setIsGenerating(false);
