@@ -88,11 +88,13 @@ export function useExpenseAnalysis(user, timeRange) {
 
   const analysisResult = useMemo(() => {
     if (!receiptsLoaded || !subsLoaded) {
-      return { chartData: [], categoryData: [], totalSpent: 0 };
+      return { chartData: [], categoryData: [], storeData: [], brandData: [], totalSpent: 0 };
     }
 
     const monthlyMap = {};
     const categoryMap = {};
+    const storeMap = {};
+    const brandMap = {};
     let total = 0;
 
     const now = new Date();
@@ -180,6 +182,13 @@ export function useExpenseAnalysis(user, timeRange) {
       if (monthlyMap[groupKey] === undefined) monthlyMap[groupKey] = 0;
       monthlyMap[groupKey] += price;
 
+      // Store aggregation
+      const storeName = data.fileName || data.title || (language === 'tr' ? 'Bilinmeyen Mağaza' : 'Unknown Store');
+      const cleanStore = storeName.trim().charAt(0).toUpperCase() + storeName.trim().slice(1);
+      if (!storeMap[cleanStore]) storeMap[cleanStore] = 0;
+      storeMap[cleanStore] += price;
+
+      // Category aggregation
       if (data.items && Array.isArray(data.items) && data.items.length > 0) {
         let hasTypedItems = false;
         data.items.forEach(item => {
@@ -209,6 +218,31 @@ export function useExpenseAnalysis(user, timeRange) {
         if (!categoryMap[catName]) categoryMap[catName] = 0;
         categoryMap[catName] += price;
       }
+
+      // Brand aggregation
+      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        let hasTypedBrands = false;
+        data.items.forEach(item => {
+          const brand = item.brand || "";
+          const rawItemPrice = Number(item.price) || 0;
+          const itemPrice = convertPrice(rawItemPrice, data.currency || currency.code || 'USD', currency.code);
+          if (brand.trim()) {
+            hasTypedBrands = true;
+            const cleanBrand = brand.trim().charAt(0).toUpperCase() + brand.trim().slice(1);
+            if (!brandMap[cleanBrand]) brandMap[cleanBrand] = 0;
+            brandMap[cleanBrand] += itemPrice;
+          }
+        });
+        if (!hasTypedBrands) {
+          const brandLabel = language === 'tr' ? 'Bilinmeyen Marka' : 'Unknown Brand';
+          if (!brandMap[brandLabel]) brandMap[brandLabel] = 0;
+          brandMap[brandLabel] += price;
+        }
+      } else {
+        const brandLabel = language === 'tr' ? 'Bilinmeyen Marka' : 'Unknown Brand';
+        if (!brandMap[brandLabel]) brandMap[brandLabel] = 0;
+        brandMap[brandLabel] += price;
+      }
     });
 
     if (timeRange === 'all_time') {
@@ -235,6 +269,16 @@ export function useExpenseAnalysis(user, timeRange) {
         const rawSubPrice = Number(sub.price) || 0;
         const subPrice = convertPrice(rawSubPrice, sub.currency || currency.code || 'USD', currency.code);
         subsTotal += subPrice;
+
+        const subName = sub.name || t('nav.subscriptions') || "Subscriptions";
+        const cleanSubName = subName.trim().charAt(0).toUpperCase() + subName.trim().slice(1);
+        
+        // Add subscriptions as "stores" and "brands" too
+        if (!storeMap[cleanSubName]) storeMap[cleanSubName] = 0;
+        storeMap[cleanSubName] += subPrice;
+
+        if (!brandMap[cleanSubName]) brandMap[cleanSubName] = 0;
+        brandMap[cleanSubName] += subPrice;
       });
 
       if (subsTotal > 0) {
@@ -273,9 +317,19 @@ export function useExpenseAnalysis(user, timeRange) {
       .map(key => ({ name: key, amount: categoryMap[key] }))
       .sort((a, b) => b.amount - a.amount);
 
+    const formattedStoreData = Object.keys(storeMap)
+      .map(key => ({ name: key, amount: storeMap[key] }))
+      .sort((a, b) => b.amount - a.amount);
+
+    const formattedBrandData = Object.keys(brandMap)
+      .map(key => ({ name: key, amount: brandMap[key] }))
+      .sort((a, b) => b.amount - a.amount);
+
     return {
       chartData: formattedChartData,
       categoryData: formattedCategoryData,
+      storeData: formattedStoreData,
+      brandData: formattedBrandData,
       totalSpent: total
     };
   }, [rawReceipts, rawSubs, receiptsLoaded, subsLoaded, timeRange, currency?.code, convertPrice, language, t]);
@@ -283,7 +337,9 @@ export function useExpenseAnalysis(user, timeRange) {
   const loading = !receiptsLoaded || !subsLoaded;
   const chartData = analysisResult.chartData;
   const categoryData = analysisResult.categoryData;
+  const storeData = analysisResult.storeData;
+  const brandData = analysisResult.brandData;
   const totalSpent = analysisResult.totalSpent;
 
-  return { loading, chartData, categoryData, totalSpent };
+  return { loading, chartData, categoryData, storeData, brandData, totalSpent };
 }
