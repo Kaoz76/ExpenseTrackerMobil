@@ -6,7 +6,7 @@
 
 export const tesseractParserRules = {
   // Toplam fiyat anahtar kelimeleri
-  keywordRegex: /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart|t\s*o\s*p\s*l\s*a\s*m|t\s*u\s*t\s*a\s*r|t\s*o\s*t\s*a\s*l|t[o0\.]?plam)/i,
+  keywordRegex: /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart|t\s*o\s*p\s*l\s*a\s*m|t\s*u\s*t\s*a\s*r|t\s*o\s*t\s*a\s*l|t[o0.]?plam)/i,
 
   fuzzyKeywords: ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'totale', 'balance', 'due', 'nakit', 'kredi'],
 

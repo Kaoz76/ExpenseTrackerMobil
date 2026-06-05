@@ -222,8 +222,6 @@ export const tr = {
     store_breakdown: "Mağaza Dağılımı",
     brand_breakdown: "Marka Dağılımı",
     category: "Kategori",
-    store: "Mağaza",
-    brand: "Marka",
     total_amount: "Toplam Tutar",
     view_reports: "Raporları Görüntüle",
     pdf_report_title: "Aylık Harcama Raporu",

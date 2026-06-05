@@ -222,8 +222,6 @@ export const en = {
     store_breakdown: "Store Breakdown",
     brand_breakdown: "Brand Breakdown",
     category: "Category",
-    store: "Store",
-    brand: "Brand",
     total_amount: "Total Amount",
     view_reports: "View Reports",
     pdf_report_title: "Monthly Expense Report",
