@@ -36,7 +36,7 @@ function Receipts() {
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState('');
   const [privacyMode, setPrivacyMode] = useState(false);
-  const [shouldAnalyzeWithLLM, setShouldAnalyzeWithLLM] = useState(true);
+  const [shouldAnalyzeWithLLM, setShouldAnalyzeWithLLM] = useState(Capacitor.isNativePlatform());
   const [existingProductNames, setExistingProductNames] = useState([]);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyData, setVerifyData] = useState(null);

@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FaFileAlt, FaReceipt, FaFileExcel, FaFilePdf } from 'react-icons/fa';
+import { FaFileExcel, FaFilePdf } from 'react-icons/fa';
 import { useReport } from '../context/ReportContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -89,42 +88,6 @@ function Reports() {
 
         {/* 2x2 Izgara sistemi (col-md-6) ile mükemmel simetri sağlandı */}
         <div className="row justify-content-center g-4">
-
-          {/* Scanned Receipts Butonu */}
-          <div className="col-md-6">
-            <Link to="/receipts#scanned-section" className="text-decoration-none text-dark h-100 d-block">
-              <div className="card border-0 shadow-sm h-100 p-5 text-center quick-link-card card-hover-effect">
-                <div className="mb-4 d-flex justify-content-center">
-                  <div className="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px', fontSize: '2.5rem' }}>
-                    <FaReceipt />
-                  </div>
-                </div>
-                <h3 className="h4 fw-bold mb-3">{t('common.scanned_receipts_title')}</h3>
-                <p className="text-muted mb-4">{t('common.view_all_receipts_uploaded')}</p>
-                <div className="mt-auto">
-                  <span className="btn btn-outline-primary rounded-pill px-4">{t('common.view_receipts')}</span>
-                </div>
-              </div>
-            </Link>
-          </div>
-
-          {/* Manual Entries Butonu */}
-          <div className="col-md-6">
-            <Link to="/texts#manual-section" className="text-decoration-none text-dark h-100 d-block">
-              <div className="card border-0 shadow-sm h-100 p-5 text-center quick-link-card card-hover-effect">
-                <div className="mb-4 d-flex justify-content-center">
-                  <div className="bg-info-subtle text-info-emphasis rounded-circle d-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px', fontSize: '2.5rem' }}>
-                    <FaFileAlt />
-                  </div>
-                </div>
-                <h3 className="h4 fw-bold mb-3">{t('common.manual_entries_title')}</h3>
-                <p className="text-muted mb-4">{t('common.view_all_expenses_manual')}</p>
-                <div className="mt-auto">
-                  <span className="btn btn-outline-info rounded-pill px-4">{t('common.view_entries')}</span>
-                </div>
-              </div>
-            </Link>
-          </div>
 
           {/* EXPORT EXCEL */}
           <div className="col-md-6">

@@ -2,6 +2,7 @@ import React from 'react';
 import { useDropzone } from 'react-dropzone';
 import { FaCloudUploadAlt } from 'react-icons/fa';
 import { useLanguage } from '../../context/LanguageContext';
+import { Capacitor } from '@capacitor/core';
 
 function ReceiptScanZone({
   onDrop,
@@ -54,19 +55,21 @@ function ReceiptScanZone({
         </label>
       </div>
 
-      <div className="form-check mt-2 d-flex justify-content-center align-items-center">
-        <input
-          className="form-check-input me-2 mt-0"
-          type="checkbox"
-          id="analyzeWithLLMCheckbox"
-          checked={shouldAnalyzeWithLLM}
-          onChange={(e) => setShouldAnalyzeWithLLM(e.target.checked)}
-          style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
-        />
-        <label className="form-check-label text-muted" htmlFor="analyzeWithLLMCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
-          {t('common.analyze_with_llm')}
-        </label>
-      </div>
+      {Capacitor.isNativePlatform() && (
+        <div className="form-check mt-2 d-flex justify-content-center align-items-center">
+          <input
+            className="form-check-input me-2 mt-0"
+            type="checkbox"
+            id="analyzeWithLLMCheckbox"
+            checked={shouldAnalyzeWithLLM}
+            onChange={(e) => setShouldAnalyzeWithLLM(e.target.checked)}
+            style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+          />
+          <label className="form-check-label text-muted" htmlFor="analyzeWithLLMCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
+            {t('common.analyze_with_llm')}
+          </label>
+        </div>
+      )}
 
       {isUploading && (
         <div className="mt-4 mb-2">
