@@ -85,6 +85,8 @@ function Navbar() {
             <li className="nav-item"><NavLink className="nav-link nav-link-animated text-nowrap" to="/subscriptions">{t('nav.subscriptions')}</NavLink></li>
             <li className="nav-item"><NavLink className="nav-link nav-link-animated text-nowrap" to="/products">{t('nav.products')}</NavLink></li>
             <li className="nav-item"><NavLink className="nav-link nav-link-animated text-nowrap" to="/stores">{t('nav.stores')}</NavLink></li>
+            <li className="nav-item"><NavLink className="nav-link nav-link-animated text-nowrap" to="/analyze">{t('nav.analyze')}</NavLink></li>
+            <li className="nav-item"><NavLink className="nav-link nav-link-animated text-nowrap" to="/reports">{t('nav.reports')}</NavLink></li>
           </ul>
         </div>
 

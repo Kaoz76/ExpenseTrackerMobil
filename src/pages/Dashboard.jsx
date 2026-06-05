@@ -341,21 +341,23 @@ function Dashboard() {
           ))}
         </div>
 
-        {/* QUICK LINKS */}
-        <h3 className="h5 mb-3">{t('common.quick_links')}</h3>
-        <div className="row mb-4 g-2 g-md-4">
-          {dashboardData.quickLinks.map(link => (
-            <div key={link.id} className="col-4 col-md-6 col-lg-4 mb-2 mb-md-4">
-              <Link to={link.to} className="text-decoration-none text-dark">
-                <div className="magic-link-card">
-                  <div className="magic-link-info">
-                    <div className="fs-4 fs-md-3 mb-1 mb-md-2"><link.icon /></div>
-                    <span className="magic-link-title mb-0">{t('nav.' + link.to.replace('/', ''))}</span>
+        {/* QUICK LINKS (Mobile Only) */}
+        <div className="d-md-none">
+          <h3 className="h5 mb-3">{t('common.quick_links')}</h3>
+          <div className="row mb-4 g-2 g-md-4">
+            {dashboardData.quickLinks.map(link => (
+              <div key={link.id} className="col-4 col-md-6 col-lg-4 mb-2 mb-md-4">
+                <Link to={link.to} className="text-decoration-none text-dark">
+                  <div className="magic-link-card">
+                    <div className="magic-link-info">
+                      <div className="fs-4 fs-md-3 mb-1 mb-md-2"><link.icon /></div>
+                      <span className="magic-link-title mb-0">{t('nav.' + link.to.replace('/', ''))}</span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            </div>
-          ))}
+                </Link>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* BÜTÇE DURUMU */}

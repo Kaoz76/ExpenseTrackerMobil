@@ -10,7 +10,7 @@ function SpendingChart({ data, totalSpent, timeRangeLabel, chartTheme, isDark })
 
   return (
     <div className="card border-0 shadow-sm h-100 card-accent">
-      <div className="card-body p-4">
+      <div className="card-body p-3 p-md-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h5 className="card-title fw-bold mb-1">{t('common.spending_over_time')}</h5>
