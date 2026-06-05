@@ -38,6 +38,7 @@ function ManualEntry() {
 
   // 🔥 YENİ: Firebase'den kaç veri çekileceğini tutan state
   const [entryLimit, setEntryLimit] = useState(10);
+  const [shouldAnalyzeWithLLM, setShouldAnalyzeWithLLM] = useState(true);
 
   const location = useLocation();
 
@@ -150,10 +151,12 @@ function ManualEntry() {
 
       // 2. Query Gemini to enrich missing categories and brands based on current input context
       let enrichedItems = [];
-      try {
-        enrichedItems = await enrichItemsWithGemini(itemsToEnrich, storeName, language);
-      } catch (aiError) {
-        console.warn("Manual AI enrichment failed, falling back to user input:", aiError);
+      if (shouldAnalyzeWithLLM) {
+        try {
+          enrichedItems = await enrichItemsWithGemini(itemsToEnrich, storeName, language);
+        } catch (aiError) {
+          console.warn("Manual AI enrichment failed, falling back to user input:", aiError);
+        }
       }
 
       // 3. Merge the AI results back. If the user explicitly typed a brand or category, prioritize their manual text over the AI's suggestion
@@ -260,12 +263,6 @@ function ManualEntry() {
           {success && <div className="alert alert-success">{success}</div>}
 
           {/* Otomatik Tamamlama Listeleri */}
-          <datalist id="category-suggestions">
-            {suggestedCategories.map((category, index) => (
-              <option key={`cat-${index}`} value={category} />
-            ))}
-          </datalist>
-
           <datalist id="brand-suggestions">
             {suggestedBrands.map((brand, index) => (
               <option key={`brand-${index}`} value={brand} />
@@ -285,7 +282,6 @@ function ManualEntry() {
                       <input 
                         type="text" 
                         className="form-control form-control-lg bg-light" 
-                        placeholder={t('common.placeholder_store')} 
                         value={storeName} 
                         onChange={(e) => setStoreName(e.target.value)} 
                         disabled={isDisabled} 
@@ -350,7 +346,6 @@ function ManualEntry() {
                             <input
                               type="text"
                               className="form-control form-control-lg bg-light"
-                              placeholder={t('common.placeholder_product')}
                               value={product.name}
                               onChange={(e) => handleInputChange(product.id, 'name', e.target.value)}
                               disabled={isDisabled}
@@ -369,7 +364,6 @@ function ManualEntry() {
                                 type="text"
                                 inputMode="decimal"
                                 className="form-control border-0 bg-transparent ps-2"
-                                placeholder="0.00"
                                 value={product.price}
                                 onChange={(e) => {
                                   const val = e.target.value.replace(/[^0-9.,-]/g, '');
@@ -389,15 +383,19 @@ function ManualEntry() {
                                 <label className="form-label small text-muted mb-1">
                                   {t('common.type')}
                                 </label>
-                                <input
-                                  type="text"
-                                  list="category-suggestions"
-                                  className="form-control form-control-sm"
-                                  placeholder={t('common.placeholder_dairy')}
+                                <select
+                                  className="form-select form-select-sm"
                                   value={product.type}
                                   onChange={(e) => handleInputChange(product.id, 'type', e.target.value)}
                                   disabled={isDisabled}
-                                />
+                                >
+                                  <option value="">{t('common.category')}</option>
+                                  {suggestedCategories.map((category, index) => (
+                                    <option key={`cat-${index}`} value={category}>
+                                      {category}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
 
                               {/* Brand (İsteğe Bağlı) */}
@@ -409,20 +407,18 @@ function ManualEntry() {
                                   type="text"
                                   list="brand-suggestions"
                                   className="form-control form-control-sm"
-                                  placeholder={t('common.placeholder_brand')}
                                   value={product.brand}
                                   onChange={(e) => handleInputChange(product.id, 'brand', e.target.value)}
                                   disabled={isDisabled}
                                 />
                               </div>
 
-                              {/* Liter/Gram (İsteğe Bağlı) */}
+                              {/* Size (İsteğe Bağlı) */}
                               <div className="col-12 col-md-4">
-                                <label className="form-label small text-muted mb-1">{t('common.liter_gram')}</label>
+                                <label className="form-label small text-muted mb-1">{t('common.size')}</label>
                                 <input
                                   type="text"
                                   className="form-control form-control-sm"
-                                  placeholder={t('common.placeholder_size')}
                                   value={product.size}
                                   onChange={(e) => handleInputChange(product.id, 'size', e.target.value)}
                                   disabled={isDisabled}
@@ -457,7 +453,21 @@ function ManualEntry() {
                     <span>{t('common.add_product')}</span>
                   </button>
                 </div>
-                <div className="d-flex justify-content-end mt-3 pb-5">
+                <div className="d-flex justify-content-end align-items-center gap-3 mt-3 pb-5">
+                  <div className="form-check mb-0">
+                    <input
+                      className="form-check-input me-2 mt-0"
+                      type="checkbox"
+                      id="analyzeWithLLMCheckbox"
+                      checked={shouldAnalyzeWithLLM}
+                      onChange={(e) => setShouldAnalyzeWithLLM(e.target.checked)}
+                      disabled={isDisabled}
+                      style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+                    />
+                    <label className="form-check-label text-muted small" htmlFor="analyzeWithLLMCheckbox" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      {t('common.analyze_with_llm')}
+                    </label>
+                  </div>
                   <button
                     className="save-btn"
                     onClick={handleSave}

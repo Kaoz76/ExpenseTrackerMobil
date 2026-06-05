@@ -13,7 +13,7 @@ const ReportContext = createContext(null);
 export const ReportProvider = ({ children }) => {
   const { user } = useAuth();
   const { formatPrice, currency, convertPrice } = useCurrency();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [hasNotification, setHasNotification] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -28,7 +28,7 @@ export const ReportProvider = ({ children }) => {
           const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
 
           const currentReportKey = `${prevMonthDate.getFullYear()}-${prevMonthDate.getMonth() + 1}`;
-          const monthName = prevMonthDate.toLocaleString(navigator.language || 'tr-TR', { month: 'long', year: 'numeric' });
+          const monthName = prevMonthDate.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { month: 'long', year: 'numeric' });
 
           setReportMonthText(monthName);
 
@@ -48,7 +48,7 @@ export const ReportProvider = ({ children }) => {
 
       checkNotificationStatus();
     }
-  }, [user]);
+  }, [user, language]);
 
   // Font Yükleme (Timeout ile)
   const loadFile = async (url) => {
@@ -110,7 +110,7 @@ export const ReportProvider = ({ children }) => {
 
         let dateStr = data.date || "";
         if (data.createdAt) {
-          dateStr = parseDate(data.createdAt).toLocaleDateString(navigator.language || 'tr-TR');
+          dateStr = parseDate(data.createdAt).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US');
         }
 
         const description = `"${(data.fileName || data.title || "No Title").replace(/"/g, '""')}"`;
@@ -147,7 +147,7 @@ export const ReportProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  }, [user, t]);
+  }, [user, t, language]);
 
   // OKUNDU OLARAK İŞARETLEME (Geliştirme: useCallback eklendi, yukarı alındı)
   const markAsRead = useCallback(async () => {
@@ -176,7 +176,7 @@ export const ReportProvider = ({ children }) => {
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-      const monthName = startOfLastMonth.toLocaleString(navigator.language || 'tr-TR', { month: 'long', year: 'numeric' });
+      const monthName = startOfLastMonth.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { month: 'long', year: 'numeric' });
 
       const q = query(
         collection(db, "receipts"),
@@ -261,7 +261,7 @@ export const ReportProvider = ({ children }) => {
         let dateStr = "N/A";
         try {
           if (receipt.createdAt) {
-            dateStr = parseDate(receipt.createdAt).toLocaleDateString(navigator.language || 'tr-TR');
+            dateStr = parseDate(receipt.createdAt).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US');
           } else if (receipt.date) {
             dateStr = receipt.date;
           }
@@ -300,7 +300,7 @@ export const ReportProvider = ({ children }) => {
     } finally {
       setIsGenerating(false);
     }
-  }, [user, formatPrice, markAsRead, currency?.code, convertPrice, t]); // Bağımlılıklar güncellendi
+  }, [user, formatPrice, markAsRead, currency?.code, convertPrice, t, language]); // Bağımlılıklar güncellendi
 
   // Geliştirme: Context value objesini useMemo ile sarmalayarak gereksiz renderları kestik
   const contextValue = useMemo(() => ({

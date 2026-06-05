@@ -368,6 +368,7 @@ export const en = {
     msg_fill_required: "Please fill in all required fields (Type, Brand, Price) for Row {{row}}.",
     msg_save_success: "Data saved successfully! You can see it in the list below.",
     msg_save_error: "Failed to save data. Please try again.",
+    msg_invalid_category: "Please enter or select a valid category.",
     msg_delete_entry_confirm: "Are you sure you want to delete this entry?",
     msg_delete_entry_failed: "Failed to delete entry.",
     msg_delete_receipt_full_confirm: "Are you sure you want to delete this entire receipt? This action cannot be undone.",

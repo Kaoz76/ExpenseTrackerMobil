@@ -368,6 +368,7 @@ export const tr = {
     msg_fill_required: "Lütfen Satır {{row}} için tüm zorunlu alanları (Kategori, Marka, Fiyat) doldurun.",
     msg_save_success: "Veriler başarıyla kaydedildi! Aşağıdaki listede görebilirsiniz.",
     msg_save_error: "Veri kaydedilemedi. Lütfen tekrar deneyin.",
+    msg_invalid_category: "Lütfen geçerli bir kategori seçin veya yazın.",
     msg_delete_entry_confirm: "Bu kaydı silmek istediğinizden emin misiniz?",
     msg_delete_entry_failed: "Kayıt silinemedi.",
     msg_delete_receipt_full_confirm: "Bu fişi tamamen silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
