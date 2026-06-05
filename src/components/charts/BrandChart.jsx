@@ -97,7 +97,7 @@ function BrandChart({ data, chartTheme }) {
           </div>
         ) : (
           <div style={{ width: '100%', height: 320 }}>
-            <ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={320}>
               <PieChart>
                 <Pie
                   data={processedData}

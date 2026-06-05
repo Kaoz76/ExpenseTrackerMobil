@@ -33,6 +33,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
 
   let usTaxScore = 0;
   let ukTaxScore = 0;
+  // eslint-disable-next-line no-unused-vars
   let extractedTaxAmount = 0;
 
   const normalizedText = trToLower(cleanedText.replace(/\r/g, '\n'));
@@ -78,6 +79,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
   // OCR engine'e özel kurallar (dışarıdan verilmezse varsayılan değerler kullanılır)
   const keywordRegex = rules?.keywordRegex || /(toplam|topla|total|tutar|amount|odenecek|grand|bakiye|genel|sum|summe|totale|balance|due|nakit|kredi|k\.karti|kart)/i;
   const fuzzyKeywords = rules?.fuzzyKeywords || ['toplam', 'topla', 'total', 'tutar', 'amount', 'odenecek', 'grand', 'bakiye', 'genel', 'totale', 'balance', 'due', 'nakit', 'kredi'];
+  // eslint-disable-next-line no-useless-escape
   const excludeRegex = rules?.excludeRegex || /(kdv|vat|tax|tva|mwst|iva|sales tax|state tax|para ustu|para üstü|change|vak[iı]f|vaz[iı]r|z[iı]raat|garant[iı]|[iıişş]\s*bank|yap[iı]\s*kred[iı]|akbank|halkbank|halk\s*bank|f[iı]nansbank|qnb|den[iı]zbank|teb|kuveyt|enpara|bankkart|bank\s*kart|mastercard|v[iı]sa|maestro|puan|po[iı]nt|kazanc|kazanç|kasa\s*no|f[iı][şs]\s*no|tar[iı]h|saat|teşekkürler|tesekkurler|mali\s*de[gğ]eri\s*yoktur|kas[iı]yer|cash[iı]er|term[iı]nal|sl[iı]p|belge\s*no|mers[iı]s|v\.?d\.?|verg[iı]\s*da[iı]res[iı]|tc\s*k[iı]ml[iı]k|s[iı]c[iı]l\s*no|store\s*no|receipt\s*no|thank\s*you|merci|danke|grazie|tl\/kg|tl\s*\/kg|tl\s*\/\s*kg|tl\/adet|tl\/gr|ettn|refno|ref\.?\s*no|z\s*no|onay\s*no|e-?ar[sş][iı]v|fatura|\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\b)/i;
   const multiplierRegex = rules?.multiplierRegex || /(\d+(?:[.,]\d+)?)\s*(kg|gr|kc|l|ml|adet)\s*(?:[xX]|tl\/(?:kg|gr|kc)|tg)/i;
   const priceRegex = rules?.priceRegex || /\d{1,3}(?:[.,]\d{3})+(?![.,]?\d)|\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{1,2}/g;
@@ -183,6 +185,11 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
           }
         }
       }
+      continue;
+    }
+
+    // Tesseract gibi item çıkarımı kapalı olan durumlarda satırın geri kalanını (ürünleri) atla
+    if (rules && rules.extractItems === false) {
       continue;
     }
 

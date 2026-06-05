@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { FaUserCircle, FaFilePdf, FaTimes, FaBell, FaCheckCircle, FaCog } from 'react-icons/fa';
+import { FaUserCircle, FaFilePdf, FaTimes, FaBell, FaCheckCircle, FaCog, FaMobileAlt } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useReport } from '../context/ReportContext';
 import { useLanguage } from '../context/LanguageContext';
+import { QRCodeSVG } from 'qrcode.react';
+import { Capacitor } from '@capacitor/core';
 
 
 function Navbar() {
@@ -21,6 +23,24 @@ function Navbar() {
   const markAsRead = reportContext?.markAsRead || (() => { });
 
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showAppModal, setShowAppModal] = useState(false);
+
+  // Akıllı İndirme Butonu (Mobilde direkt indir, PC'de Modal aç)
+  const handleAppDownloadClick = (e) => {
+    e.preventDefault();
+    if (window.innerWidth < 768) {
+      // Mobilde direkt indir
+      const link = document.createElement('a');
+      link.href = '/app.apk';
+      link.download = 'ExpenseTracker.apk';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // PC'de Modal göster
+      setShowAppModal(true);
+    }
+  };
 
   // Bildirim ziline tıklandığında çalışacak fonksiyon
   const dropdownRef = useRef(null); // Bildirim alanı için referans oluşturuyoruz
@@ -51,9 +71,10 @@ function Navbar() {
   }, []);
 
   return (
-    <nav
-      className={`navbar navbar-expand-md border-bottom ${theme === 'dark' ? 'navbar-dark' : 'navbar-light'}`}
-      style={{ backgroundColor: 'var(--bs-tertiary-bg)' }}
+    <>
+      <nav
+        className={`navbar navbar-expand-md border-bottom ${theme === 'dark' ? 'navbar-dark' : 'navbar-light'}`}
+        style={{ backgroundColor: 'var(--bs-tertiary-bg)' }}
     >
       <div className="container-fluid px-4 px-md-5">
 
@@ -97,6 +118,14 @@ function Navbar() {
             <>
               {/* Email (Sadece PC) */}
               <span className="navbar-text fw-medium d-none d-md-block me-2" style={{ fontSize: '0.9rem' }}>{user.email || 'User'}</span>
+
+              {/* Uygulamayı İndir (Akıllı Buton - Sadece Webde/Tarayıcıda Görünür) */}
+              {!Capacitor.isNativePlatform() && (
+                <button onClick={handleAppDownloadClick} className="btn btn-sm btn-outline-primary d-flex align-items-center me-2 me-md-3" style={{ borderRadius: '20px' }}>
+                  <FaMobileAlt className="me-0 me-md-2" />
+                  <span className="d-none d-md-inline">Mobil Uygulamayı İndir</span>
+                </button>
+              )}
 
               {/* Ayarlar İkonu (Zilin Solunda) */}
               <Link to="/settings" className="text-secondary d-flex align-items-center me-2 me-md-3" title="Settings" style={{ textDecoration: 'none' }}>
@@ -210,6 +239,40 @@ function Navbar() {
         </div>
       </div>
     </nav>
+
+      {/* MOBİL UYGULAMA İNDİRME MODALI (QR KOD) */}
+      {!Capacitor.isNativePlatform() && showAppModal && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content" style={{ backgroundColor: 'var(--bs-body-bg)', color: 'var(--bs-body-color)' }}>
+              <div className="modal-header border-bottom-0">
+                <h5 className="modal-title fw-bold">
+                  <FaMobileAlt className="me-2 text-primary" />
+                  Mobil Uygulamayı İndir
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setShowAppModal(false)}></button>
+              </div>
+              <div className="modal-body text-center pb-5">
+                <p className="text-muted mb-4 px-3">
+                  Aşağıdaki QR Kodu telefonunuzun kamerasıyla okutarak uygulamayı anında cihazınıza indirebilirsiniz.
+                </p>
+                <div className="bg-white p-3 d-inline-block rounded shadow-sm mb-4">
+                  <QRCodeSVG value={`${window.location.origin}/app.apk`} size={220} />
+                </div>
+                <div>
+                  <p className="text-muted small mb-2">
+                    Veya bilgisayarınıza doğrudan indirmek için:
+                  </p>
+                  <a href="/app.apk" className="btn btn-primary px-4 rounded-pill" download>
+                    APK Dosyasını İndir
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
