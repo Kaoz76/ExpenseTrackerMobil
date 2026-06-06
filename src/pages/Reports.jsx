@@ -90,55 +90,57 @@ function Reports() {
         <div className="row justify-content-center g-4">
 
           {/* EXPORT EXCEL */}
-          <div className="col-md-6">
+          <div className="col-6 col-md-6">
             <div
-              className={`card border-0 shadow-sm h-100 p-5 text-center quick-link-card card-hover-effect ${isGenerating ? 'opacity-50' : ''}`}
+              className={`card border-0 shadow-sm h-100 p-3 p-md-5 text-center quick-link-card card-hover-effect d-flex flex-column ${isGenerating ? 'opacity-50' : ''}`}
               style={{ cursor: isGenerating ? 'wait' : 'pointer' }}
               onClick={() => !isGenerating && exportAllDataToCSV()}
             >
-              <div className="mb-4 d-flex justify-content-center">
-                <div className="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px', fontSize: '2.5rem' }}>
+              <div className="mb-3 mb-md-4 d-flex justify-content-center">
+                <div className="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px', fontSize: '2rem' }}>
                   <FaFileExcel />
                 </div>
               </div>
-              <h3 className="h4 fw-bold mb-3">{t('common.export_all_data')}</h3>
-              <p className="text-muted mb-4">{t('common.download_all_expense_history')}</p>
+              <h3 className="h6 fw-bold mb-2 mb-md-3">{t('common.export_all_data')}</h3>
+              <p className="text-muted mb-3 mb-md-4 d-none d-sm-block" style={{ fontSize: '0.85rem' }}>{t('common.download_all_expense_history')}</p>
 
-              <div className="mt-auto">
+              <div className="mt-auto w-100">
                 <button
-                  className="btn btn-success rounded-pill px-4"
+                  className="btn btn-sm btn-success rounded-pill w-100"
                   disabled={isGenerating}
+                  style={{ fontSize: '0.8rem', padding: '0.4rem' }}
                 >
-                  {isGenerating ? t('common.exporting') : t('common.download_excel')}
+                  <span className="d-none d-sm-inline">{isGenerating ? t('common.exporting') : t('common.download_excel')}</span>
+                  <span className="d-sm-none">{isGenerating ? t('common.exporting') : "Excel"}</span>
                 </button>
               </div>
             </div>
           </div>
 
           {/* YENİ EKLENEN: EXPORT PDF */}
-          <div className="col-md-6">
+          <div className="col-6 col-md-6">
             <div
-              className={`card border-0 shadow-sm h-100 p-5 text-center quick-link-card card-hover-effect ${isGenerating ? 'opacity-50' : ''}`}
+              className={`card border-0 shadow-sm h-100 p-3 p-md-5 text-center quick-link-card card-hover-effect d-flex flex-column ${isGenerating ? 'opacity-50' : ''}`}
               style={{ cursor: isGenerating ? 'wait' : 'default' }}
             >
-              <div className="mb-4 d-flex justify-content-center">
-                <div className="bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px', fontSize: '2.5rem' }}>
+              <div className="mb-3 mb-md-4 d-flex justify-content-center">
+                <div className="bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px', fontSize: '2rem' }}>
                   <FaFilePdf />
                 </div>
               </div>
-              <h3 className="h4 fw-bold mb-3">{t('common.monthly_pdf_report')}</h3>
-              <p className="text-muted mb-4">{t('common.generate_beautifully_formatted')}</p>
+              <h3 className="h6 fw-bold mb-2 mb-md-3">{t('common.monthly_pdf_report')}</h3>
+              <p className="text-muted mb-3 mb-md-4 d-none d-sm-block" style={{ fontSize: '0.85rem' }}>{t('common.generate_beautifully_formatted')}</p>
 
-              <div className="mb-4 w-75 mx-auto">
-                <label className="form-label text-muted small fw-bold text-uppercase d-block mb-2">
+              <div className="mb-3 mb-md-4 w-100 mx-auto">
+                <label className="form-label text-muted fw-bold text-uppercase d-none d-sm-block mb-2" style={{ fontSize: '0.75rem' }}>
                   {t('common.select_month')}
                 </label>
                 <select
-                  className="form-select text-center rounded-pill"
+                  className="form-select form-select-sm text-center rounded-pill"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   disabled={isGenerating || loadingMonths}
-                  style={{ cursor: (isGenerating || loadingMonths) ? 'wait' : 'pointer', textAlignLast: 'center' }}
+                  style={{ cursor: (isGenerating || loadingMonths) ? 'wait' : 'pointer', textAlignLast: 'center', fontSize: '0.8rem' }}
                 >
                   {loadingMonths ? (
                     <option>{t('common.loading')}</option>
@@ -152,13 +154,15 @@ function Reports() {
                 </select>
               </div>
 
-              <div className="mt-auto">
+              <div className="mt-auto w-100">
                 <button
-                  className="btn btn-danger rounded-pill px-4"
+                  className="btn btn-sm btn-danger rounded-pill w-100"
                   disabled={isGenerating}
                   onClick={() => !isGenerating && generateAndDownloadPDF(selectedMonth)}
+                  style={{ fontSize: '0.8rem', padding: '0.4rem' }}
                 >
-                  {isGenerating ? t('common.generating') : t('common.download_pdf')}
+                  <span className="d-none d-sm-inline">{isGenerating ? t('common.generating') : t('common.download_pdf')}</span>
+                  <span className="d-sm-none">{isGenerating ? t('common.generating') : "PDF"}</span>
                 </button>
               </div>
             </div>

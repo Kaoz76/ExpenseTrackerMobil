@@ -166,49 +166,53 @@ function Products() {
               : localizeCategory(product.type, language);
             const catInfo = getCategoryInfo(displayType);
             return (
-            <div key={product.id} className="col-md-6 col-lg-4 col-xl-3 mb-4">
+            <div key={product.id} className="col-4 col-sm-6 col-md-6 col-lg-4 col-xl-3 mb-3 mb-md-4">
               <div className="card shadow-sm h-100 border-0 card-hover-effect">
-                <div className="card-body d-flex flex-column">
+                <div className="card-body p-2 p-sm-3 d-flex flex-column">
 
-                  <div className="d-flex align-items-start mb-3">
+                  <div className="d-flex flex-column flex-sm-row align-items-center align-items-sm-start mb-2 mb-sm-3 text-center text-sm-start">
                     <div 
-                      className="rounded p-3 me-3 d-flex align-items-center justify-content-center" 
-                      style={{ backgroundColor: `${catInfo.color}15`, fontSize: '1.5rem', width: '54px', height: '54px' }}
+                      className="rounded p-2 p-sm-3 me-0 me-sm-3 mb-1 mb-sm-0 d-flex align-items-center justify-content-center flex-shrink-0" 
+                      style={{ backgroundColor: `${catInfo.color}15`, fontSize: '1.2rem', width: '40px', height: '40px' }}
                     >
                       {catInfo.icon}
                     </div>
-                    <div>
-                      <h6 className="card-title fw-bold mb-1 text-truncate" style={{ maxWidth: '150px' }} title={product.name === 'Unnamed Product' ? t('common.unnamed_product') : product.name}>
+                    <div className="w-100 overflow-hidden">
+                      <h6 className="card-title fw-bold mb-1 text-truncate w-100" style={{ fontSize: '0.8rem' }} title={product.name === 'Unnamed Product' ? t('common.unnamed_product') : product.name}>
                         {product.name === 'Unnamed Product' ? t('common.unnamed_product') : product.name}
                       </h6>
-                      <small className="text-muted d-block">
+                      <small className="text-muted d-block text-truncate w-100" style={{ fontSize: '0.65rem' }}>
                         {product.brand === 'Unknown Brand' ? t('common.unknown_brand') : product.brand}
                       </small>
-                      <span className="badge mt-1" style={{ backgroundColor: `${catInfo.color}20`, color: catInfo.color }}>
+                      <span className="badge mt-1 text-truncate" style={{ backgroundColor: `${catInfo.color}20`, color: catInfo.color, maxWidth: '100%', fontSize: '0.6rem' }}>
                         {displayType}
                       </span>
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-end">
-                    <div>
-                      <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>{t('common.last_price')}</small>
-                      <span className="fs-5 fw-bold text-primary">{formatPrice(product.latestPrice, product.latestPriceCurrency)}</span>
+                  <div className="mt-auto pt-2 border-top d-flex flex-column flex-sm-row justify-content-between align-items-center align-items-sm-end text-center text-sm-start">
+                    <div className="mb-2 mb-sm-0 w-100 overflow-hidden">
+                      <small className="text-muted d-none d-sm-block" style={{ fontSize: '0.75rem' }}>{t('common.last_price')}</small>
+                      <span className="fw-bold text-primary text-truncate d-block" style={{ fontSize: '0.85rem' }}>{formatPrice(product.latestPrice, product.latestPriceCurrency)}</span>
                     </div>
 
-                    {/* URL Güvenliği İçin Marka'yı da encode ederek gönderiyoruz */}
-                    <Link
-                      to={`/products/${encodeURIComponent(product.name)}?brand=${encodeURIComponent(product.brand !== 'Unknown Brand' ? product.brand : '')}`}
-                      className="btn btn-sm btn-outline-primary rounded-pill px-3"
-                      onClick={() => saveSearchTerm(searchTerm)}
-                    >
-                      {t('common.details')} <FaChevronRight className="ms-1" style={{ fontSize: '0.7rem' }} />
-                    </Link>
+                    <div className="text-center text-sm-end w-100">
+                      <Link
+                        to={`/products/${encodeURIComponent(product.name)}?brand=${encodeURIComponent(product.brand !== 'Unknown Brand' ? product.brand : '')}`}
+                        className="btn btn-sm btn-outline-primary rounded-pill px-0 px-sm-3 w-100"
+                        onClick={() => saveSearchTerm(searchTerm)}
+                        style={{ padding: '0.2rem' }}
+                      >
+                        <span className="d-none d-sm-inline" style={{ fontSize: '0.75rem' }}>{t('common.details')} <FaChevronRight className="ms-1" style={{ fontSize: '0.6rem' }} /></span> 
+                        <FaChevronRight className="d-sm-none" style={{ fontSize: '0.8rem' }} />
+                      </Link>
+                    </div>
                   </div>
 
-                  <div className="text-end mt-2">
-                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>
-                      {product.historyCount} {t('common.purchase_recorded')}
+                  <div className="text-center text-sm-end mt-1 mt-sm-2">
+                    <small className="text-muted" style={{ fontSize: '0.6rem' }}>
+                      <span className="d-none d-sm-inline">{product.historyCount} {t('common.purchase_recorded')}</span>
+                      <span className="d-sm-none">{product.historyCount}x</span>
                     </small>
                   </div>
 

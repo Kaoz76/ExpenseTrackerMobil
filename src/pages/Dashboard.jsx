@@ -285,7 +285,7 @@ function Dashboard() {
 
         {/* RECENT SCANS */}
         <h3 className="h5 mb-3">{t('common.recent_scans')}</h3>
-        <div className="row mb-4 flex-nowrap flex-md-wrap overflow-auto hide-scroll pb-2">
+        <div className="row mb-4">
           {loadingScans && (
             <div className="col-12 text-center p-5">
               <div className="spinner-border" role="status"></div>
@@ -310,9 +310,9 @@ function Dashboard() {
               </div>
             </div>
           )}
-          {user && !loadingScans && recentScans.map(scan => (
-            <div key={scan.id} className="col-lg-4 col-md-6 mb-4">
-              <div className="magic-card">
+          {user && !loadingScans && recentScans.map((scan, index) => (
+            <div key={scan.id} className={`col-6 col-md-4 mb-4 ${index >= 2 ? 'd-none d-md-block' : ''}`}>
+              <div className="magic-card h-100">
                 <div
                   className="magic-card-inner card h-100 border-0"
                   onClick={() => handleCardClick(scan)}
@@ -328,12 +328,14 @@ function Dashboard() {
                     />
                   )}
 
-                  <div className="card-body">
-                    <h6 className="card-title text-truncate" title={scan.fileName}>{scan.fileName}</h6>
-                    <p className="card-text text-muted">{formatPrice(scan.price, scan.currency)}</p>
+                  <div className="card-body p-2 p-sm-3">
+                    <h6 className="card-title text-truncate fw-bold mb-1" style={{ fontSize: '0.85rem' }} title={scan.fileName}>{scan.fileName}</h6>
+                    <p className="card-text text-muted mb-2" style={{ fontSize: '0.8rem' }}>{formatPrice(scan.price, scan.currency)}</p>
 
-                    {scan.isManual && <span className="badge bg-secondary me-1">{t('common.text_badge')}</span>}
-                    {!scan.isManual && <span className="badge bg-info text-dark">{t('common.scanned')}</span>}
+                    <div className="mt-auto">
+                      {scan.isManual && <span className="badge bg-secondary me-1" style={{ fontSize: '0.65rem' }}>{t('common.text_badge')}</span>}
+                      {!scan.isManual && <span className="badge bg-info text-dark" style={{ fontSize: '0.65rem' }}>{t('common.scanned')}</span>}
+                    </div>
                   </div>
                 </div>
               </div>
