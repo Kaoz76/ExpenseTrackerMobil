@@ -4,7 +4,7 @@ import { getSmartCropBox, rotateImage90Deg } from '../../utils/imageUtils';
 import { useLanguage } from '../../context/LanguageContext';
 import { FaSyncAlt } from 'react-icons/fa';
 
-const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) => {
+const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, title }) => {
   const { t } = useLanguage();
   const containerRef = useRef(null);
   const imageRef = useRef(null);
@@ -186,7 +186,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete }) =>
       <div className="modal-dialog modal-dialog-centered modal-lg">
         <div className="modal-content bg-dark text-white border-secondary">
           <div className="modal-header border-secondary">
-            <h5 className="modal-title">{t('common.perspective_crop_title')}</h5>
+            <h5 className="modal-title">{title || t('common.perspective_crop_title')}</h5>
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
           <div className="modal-body text-center p-0 position-relative" style={{ overflow: 'hidden' }}>

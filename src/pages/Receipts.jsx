@@ -45,6 +45,10 @@ function Receipts() {
   const [cropModalVisible, setCropModalVisible] = useState(false);
   const [cropFile, setCropFile] = useState(null);
   const [cropImageUrl, setCropImageUrl] = useState('');
+  const [cropQueue, setCropQueue] = useState([]);
+  const [croppedFiles, setCroppedFiles] = useState([]);
+  const [currentCropIndex, setCurrentCropIndex] = useState(0);
+  const [totalCropCount, setTotalCropCount] = useState(0);
 
   // Revoke cropImageUrl on unmount
   useEffect(() => {
@@ -466,6 +470,26 @@ function Receipts() {
 
   }, [user, privacyMode, shouldAnalyzeWithLLM, t, existingProductNames, currency?.code, language]);
 
+  const prepareAndShowCrop = useCallback(async (file) => {
+    setIsUploading(true);
+    setStatusText(t('common.msg_preparing_image') || 'Preparing image...');
+    try {
+      // Pre-resize image before showing in crop modal to drastically reduce memory usage
+      const resized = await resizeImage(file, 1000, 1300);
+      setCropFile(resized);
+      setCropImageUrl(URL.createObjectURL(resized));
+      setCropModalVisible(true);
+    } catch (err) {
+      console.error("Resize failed:", err);
+      setCropFile(file);
+      setCropImageUrl(URL.createObjectURL(file));
+      setCropModalVisible(true);
+    } finally {
+      setIsUploading(false);
+      setStatusText('');
+    }
+  }, [t]);
+
   const onDrop = useCallback(async (acceptedFiles) => {
     if (!acceptedFiles || acceptedFiles.length === 0) return;
 
@@ -476,56 +500,95 @@ function Receipts() {
 
     const filesToProcess = acceptedFiles.slice(0, 10);
 
-    if (filesToProcess.length === 1) {
-      setIsUploading(true);
-      setStatusText(t('common.msg_preparing_image') || 'Preparing image...');
+    setCroppedFiles([]);
+    setCurrentCropIndex(0);
+    setTotalCropCount(filesToProcess.length);
+
+    if (filesToProcess.length > 0) {
+      const firstFile = filesToProcess[0];
+      const remainingFiles = filesToProcess.slice(1);
+
+      setCropQueue(remainingFiles);
+
       // Defer crop modal opening by 700ms to yield the main thread to Android OS focus/resume event loop
-      setTimeout(async () => {
-        try {
-          // Pre-resize image before showing in crop modal to drastically reduce memory usage
-          const resized = await resizeImage(filesToProcess[0], 1000, 1300);
-          setCropFile(resized);
-          setCropImageUrl(URL.createObjectURL(resized));
-          setCropModalVisible(true);
-        } catch (err) {
-          console.error("Resize failed:", err);
-          const original = filesToProcess[0];
-          setCropFile(original);
-          setCropImageUrl(URL.createObjectURL(original));
-          setCropModalVisible(true);
-        } finally {
-          setIsUploading(false);
-          setStatusText('');
-        }
-      }, 700);
-    } else {
-      // Defer processing by 700ms to yield the main thread to Android OS focus/resume event loop
       setTimeout(() => {
-        processFiles(filesToProcess);
+        prepareAndShowCrop(firstFile);
       }, 700);
     }
-  }, [user, t, processFiles]);
+  }, [user, t, prepareAndShowCrop]);
 
   const handleCropConfirm = (croppedFile) => {
-    setCropModalVisible(false);
-    setCropFile(null);
+    // Revoke previous URL to release memory
     if (cropImageUrl) {
       URL.revokeObjectURL(cropImageUrl);
       setCropImageUrl('');
     }
-    // Defer processing by 700ms to yield the main thread to Android OS focus/resume event loop
-    setTimeout(() => {
-      processFiles([croppedFile]);
-    }, 700);
-  };
 
+    const updatedCropped = [...croppedFiles, croppedFile];
+    setCroppedFiles(updatedCropped);
 
-  const handleCropCancel = () => {
     setCropModalVisible(false);
     setCropFile(null);
+
+    if (cropQueue.length > 0) {
+      const nextQueue = [...cropQueue];
+      const nextFile = nextQueue.shift();
+      setCropQueue(nextQueue);
+      setCurrentCropIndex(prev => prev + 1);
+
+      // Defer next crop modal by 300ms to allow smooth modal transitions
+      setTimeout(() => {
+        prepareAndShowCrop(nextFile);
+      }, 300);
+    } else {
+      setCroppedFiles([]);
+      setTotalCropCount(0);
+      setCurrentCropIndex(0);
+
+      // Defer processing by 700ms to yield the main thread to Android OS focus/resume event loop
+      setTimeout(() => {
+        processFiles(updatedCropped);
+      }, 700);
+    }
+  };
+
+  const handleCropCancel = () => {
+    // Revoke previous URL to release memory
     if (cropImageUrl) {
       URL.revokeObjectURL(cropImageUrl);
       setCropImageUrl('');
+    }
+
+    setCropModalVisible(false);
+    setCropFile(null);
+
+    if (cropQueue.length > 0) {
+      const nextQueue = [...cropQueue];
+      const nextFile = nextQueue.shift();
+      setCropQueue(nextQueue);
+      setCurrentCropIndex(prev => prev + 1);
+
+      // Defer next crop modal by 300ms to allow smooth modal transitions
+      setTimeout(() => {
+        prepareAndShowCrop(nextFile);
+      }, 300);
+    } else {
+      // If there are accumulated cropped files, process them
+      if (croppedFiles.length > 0) {
+        const processed = [...croppedFiles];
+        setCroppedFiles([]);
+        setTotalCropCount(0);
+        setCurrentCropIndex(0);
+
+        // Defer processing by 700ms to yield the main thread to Android OS focus/resume event loop
+        setTimeout(() => {
+          processFiles(processed);
+        }, 700);
+      } else {
+        // No files cropped at all
+        setTotalCropCount(0);
+        setCurrentCropIndex(0);
+      }
     }
   };
 
@@ -761,6 +824,7 @@ function Receipts() {
           imageSrc={cropImageUrl}
           onClose={handleCropCancel}
           onCropComplete={handleCropConfirm}
+          title={totalCropCount > 1 ? `${t('common.perspective_crop_title')} (${currentCropIndex + 1} / ${totalCropCount})` : undefined}
         />
       )}
 
