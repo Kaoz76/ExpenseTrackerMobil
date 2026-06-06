@@ -355,43 +355,43 @@ function Settings() {
         <div className="row g-4">
 
           {/* Para Birimi Seçimi */}
-          <div className="col-md-6">
+          <div className="col-6 col-md-6">
             <div className="card border-0 shadow-sm h-100">
-              <div className="card-body p-4">
-                <div className="d-flex align-items-center mb-4">
-                  <div className="bg-primary-subtle text-primary p-2 rounded me-3">
-                    <FaGlobe className="fs-5" />
+              <div className="card-body p-2 p-sm-3 p-md-4 flex-column d-flex">
+                <div className="d-flex flex-column flex-sm-row align-items-center align-items-sm-start mb-3 mb-md-4 text-center text-sm-start">
+                  <div className="bg-primary-subtle text-primary p-2 rounded mb-2 mb-sm-0 me-sm-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                    <FaGlobe style={{ fontSize: '1.2rem' }} />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">{t('common.preferences')}</h5>
+                  <h5 className="card-title mb-0 fw-bold w-100 mt-sm-1" style={{ fontSize: '0.9rem' }}>{t('common.preferences')}</h5>
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label text-muted small fw-bold">{t('settings.language')}</label>
+                  <label className="form-label text-muted fw-bold mb-1 text-truncate w-100" style={{ fontSize: '0.7rem' }}>{t('settings.language')}</label>
                   <select
-                    className="form-select form-select-lg mb-4"
+                    className="form-select form-select-sm mb-3"
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', fontSize: '0.8rem' }}
                   >
                     <option value="en">{t('settings.english')}</option>
                     <option value="tr">{t('settings.turkish')}</option>
                   </select>
 
-                  <label className="form-label text-muted small fw-bold">{t('settings.primary_currency').toUpperCase()}</label>
+                  <label className="form-label text-muted fw-bold mb-1 text-truncate w-100" style={{ fontSize: '0.7rem' }}>{t('settings.primary_currency').toUpperCase()}</label>
                   <select
-                    className="form-select form-select-lg mb-4"
+                    className="form-select form-select-sm mb-3"
                     value={currency.code}
                     onChange={(e) => updateCurrency(e.target.value)}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', fontSize: '0.8rem' }}
                   >
-                    <option value="USD">USD ($) - {t('settings.currency_usd')}</option>
-                    <option value="EUR">EUR (€) - {t('settings.currency_eur')}</option>
-                    <option value="TRY">TRY (₺) - {t('settings.currency_try')}</option>
-                    <option value="GBP">GBP (£) - {t('settings.currency_gbp')}</option>
+                    <option value="USD">USD ($) <span className="d-none d-sm-inline">- {t('settings.currency_usd')}</span></option>
+                    <option value="EUR">EUR (€) <span className="d-none d-sm-inline">- {t('settings.currency_eur')}</span></option>
+                    <option value="TRY">TRY (₺) <span className="d-none d-sm-inline">- {t('settings.currency_try')}</span></option>
+                    <option value="GBP">GBP (£) <span className="d-none d-sm-inline">- {t('settings.currency_gbp')}</span></option>
                   </select>
 
-                  <label className="form-label text-muted small fw-bold d-block mb-2">{t('settings.favorite_currencies').toUpperCase()}</label>
-                  <div className="d-flex flex-wrap gap-2">
+                  <label className="form-label text-muted fw-bold d-block mb-1 text-truncate" style={{ fontSize: '0.7rem' }}>{t('settings.favorite_currencies').toUpperCase()}</label>
+                  <div className="d-flex flex-wrap gap-1 justify-content-center justify-content-sm-start">
                     {Object.values(CURRENCY_MAP).map((c) => {
                       const isFavorite = favoriteCurrencies.includes(c.code);
                       const isPrimary = c.code === currency.code;
@@ -399,7 +399,7 @@ function Settings() {
                         <button
                           key={c.code}
                           type="button"
-                          className={`btn btn-sm rounded-pill px-3 py-2 transition-all ${
+                          className={`btn rounded-pill transition-all ${
                             isPrimary
                               ? 'btn-primary border-0'
                               : isFavorite
@@ -416,15 +416,16 @@ function Settings() {
                             }
                             updateFavoriteCurrencies(updated);
                           }}
+                          style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}
                         >
                           <span className="me-1">{c.symbol}</span>
-                          <span>{c.code}</span>
-                          {isPrimary && <span className="badge bg-white text-primary ms-1" style={{ fontSize: '0.65rem' }}>Main</span>}
+                          <span className="d-none d-sm-inline">{c.code}</span>
+                          {isPrimary && <span className="badge bg-white text-primary ms-1 d-none d-sm-inline" style={{ fontSize: '0.55rem' }}>Main</span>}
                         </button>
                       );
                     })}
                   </div>
-                  <div className="form-text mt-2">
+                  <div className="form-text mt-2 d-none d-sm-block" style={{ fontSize: '0.7rem' }}>
                     {t('settings.favorite_currencies_desc')}
                   </div>
                 </div>
@@ -433,72 +434,64 @@ function Settings() {
           </div>
 
           {/* Bütçe Hedefleri */}
-          <div className="col-md-6">
+          <div className="col-6 col-md-6">
             <div className="card border-0 shadow-sm h-100">
-              <div className="card-body p-4">
-                <div className="d-flex align-items-center mb-4">
-                  <div className="bg-success-subtle text-success p-2 rounded me-3">
-                    <FaWallet className="fs-5" />
+              <div className="card-body p-2 p-sm-3 p-md-4 flex-column d-flex">
+                <div className="d-flex flex-column flex-sm-row align-items-center align-items-sm-start mb-3 mb-md-4 text-center text-sm-start">
+                  <div className="bg-success-subtle text-success p-2 rounded mb-2 mb-sm-0 me-sm-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                    <FaWallet style={{ fontSize: '1.2rem' }} />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">{t('common.budget_goals')}</h5>
+                  <h5 className="card-title mb-0 fw-bold w-100 mt-sm-1" style={{ fontSize: '0.9rem' }}>{t('common.budget_goals')}</h5>
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label text-muted small fw-bold">{t('common.monthly_limit')} ({currency.symbol})</label>
-                  <div className="input-group input-group-lg">
-                    <span className="input-group-text bg-body-tertiary">{currency.symbol}</span>
+                  <label className="form-label text-muted fw-bold mb-1 text-truncate w-100" style={{ fontSize: '0.7rem' }}>{t('common.monthly_limit')} ({currency.symbol})</label>
+                  <div className="input-group input-group-sm mb-2">
+                    <span className="input-group-text bg-body-tertiary px-2">{currency.symbol}</span>
                     <input
                       type="number"
-                      className="form-control"
+                      className="form-control px-1 text-center text-sm-start"
                       placeholder={t('common.placeholder_budget')}
                       value={budgetInput}
                       onChange={(e) => setBudgetInput(e.target.value)}
                       onKeyDown={(e) => { if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault(); }}
+                      style={{ fontSize: '0.8rem' }}
                     />
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleSaveBudget}
-                        disabled={saving}
-                        title="Save Budget"
-                      >
-                        {saving ? '...' : <FaSave />}
-                      </button>
-                      <button
-                        className="btn btn-outline-danger"
-                        onClick={handleResetBudget}
-                        disabled={saving}
-                        title="Reset Budget"
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  <div className="form-text mt-2">
+                  </div>
+                  <div className="d-flex gap-1 w-100">
+                    <button className="btn btn-sm btn-primary flex-fill" onClick={handleSaveBudget} disabled={saving} style={{ padding: '0.3rem' }} title="Save Budget">
+                      {saving ? '...' : <FaSave style={{ fontSize: '0.9rem' }} />}
+                    </button>
+                    <button className="btn btn-sm btn-outline-danger flex-fill" onClick={handleResetBudget} disabled={saving} style={{ padding: '0.3rem' }} title="Reset Budget">
+                      <FaTrash style={{ fontSize: '0.9rem' }} />
+                    </button>
+                  </div>
+                  <div className="form-text mt-2 d-none d-sm-block" style={{ fontSize: '0.7rem' }}>
                     {t('common.monthly_limit_desc')}
                   </div>
-                  {message && <div className={`mt-2 small fw-bold ${message.includes('Failed') ? 'text-danger' : 'text-success'}`}>{message}</div>}
+                  {message && <div className={`mt-2 small fw-bold text-center text-sm-start ${message.includes('Failed') ? 'text-danger' : 'text-success'}`} style={{ fontSize: '0.7rem' }}>{message}</div>}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Görünüm */}
-          <div className="col-md-6">
+          <div className="col-6 col-md-6">
             <div className="card border-0 shadow-sm h-100">
-              <div className="card-body p-4">
-                <div className="d-flex align-items-center mb-4">
-                  <div className="bg-warning-subtle text-warning-emphasis p-2 rounded me-3">
-                    <FaPalette className="fs-5" />
+              <div className="card-body p-2 p-sm-3 p-md-4 flex-column d-flex">
+                <div className="d-flex flex-column flex-sm-row align-items-center align-items-sm-start mb-3 mb-md-4 text-center text-sm-start">
+                  <div className="bg-warning-subtle text-warning-emphasis p-2 rounded mb-2 mb-sm-0 me-sm-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                    <FaPalette style={{ fontSize: '1.2rem' }} />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">{t('common.appearance')}</h5>
+                  <h5 className="card-title mb-0 fw-bold w-100 mt-sm-1" style={{ fontSize: '0.9rem' }}>{t('common.appearance')}</h5>
                 </div>
 
-                <div className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <span className="d-block fw-medium">{t('common.dark_mode')}</span>
-                    <small className="text-muted">{t('common.dark_mode_desc')}</small>
+                <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center text-center text-sm-start mt-auto">
+                  <div className="mb-2 mb-sm-0 w-100">
+                    <span className="d-block fw-bold" style={{ fontSize: '0.8rem' }}>{t('common.dark_mode')}</span>
+                    <small className="text-muted d-none d-sm-block" style={{ fontSize: '0.7rem' }}>{t('common.dark_mode_desc')}</small>
                   </div>
-
-                  <div className="switch-container">
+                  <div className="switch-container mt-1 mt-sm-0" style={{ transform: 'scale(0.8)' }}>
                     <input
                       type="checkbox"
                       id="darkModeToggle"
@@ -514,40 +507,39 @@ function Settings() {
           </div>
 
           {/* Bildirimler */}
-          <div className="col-md-6">
+          <div className="col-6 col-md-6">
             <div className="card border-0 shadow-sm h-100">
-              <div className="card-body p-4">
-                <div className="d-flex align-items-center mb-4">
-                  <div className="bg-info-subtle text-info-emphasis p-2 rounded me-3">
-                    <FaBell className="fs-5" />
+              <div className="card-body p-2 p-sm-3 p-md-4 flex-column d-flex">
+                <div className="d-flex flex-column flex-sm-row align-items-center align-items-sm-start mb-3 mb-md-4 text-center text-sm-start">
+                  <div className="bg-info-subtle text-info-emphasis p-2 rounded mb-2 mb-sm-0 me-sm-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                    <FaBell style={{ fontSize: '1.2rem' }} />
                   </div>
-                  <h5 className="card-title mb-0 fw-bold">{t('common.notifications')}</h5>
+                  <h5 className="card-title mb-0 fw-bold w-100 mt-sm-1 text-truncate" style={{ fontSize: '0.9rem' }}>{t('common.notifications')}</h5>
                 </div>
 
-                {/* Saat Seçici */}
                 <div className="mb-3">
-                  <label className="form-label text-muted small fw-bold d-flex align-items-center">
-                    <FaClock className="me-2" /> {t('common.set_reminder_time')}
+                  <label className="form-label text-muted fw-bold d-flex align-items-center justify-content-center justify-content-sm-start mb-1" style={{ fontSize: '0.7rem' }}>
+                    <FaClock className="me-1 d-none d-sm-inline" /> <span className="text-truncate">{t('common.set_reminder_time')}</span>
                   </label>
                   <input
                     type="time"
-                    className="form-control form-control-lg"
+                    className="form-control form-control-sm text-center text-sm-start"
                     value={reminderTime}
                     onChange={(e) => setReminderTime(e.target.value)}
                     onBlur={handleTimeBlur}
+                    style={{ fontSize: '0.8rem' }}
                   />
-                  <div className="form-text mt-1">
+                  <div className="form-text mt-1 d-none d-sm-block" style={{ fontSize: '0.7rem' }}>
                     {t('common.reminder_time_desc')}
                   </div>
                 </div>
 
-                {/* Hatırlatıcı Switch */}
-                <div className="d-flex justify-content-between align-items-center pt-3 border-top">
-                  <div>
-                    <span className="d-block fw-medium">{t('common.enable_reminder')}</span>
-                    <small className="text-muted">{t('common.enable_reminder_desc')}</small>
+                <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center text-center text-sm-start mt-auto pt-2 border-top">
+                  <div className="mb-2 mb-sm-0 w-100">
+                    <span className="d-block fw-bold text-truncate" style={{ fontSize: '0.8rem' }}>{t('common.enable_reminder')}</span>
+                    <small className="text-muted d-none d-sm-block" style={{ fontSize: '0.7rem' }}>{t('common.enable_reminder_desc')}</small>
                   </div>
-                  <div className="switch-container">
+                  <div className="switch-container mt-1 mt-sm-0" style={{ transform: 'scale(0.8)' }}>
                     <input
                       type="checkbox"
                       id="reminderToggle"

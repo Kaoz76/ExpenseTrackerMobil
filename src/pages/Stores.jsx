@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaStore } from 'react-icons/fa';
+import { FaStore, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -96,35 +96,41 @@ function Stores() {
         <div className="row">
           {/* 🔥 Eski stores.map yerine filteredStores.map kullanıyoruz */}
           {filteredStores.map((store, index) => (
-            <div key={index} className="col-md-6 col-lg-4 mb-4">
+            <div key={index} className="col-4 col-sm-6 col-md-6 col-lg-4 mb-3 mb-md-4">
               {/* Premium Card Class eklendi */}
               <div className="card shadow-sm h-100 card-hover-effect border-0">
-                <div className="card-body d-flex flex-column p-4">
-                  <div className="d-flex align-items-center mb-3">
-                    <div className="bg-primary-subtle rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style={{ width: '60px', height: '60px' }}>
-                      <FaStore className="text-primary fs-4" />
+                <div className="card-body p-2 p-sm-4 d-flex flex-column">
+
+                  <div className="d-flex flex-column flex-sm-row align-items-center align-items-sm-start mb-2 mb-sm-3 text-center text-sm-start">
+                    <div className="bg-primary-subtle rounded-circle p-2 p-sm-3 me-0 me-sm-3 mb-1 mb-sm-0 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: '40px', height: '40px' }}>
+                      <FaStore className="text-primary" style={{ fontSize: '1.2rem' }} />
                     </div>
-                    <div className="overflow-hidden">
-                      <h5 className="card-title mb-1 fw-bold text-truncate" title={store.name}>{store.name}</h5>
-                      <p className="card-text text-muted small mb-0">
-                        {store.visitCount} {t('common.visit_recorded')}
-                      </p>
+                    <div className="w-100 overflow-hidden">
+                      <h6 className="card-title mb-1 fw-bold text-truncate w-100" style={{ fontSize: '0.8rem' }} title={store.name}>{store.name}</h6>
+                      <small className="card-text text-muted d-block text-truncate w-100" style={{ fontSize: '0.65rem' }}>
+                        <span className="d-none d-sm-inline">{store.visitCount} {t('common.visit_recorded')}</span>
+                        <span className="d-sm-none">{store.visitCount}x</span>
+                      </small>
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
-                    <div>
-                      <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>{t('common.total_spent')}</small>
-                      <span className="fw-bold fs-5 text-primary">{formatPrice(store.totalSpent)}</span>
+                  <div className="mt-auto pt-2 border-top d-flex flex-column flex-sm-row justify-content-between align-items-center align-items-sm-end text-center text-sm-start">
+                    <div className="mb-2 mb-sm-0 w-100 overflow-hidden">
+                      <small className="text-muted d-none d-sm-block" style={{ fontSize: '0.75rem' }}>{t('common.total_spent')}</small>
+                      <span className="fw-bold text-primary text-truncate d-block" style={{ fontSize: '0.85rem' }}>{formatPrice(store.totalSpent)}</span>
                     </div>
 
-                    <Link
-                      to={`/stores/${encodeURIComponent(store.name)}`}
-                      className="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold"
-                      onClick={() => saveSearchTerm(searchTerm)}
-                    >
-                      {t('common.view_details')}
-                    </Link>
+                    <div className="text-center text-sm-end w-100">
+                      <Link
+                        to={`/stores/${encodeURIComponent(store.name)}`}
+                        className="btn btn-sm btn-outline-primary rounded-pill px-0 px-sm-3 w-100 fw-bold"
+                        onClick={() => saveSearchTerm(searchTerm)}
+                        style={{ padding: '0.2rem' }}
+                      >
+                        <span className="d-none d-sm-inline" style={{ fontSize: '0.75rem' }}>{t('common.view_details')} <FaChevronRight className="ms-1" style={{ fontSize: '0.6rem' }} /></span>
+                        <FaChevronRight className="d-sm-none" style={{ fontSize: '0.8rem' }} />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>

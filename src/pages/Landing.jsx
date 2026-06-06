@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FaCamera, FaChartLine, FaSync, FaArrowRight, FaReceipt, FaMoneyBillWave, FaCalendarCheck, FaSearch, FaClipboardList, FaGithub, FaHeart } from 'react-icons/fa';
+import { FaCamera, FaChartLine, FaSync, FaArrowRight, FaReceipt, FaMoneyBillWave, FaCalendarCheck, FaSearch, FaClipboardList } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -340,28 +340,11 @@ function Landing() {
           ════════════════════════════════════════ */}
       <RevealSection delay={0.1}>
         <footer className="border-top mt-5" style={{ backgroundColor: 'var(--bs-tertiary-bg)' }}>
-          <div className="container py-4">
-            <div className="row align-items-center">
-              <div className="col-md-4 text-center text-md-start mb-3 mb-md-0">
-                <span className="fw-bold" style={{ color: 'var(--modern-primary)' }}>{t('common.landing_hero_title_2')}</span>
-                <p className="text-muted small mb-0 mt-1">© {new Date().getFullYear()} {t('common.landing_footer_rights')}</p>
-              </div>
-              <div className="col-md-4 text-center mb-3 mb-md-0">
-                <span className="text-muted small d-flex align-items-center justify-content-center gap-1">
-                  {t('common.landing_footer_built')} <FaHeart className="text-danger" style={{ fontSize: '0.7rem' }} /> {t('common.landing_footer_by')}
-                </span>
-              </div>
-              <div className="col-md-4 text-center text-md-end">
-                <a href="https://github.com/Kaoz76" target="_blank" rel="noopener noreferrer"
-                  className="text-muted d-inline-flex align-items-center gap-2 text-decoration-none"
-                  style={{ transition: 'color 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.color = 'var(--modern-primary)'}
-                  onMouseLeave={e => e.currentTarget.style.color = ''}
-                >
-                  <FaGithub className="fs-5" /> GitHub
-                </a>
-              </div>
-            </div>
+          <div className="container py-4 text-center">
+            <p className="text-muted mb-0" style={{ fontSize: '0.95rem' }}>
+              <span style={{ color: 'var(--modern-primary)' }}>2026 </span>
+              <span className="fw-bold" style={{ color: 'var(--modern-primary)' }}>Expense Tracker</span> © {t('common.landing_footer_rights')}
+            </p>
           </div>
         </footer>
       </RevealSection>

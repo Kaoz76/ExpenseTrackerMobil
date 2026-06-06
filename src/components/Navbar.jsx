@@ -99,7 +99,7 @@ function Navbar() {
         {/* İçerik (Sadece PC Linkleri Kaldı) */}
         <div className="collapse navbar-collapse" id="mainNavbar">
           {/* Sayfa Linkleri (Sadece PC'de görünür, Mobilde gizlenir) */}
-          <ul className="navbar-nav me-auto mb-2 mb-md-0 ms-md-2 ms-lg-5 gap-1 d-none d-md-flex">
+          <ul className="navbar-nav me-auto mb-2 mb-md-0 ms-md-2 ms-lg-5 gap-2 gap-lg-3 d-none d-md-flex">
             <li className="nav-item"><NavLink className="nav-link nav-link-animated text-nowrap" to="/dashboard">{t('nav.dashboard')}</NavLink></li>
             <li className="nav-item"><NavLink className="nav-link nav-link-animated text-nowrap" to="/receipts">{t('nav.receipts')}</NavLink></li>
             <li className="nav-item"><NavLink className="nav-link nav-link-animated text-nowrap" to="/texts">{t('nav.manual_entry')}</NavLink></li>
