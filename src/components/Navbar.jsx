@@ -7,7 +7,6 @@ import { useReport } from '../context/ReportContext';
 import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { useLanguage } from '../context/LanguageContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { Capacitor } from '@capacitor/core';
 

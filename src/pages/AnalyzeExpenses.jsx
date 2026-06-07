@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaChevronDown } from 'react-icons/fa';
+import { FaChevronDown, FaCalendarAlt } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -71,11 +71,11 @@ function AnalyzeExpenses() {
 
           <div className="position-relative">
             <button
-              className="btn btn-outline-secondary d-flex align-items-center"
+              className="btn btn-primary rounded-pill px-4 py-2 d-flex align-items-center fw-bold shadow-sm"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={!user}
             >
-              {getRangeLabel()} <FaChevronDown className="ms-2 small" />
+              <FaCalendarAlt className="me-2" /> {getRangeLabel()} <FaChevronDown className="ms-2 small" />
             </button>
 
             {isDropdownOpen && (
