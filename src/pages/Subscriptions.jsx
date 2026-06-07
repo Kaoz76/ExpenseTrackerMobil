@@ -6,8 +6,6 @@ import { db } from '../firebase';
 import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { FaPlus, FaTrash, FaCalendarCheck, FaExclamationTriangle, FaSync } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { Capacitor } from '@capacitor/core';
 
 function Subscriptions() {
   const { user } = useAuth();
@@ -23,11 +21,6 @@ function Subscriptions() {
   const [price, setPrice] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState('1');
   const [selectedCurrency, setSelectedCurrency] = useState('');
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState('');
 
   // Set initial currency when context currency is loaded
   useEffect(() => {
@@ -94,51 +87,18 @@ function Subscriptions() {
 
     setAdding(true);
     try {
-      const docRef = await addDoc(collection(db, "subscriptions"), {
+      await addDoc(collection(db, "subscriptions"), {
         userId: user.uid,
         name: name.trim(), // Boşlukları temizle
         price: priceValue,
         currency: selectedCurrency || currency?.code || 'USD',
         dayOfMonth: parseInt(dayOfMonth),
-        startDate: startDate,
-        endDate: endDate || null,
         createdAt: Timestamp.now()
       });
-
-      // Bitiş tarihinden 3 gün önceye bildirim planla
-      if (endDate && Capacitor.isNativePlatform()) {
-        try {
-          // Push notification izni iste (sadece ilk seferde çalışır)
-          await LocalNotifications.requestPermissions();
-          
-          const endObj = new Date(endDate);
-          // 3 gün öncesi sabah 10:00'a planla
-          const notifDate = new Date(endObj.getFullYear(), endObj.getMonth(), endObj.getDate() - 3, 10, 0, 0);
-          
-          // Eğer 3 gün öncesi geçmişte değilse
-          if (notifDate > new Date()) {
-            await LocalNotifications.schedule({
-              notifications: [
-                {
-                  title: t('common.expiring_soon') || "Subscription Expiring Soon!",
-                  body: t('common.sub_expiring_desc', { name: name.trim(), date: endObj.toLocaleDateString() }) || `Your ${name.trim()} subscription ends on ${endObj.toLocaleDateString()}.`,
-                  id: Math.floor(Math.random() * 100000) + 1, // Rastgele ID
-                  schedule: { at: notifDate },
-                  extra: { subId: docRef.id }
-                }
-              ]
-            });
-          }
-        } catch (e) {
-          console.warn("LocalNotifications not available or permission denied", e);
-        }
-      }
 
       setName('');
       setPrice('');
       setDayOfMonth('1');
-      setStartDate(new Date().toISOString().split('T')[0]);
-      setEndDate('');
     } catch (error) {
       console.error("Error adding subscription:", error);
       alert(t('common.failed_to_add'));
@@ -284,30 +244,6 @@ function Subscriptions() {
                     <div className="form-text">{t('common.day_payment_occurs')}</div>
                   </div>
 
-                  <div className="mb-4">
-                    <label className="form-label small text-muted fw-bold">{t('common.start_date')}</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      disabled={!user || adding}
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-4">
-                    <label className="form-label small text-muted fw-bold">{t('common.end_date_optional')}</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      disabled={!user || adding}
-                      min={startDate}
-                    />
-                  </div>
-
                   <button className="btn btn-primary w-100 fw-bold" type="submit" disabled={!user || adding}>
                     {adding ? t('common.adding') : t('common.add_subscription')}
                   </button>
@@ -354,40 +290,19 @@ function Subscriptions() {
                 )}
 
                 {/* LİSTE ELEMANLARI */}
-                {!loading && subscriptions.map(sub => {
-                  let isExpired = false;
-                  if (sub.endDate) {
-                    const endObj = new Date(sub.endDate);
-                    endObj.setHours(23, 59, 59, 999);
-                    if (endObj < new Date()) {
-                      isExpired = true;
-                    }
-                  }
-
-                  return (
-                  <div key={sub.id} className={`list-group-item list-group-item-action d-flex align-items-center p-3 card-hover-effect ${isExpired ? 'opacity-50' : ''}`}>
+                {!loading && subscriptions.map(sub => (
+                  <div key={sub.id} className="list-group-item list-group-item-action d-flex align-items-center p-3 card-hover-effect">
                     {/* Gün Kutusu */}
                     <div className="bg-body-secondary rounded text-center d-flex flex-column justify-content-center me-3 shadow-sm" style={{ width: '50px', height: '50px' }}>
                       <span className="small fw-bold text-uppercase" style={{ fontSize: '0.65rem' }}>{t('common.day')}</span>
-                      <span className={`fw-bold fs-5 lh-1 ${isExpired ? 'text-muted' : 'text-body'}`}>{sub.dayOfMonth}</span>
+                      <span className="fw-bold fs-5 lh-1 text-body">{sub.dayOfMonth}</span>
                     </div>
 
-                    <div style={{ flex: 1, minWidth: 0 }} className="pe-2">
-                      <div className={`fw-bold fs-5 text-truncate ${isExpired ? 'text-decoration-line-through text-muted' : 'text-body'}`}>
-                        {sub.name}
-                      </div>
-                      <div className="text-muted small">
-                        {isExpired ? (
-                          <span className="text-danger fw-bold">{t('common.expired') || "Süresi doldu."} ({new Date(sub.endDate).toLocaleDateString()})</span>
-                        ) : sub.endDate ? (
-                          `Bitiş: ${new Date(sub.endDate).toLocaleDateString()}`
-                        ) : (
-                          t('common.indefinite')
-                        )}
-                      </div>
+                    <div style={{ flex: 1, minWidth: 0 }} className="fw-bold fs-5 text-body text-truncate pe-2">
+                      {sub.name}
                     </div>
 
-                    <div style={{ flex: 1, textAlign: 'right' }} className={`fw-bold fs-5 ${isExpired ? 'text-muted' : 'text-primary'}`}>
+                    <div style={{ flex: 1, textAlign: 'right' }} className="fw-bold text-primary fs-5">
                       {formatPrice(sub.price, sub.currency)}
                     </div>
 
@@ -401,8 +316,7 @@ function Subscriptions() {
                       </button>
                     </div>
                   </div>
-                  );
-                })}
+                ))}
 
               </div>
             </div>

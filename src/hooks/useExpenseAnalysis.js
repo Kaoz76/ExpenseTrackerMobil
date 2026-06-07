@@ -254,89 +254,43 @@ export function useExpenseAnalysis(user, timeRange) {
     }
 
     if (rawSubs && rawSubs.length > 0) {
-      const localizedSubsLabel = localizeCategory(t('nav.subscriptions') || "Subscriptions", language);
+      let subsKey = "Unknown";
+      if (timeRange === 'all_time') {
+        subsKey = `${now.getFullYear()}`;
+      } else if (useDailyGrouping) {
+        subsKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      } else {
+        subsKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      let subsTotal = 0;
 
       rawSubs.forEach(sub => {
         const rawSubPrice = Number(sub.price) || 0;
         const subPrice = convertPrice(rawSubPrice, sub.currency || currency.code || 'USD', currency.code);
+        subsTotal += subPrice;
 
         const subName = sub.name || t('nav.subscriptions') || "Subscriptions";
         const cleanSubName = subName.trim().charAt(0).toUpperCase() + subName.trim().slice(1);
         
-        let subStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        if (sub.startDate) {
-          const parts = sub.startDate.split('-'); // YYYY-MM-DD
-          if (parts.length === 3) {
-             subStart = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
-          }
-        } else if (sub.createdAt) {
-          const d = parseDate(sub.createdAt);
-          subStart = new Date(d.getFullYear(), d.getMonth(), 1);
-        }
+        // Add subscriptions as "stores" and "brands" too
+        if (!storeMap[cleanSubName]) storeMap[cleanSubName] = 0;
+        storeMap[cleanSubName] += subPrice;
 
-        let iterMonth = new Date(subStart);
-        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        let subEndDateObj = null;
-        if (sub.endDate) {
-           subEndDateObj = new Date(sub.endDate);
-        }
-
-        while (iterMonth <= currentMonthStart) {
-          const y = iterMonth.getFullYear();
-          const m = iterMonth.getMonth();
-          const mStr = String(m + 1).padStart(2, '0');
-          
-          let paymentDate = new Date(y, m, sub.dayOfMonth || 1);
-
-          // If the payment date is after the subscription's end date, we don't charge for this month or future months
-          if (subEndDateObj && paymentDate > subEndDateObj) {
-             break;
-          }
-          
-          // If payment date is in the future relative to 'now', skip this month
-          if (paymentDate > now) {
-             iterMonth.setMonth(iterMonth.getMonth() + 1);
-             continue;
-          }
-
-          let key = null;
-          if (timeRange === 'all_time') {
-            key = `${y}`;
-            // Ensure the year exists in monthlyMap even if no receipts exist for it
-            if (monthlyMap[key] === undefined) monthlyMap[key] = 0;
-          } else if (timeRange === 'this_year') {
-            if (y === now.getFullYear()) key = `${y}-${mStr}`;
-          } else if (timeRange === 'last_3_months') {
-            const minDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-            if (iterMonth >= minDate) key = `${y}-${mStr}`;
-          } else if (timeRange === 'this_month') {
-            if (y === now.getFullYear() && m === now.getMonth()) {
-               key = `${y}-${mStr}-${String(paymentDate.getDate()).padStart(2, '0')}`;
-            }
-          } else if (timeRange === 'this_week') {
-            if (paymentDate >= startDate && paymentDate <= now) {
-               key = `${y}-${mStr}-${String(paymentDate.getDate()).padStart(2, '0')}`;
-            }
-          }
-
-          if (key && monthlyMap[key] !== undefined) {
-             monthlyMap[key] += subPrice;
-             total += subPrice;
-             
-             if (!storeMap[cleanSubName]) storeMap[cleanSubName] = 0;
-             storeMap[cleanSubName] += subPrice;
-
-             if (!brandMap[cleanSubName]) brandMap[cleanSubName] = 0;
-             brandMap[cleanSubName] += subPrice;
-
-             if (!categoryMap[localizedSubsLabel]) categoryMap[localizedSubsLabel] = 0;
-             categoryMap[localizedSubsLabel] += subPrice;
-          }
-          
-          iterMonth.setMonth(iterMonth.getMonth() + 1);
-        }
+        if (!brandMap[cleanSubName]) brandMap[cleanSubName] = 0;
+        brandMap[cleanSubName] += subPrice;
       });
+
+      if (subsTotal > 0) {
+        total += subsTotal;
+        if (!monthlyMap[subsKey]) monthlyMap[subsKey] = 0;
+        monthlyMap[subsKey] += subsTotal;
+
+        const subsLabel = t('nav.subscriptions') || "Subscriptions";
+        const localizedSubsLabel = localizeCategory(subsLabel, language);
+        if (!categoryMap[localizedSubsLabel]) categoryMap[localizedSubsLabel] = 0;
+        categoryMap[localizedSubsLabel] += subsTotal;
+      }
     }
 
     const formattedChartData = Object.keys(monthlyMap)

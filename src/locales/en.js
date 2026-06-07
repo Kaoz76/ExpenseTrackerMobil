@@ -465,14 +465,6 @@ export const en = {
     perspective_crop_cancel: "Cancel",
     perspective_crop_processing: "Processing...",
     perspective_crop_confirm: "Crop & Straighten",
-    select_month: "Select Month",
-    start_date: "Start Date",
-    end_date_optional: "End Date (Optional)",
-    indefinite: "Indefinite",
-    expiring_soon: "Subscription Expiring Soon!",
-    days_left: "Expires in {{days}} days.",
-    ends_today: "Expires today.",
-    expired: "Expired.",
-    sub_expiring_desc: "Your {{name}} subscription ends on {{date}}."
+    select_month: "Select Month"
   }
 };
