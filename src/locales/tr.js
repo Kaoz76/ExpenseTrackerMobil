@@ -465,6 +465,14 @@ export const tr = {
     perspective_crop_cancel: "İptal",
     perspective_crop_processing: "İşleniyor...",
     perspective_crop_confirm: "Kes ve Düzleştir",
-    select_month: "Ay Seçiniz"
+    select_month: "Ay Seçiniz",
+    start_date: "Başlangıç Tarihi",
+    end_date_optional: "Bitiş Tarihi (Opsiyonel)",
+    indefinite: "Süresiz",
+    expiring_soon: "Abonelik Yakında Sona Eriyor!",
+    days_left: "{{days}} gün içinde sona eriyor.",
+    ends_today: "Bugün sona eriyor.",
+    expired: "Süresi doldu.",
+    sub_expiring_desc: "{{name}} aboneliğiniz {{date}} tarihinde bitiyor."
   }
 };
