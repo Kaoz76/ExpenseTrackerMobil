@@ -16,7 +16,7 @@ function SignUpPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
-  const { signup } = useAuth();
+  const { signup, sendVerification } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -82,9 +82,14 @@ function SignUpPage() {
     try {
       setLoading(true);
       await signup(email, password);
+      try {
+        await sendVerification();
+      } catch (sendErr) {
+        console.error("Verification email sending failed:", sendErr);
+      }
       localStorage.removeItem('signup_attempts');
       localStorage.removeItem('signup_lockout_until');
-      navigate('/');
+      navigate('/verify-email');
     } catch (err) {
       const attempts = parseInt(localStorage.getItem('signup_attempts') || '0', 10) + 1;
       localStorage.setItem('signup_attempts', attempts.toString());
