@@ -363,13 +363,6 @@ export const en = {
     signup_email_in_use: "This email is already in use.",
     signup_weak_password: "Password must be at least 6 characters.",
     signup_generic_error: "Failed to create an account. Please try again.",
-    verification_title: "Email Verification Required",
-    verification_desc: "A verification link has been sent to {{email}}. Please check your inbox (and spam folder) and verify your account.",
-    verification_sent: "Verification email sent successfully.",
-    verification_check: "I Have Verified My Email",
-    verification_resend: "Resend Verification Email",
-    verification_resending: "Sending...",
-    verification_logout: "Logout & Try Another Account",
 
     // Navbar & Notifications
     nav_notifications: "Notifications",

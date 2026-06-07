@@ -5,8 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendPasswordResetEmail,
-  sendEmailVerification
+  sendPasswordResetEmail
 } from 'firebase/auth';
 
 const AuthContext = createContext(null);
@@ -32,25 +31,6 @@ export const AuthProvider = ({ children }) => {
     return sendPasswordResetEmail(auth, email);
   }, []);
 
-  const sendVerification = useCallback(() => {
-    if (auth.currentUser) {
-      return sendEmailVerification(auth.currentUser);
-    }
-    return Promise.reject(new Error("No user logged in"));
-  }, []);
-
-  const reloadUser = useCallback(async () => {
-    if (auth.currentUser) {
-      await auth.currentUser.reload();
-      // React reference state update'ini tetiklemek için nesneyi kopyalıyoruz (prototip zincirini koruyarak)
-      const clonedUser = Object.assign(
-        Object.create(Object.getPrototypeOf(auth.currentUser)),
-        auth.currentUser
-      );
-      setUser(clonedUser);
-    }
-  }, []);
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -67,10 +47,8 @@ export const AuthProvider = ({ children }) => {
     signup,
     login,
     logout,
-    resetPassword,
-    sendVerification,
-    reloadUser
-  }), [user, signup, login, logout, resetPassword, sendVerification, reloadUser]);
+    resetPassword
+  }), [user, signup, login, logout, resetPassword]);
 
   // GELİŞTİRME 2: Boş beyaz ekran yerine şık bir bekleme (Loading) UI'ı göster
   if (loadingAuth) {

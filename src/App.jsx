@@ -21,7 +21,6 @@ const Stores = lazy(() => import('./pages/Stores'));
 const StoreDetails = lazy(() => import('./pages/StoreDetails'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
-const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 const AnalyzeExpenses = lazy(() => import('./pages/AnalyzeExpenses'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -86,7 +85,6 @@ function App() {
 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignUpPage />} />
-            <Route path="/verify-email" element={<VerifyEmailPage />} />
 
             {/* Quick Links */}
             <Route path="/analyze" element={<ProtectedRoute><AnalyzeExpenses /></ProtectedRoute>} />
