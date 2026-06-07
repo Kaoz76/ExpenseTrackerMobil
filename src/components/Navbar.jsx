@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { FaUserCircle, FaFilePdf, FaTimes, FaBell, FaCheckCircle, FaCog, FaMobileAlt } from 'react-icons/fa';
+import { FaUserCircle, FaFilePdf, FaTimes, FaBell, FaCheckCircle, FaCog, FaMobileAlt, FaExclamationTriangle } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useReport } from '../context/ReportContext';
 import { useLanguage } from '../context/LanguageContext';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { QRCodeSVG } from 'qrcode.react';
 import { Capacitor } from '@capacitor/core';
 
@@ -15,7 +17,6 @@ function Navbar() {
   const { t } = useLanguage();
 
   const reportContext = useReport();
-  const hasNotification = reportContext?.hasNotification || false;
   // Dinamik ay ismini al, yoksa varsayılan göster
   const reportMonthText = reportContext?.reportMonthText || "Monthly";
   const generateAndDownloadPDF = reportContext?.generateAndDownloadPDF || (() => { });
@@ -24,6 +25,45 @@ function Navbar() {
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAppModal, setShowAppModal] = useState(false);
+  const [expiringSubs, setExpiringSubs] = useState([]);
+
+  useEffect(() => {
+    if (!user) {
+      setExpiringSubs([]);
+      return;
+    }
+    const q = query(collection(db, "subscriptions"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const now = new Date();
+      now.setHours(0,0,0,0);
+      const expiring = [];
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.endDate) {
+          const endObj = new Date(data.endDate);
+          endObj.setHours(0,0,0,0);
+          
+          const diffTime = endObj - now;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          // 3 gün kala veya tam gününde
+          if (diffDays >= 0 && diffDays <= 3) {
+            expiring.push({
+              id: doc.id,
+              name: data.name,
+              daysLeft: diffDays,
+              endDateStr: new Date(data.endDate).toLocaleDateString()
+            });
+          }
+        }
+      });
+      setExpiringSubs(expiring);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const hasNotification = (reportContext?.hasNotification || false) || expiringSubs.length > 0;
 
   // Akıllı İndirme Butonu (Mobilde direkt indir, PC'de Modal aç)
   const handleAppDownloadClick = (e) => {
@@ -178,6 +218,29 @@ function Navbar() {
                             </div>
                           </div>
                         </div>
+
+                        {expiringSubs.map(sub => (
+                          <div key={sub.id} className="p-3 rounded bg-danger-subtle mb-3">
+                            <div className="d-flex align-items-start">
+                              <div className="bg-danger text-white rounded p-2 me-2">
+                                <FaExclamationTriangle />
+                              </div>
+                              <div>
+                                <p className="fw-bold text-danger mb-1 small">
+                                  {t('common.expiring_soon') || "Subscription Expiring Soon!"}
+                                </p>
+                                <p className="text-danger small mb-1" style={{ fontSize: '0.75rem' }}>
+                                  {t('common.sub_expiring_desc', { name: sub.name, date: sub.endDateStr })?.replace('{{name}}', sub.name).replace('{{date}}', sub.endDateStr) || `Your ${sub.name} subscription ends on ${sub.endDateStr}.`}
+                                </p>
+                                <span className="badge bg-danger rounded-pill">
+                                  {sub.daysLeft === 0 
+                                    ? (t('common.ends_today') || "Ends today.") 
+                                    : (t('common.days_left', { days: sub.daysLeft })?.replace('{{days}}', sub.daysLeft) || `${sub.daysLeft} days left.`)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
 
                         <div className="d-grid gap-2">
                           <button
