@@ -9,7 +9,6 @@ import { Link, useLocation } from 'react-router-dom';
 import ReceiptDetailModal from '../components/ReceiptDetailModal';
 import { formatDateTime } from '../utils/dateFormatter';
 import { suggestedCategoriesTR, suggestedCategoriesEN, localizeCategory } from '../utils/categoryMap';
-import { suggestedBrands } from '../data/brandDictionary';
 import { enrichItemsWithGemini } from '../services/geminiService';
 import { cleanStoreName } from '../utils/stringUtils';
 
@@ -172,12 +171,8 @@ function ManualEntry() {
         }
 
         let finalBrand = p.brand.trim();
-        if (!finalBrand && aiSuggestion?.brand) {
-          finalBrand = aiSuggestion.brand;
-        }
-
-        if (!finalBrand || finalBrand.toLowerCase() === 'unknown brand') {
-          finalBrand = storeName.trim();
+        if (finalBrand.toLowerCase() === 'unknown brand') {
+          finalBrand = '';
         }
 
         return {
@@ -262,12 +257,6 @@ function ManualEntry() {
           {error && <div className="alert alert-danger">{error}</div>}
           {success && <div className="alert alert-success">{success}</div>}
 
-          {/* Otomatik Tamamlama Listeleri */}
-          <datalist id="brand-suggestions">
-            {suggestedBrands.map((brand, index) => (
-              <option key={`brand-${index}`} value={brand} />
-            ))}
-          </datalist>
 
           <div className="row">
             <div className="col-12 mb-4">
@@ -405,7 +394,6 @@ function ManualEntry() {
                                 </label>
                                 <input
                                   type="text"
-                                  list="brand-suggestions"
                                   className="form-control form-control-sm"
                                   value={product.brand}
                                   onChange={(e) => handleInputChange(product.id, 'brand', e.target.value)}

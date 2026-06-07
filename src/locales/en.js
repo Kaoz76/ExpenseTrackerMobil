@@ -443,7 +443,7 @@ export const en = {
 
     // Image Crop Modal
     crop_title: "Crop Receipt (Optional)",
-    crop_desc: "You can crop the receipt to remove unnecessary parts and improve scan quality. Press Confirm when done.",
+    crop_desc: "Crop the receipt to include ONLY the items and the total price.",
     crop_and_continue: "Crop & Continue",
     continue_directly: "Continue Directly",
 
@@ -453,7 +453,7 @@ export const en = {
 
     // Perspective Crop Modal
     perspective_crop_title: "Straighten Receipt (Perspective Crop)",
-    perspective_crop_desc: "Drag the 4 corners to select the exact boundaries of the receipt.",
+    perspective_crop_desc: "Drag the 4 corners to select only the area containing the items and total price.",
     perspective_crop_rotate: "Rotate",
     perspective_crop_cancel: "Cancel",
     perspective_crop_processing: "Processing...",

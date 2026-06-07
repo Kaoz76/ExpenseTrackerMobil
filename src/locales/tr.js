@@ -443,7 +443,7 @@ export const tr = {
 
     // Fiş Kırpma Modalı
     crop_title: "Fişi Kırp (İsteğe Bağlı)",
-    crop_desc: "Tarama kalitesini artırmak için fişin gereksiz kısımlarını kırpabilirsiniz. İşiniz bitince Onayla butonuna basın.",
+    crop_desc: "Fişi yalnızca ürünleri ve toplam tutarı içerecek şekilde kırpın.",
     crop_and_continue: "Kırp ve Devam Et",
     continue_directly: "Doğrudan Devam Et",
 
@@ -453,7 +453,7 @@ export const tr = {
 
     // Perspektif Kırpma Modalı
     perspective_crop_title: "Fişi Düzleştir (Perspektif Kırpma)",
-    perspective_crop_desc: "4 köşeyi sürükleyerek fişin tam sınırlarını seçin.",
+    perspective_crop_desc: "Sadece ürünlerin ve toplam tutarın yer aldığı alanı seçmek için 4 köşeyi sürükleyin.",
     perspective_crop_rotate: "Döndür",
     perspective_crop_cancel: "İptal",
     perspective_crop_processing: "İşleniyor...",
