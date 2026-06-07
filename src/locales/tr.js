@@ -363,13 +363,6 @@ export const tr = {
     signup_email_in_use: "Bu e-posta adresi zaten kullanılıyor.",
     signup_weak_password: "Şifre en az 6 karakter olmalıdır.",
     signup_generic_error: "Hesap oluşturulamadı. Lütfen tekrar deneyin.",
-    verification_title: "E-posta Doğrulaması Gerekli",
-    verification_desc: "Doğrulama bağlantısı {{email}} adresine gönderildi. Lütfen gelen kutunuzu (ve gereksiz kutusunu) kontrol edin ve hesabınızı doğrulayın.",
-    verification_sent: "Doğrulama e-postası başarıyla gönderildi.",
-    verification_check: "E-postamı Doğruladım",
-    verification_resend: "Doğrulama E-postasını Tekrar Gönder",
-    verification_resending: "Gönderiliyor...",
-    verification_logout: "Çıkış Yap & Başka Hesapla Dene",
 
     // Navbar ve Bildirimler
     nav_notifications: "Bildirimler",
