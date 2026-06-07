@@ -380,7 +380,7 @@ function Subscriptions() {
                         {isExpired ? (
                           <span className="text-danger fw-bold">{t('common.expired') || "Süresi doldu."} ({new Date(sub.endDate).toLocaleDateString()})</span>
                         ) : sub.endDate ? (
-                          `Bitiş: ${new Date(sub.endDate).toLocaleDateString()}`
+                          `${t('common.end_date_optional')?.split(' ')[0]}: ${new Date(sub.endDate).toLocaleDateString()}`
                         ) : (
                           t('common.indefinite')
                         )}
