@@ -33,8 +33,6 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
 
   let usTaxScore = 0;
   let ukTaxScore = 0;
-  // eslint-disable-next-line no-unused-vars
-  let extractedTaxAmount = 0;
 
   const normalizedText = trToLower(cleanedText.replace(/\r/g, '\n'));
   const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
@@ -200,7 +198,6 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
           const parsed = cleanAndParseNumber(taxMatches[taxMatches.length - 1]);
           if (parsed) {
             const taxVal = Math.abs(parsed);
-            extractedTaxAmount += taxVal;
             extractedItems.push({
               name: language === 'tr' ? 'Satış Vergisi' : 'Sales Tax',
               price: taxVal,

@@ -22,6 +22,7 @@ export function useReceipts(user) {
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
+        where("isManual", "==", false),
         orderBy("createdAt", "desc"),
         limit(20)
       );
@@ -48,6 +49,7 @@ export function useReceipts(user) {
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
+        where("isManual", "==", false),
         orderBy("createdAt", "desc"),
         startAfter(lastDoc),
         limit(20)

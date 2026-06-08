@@ -164,6 +164,7 @@ function Dashboard() {
     const q = query(
       collection(db, "receipts"),
       where("userId", "==", user.uid),
+      where("isManual", "==", false),
       orderBy("createdAt", "desc"),
       limit(3)
     );

@@ -5,8 +5,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { FaPlus, FaTrash, FaExclamationTriangle, FaSave, FaListAlt, FaArrowDown } from 'react-icons/fa';
-import { Link, useLocation } from 'react-router-dom';
-import ReceiptDetailModal from '../components/ReceiptDetailModal';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+
 import { formatDateTime } from '../utils/dateFormatter';
 import { suggestedCategoriesTR, suggestedCategoriesEN, localizeCategory } from '../utils/categoryMap';
 import { enrichItemsWithGemini } from '../services/geminiService';
@@ -36,14 +36,14 @@ function ManualEntry() {
   const [products, setProducts] = useState([{ id: generateUniqueId(), type: '', brand: '', name: '', size: '', price: '' }]);
   const [manualEntries, setManualEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+
 
   // 🔥 YENİ: Firebase'den kaç veri çekileceğini tutan state
   const [entryLimit, setEntryLimit] = useState(10);
   const [shouldAnalyzeWithLLM, setShouldAnalyzeWithLLM] = useState(true);
 
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (error) setError('');
@@ -231,18 +231,14 @@ function ManualEntry() {
   };
 
   const handleRowClick = (receipt) => {
-    setSelectedReceipt(receipt);
-    setShowModal(true);
+    navigate(`/receipts/${receipt.id}`);
   };
 
   const isDisabled = !user || loading;
 
   return (
     <div className="dashboard-page-wrapper p-4">
-      <div
-        className={showModal ? 'content-blurred' : ''}
-        style={{ transition: 'filter 0.3s ease-in-out' }}
-      >
+      <div>
         <div className="container-fluid">
 
           <div className="mb-4">
@@ -556,11 +552,7 @@ function ManualEntry() {
         </div>
       </div>
 
-      <ReceiptDetailModal
-        show={showModal}
-        onClose={() => setShowModal(false)}
-        receipt={selectedReceipt}
-      />
+
 
     </div>
   );
