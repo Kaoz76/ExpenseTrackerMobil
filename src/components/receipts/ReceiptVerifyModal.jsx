@@ -55,7 +55,7 @@ function ReceiptVerifyModal({
     <>
       <div className="modal-backdrop fade show" style={{ zIndex: 1055 }}></div>
       <div className="modal fade show d-block" style={{ zIndex: 1060 }} tabIndex="-1">
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
           <div className="modal-content shadow-lg border-0">
 
             <div className="modal-header bg-primary text-white">
@@ -247,9 +247,9 @@ function ReceiptVerifyModal({
 
             </div>
 
-            <div className="modal-footer bg-light d-flex justify-content-between">
+            <div className="modal-footer bg-light d-flex justify-content-between flex-wrap" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
               <button 
-                className="btn btn-outline-info border-0 d-flex align-items-center" 
+                className="btn btn-outline-info border-0 d-flex align-items-center mb-2 mb-sm-0" 
                 onClick={handleSendToManual}
                 disabled={isSavingDoc}
               >

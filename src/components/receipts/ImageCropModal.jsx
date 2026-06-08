@@ -52,7 +52,7 @@ function ImageCropModal({ show, file, onConfirm, onCancel }) {
     <>
       <div className="modal-backdrop fade show" style={{ zIndex: 1050 }}></div>
       <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex: 1055 }}>
-        <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
           <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', overflow: 'hidden' }}>
             
             {/* HEADER */}
@@ -97,7 +97,7 @@ function ImageCropModal({ show, file, onConfirm, onCancel }) {
             </div>
 
             {/* FOOTER */}
-            <div className="modal-footer border-top-0 bg-light p-4 pt-0">
+            <div className="modal-footer border-top-0 bg-light p-4 pt-0 flex-wrap" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
               <button 
                 type="button" 
                 className="btn btn-outline-secondary rounded-pill px-4" 
