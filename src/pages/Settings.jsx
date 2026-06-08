@@ -384,10 +384,10 @@ function Settings() {
                     onChange={(e) => updateCurrency(e.target.value)}
                     style={{ cursor: 'pointer', fontSize: '0.8rem' }}
                   >
-                    <option value="USD">USD ($) <span className="d-none d-sm-inline">- {t('settings.currency_usd')}</span></option>
-                    <option value="EUR">EUR (€) <span className="d-none d-sm-inline">- {t('settings.currency_eur')}</span></option>
-                    <option value="TRY">TRY (₺) <span className="d-none d-sm-inline">- {t('settings.currency_try')}</span></option>
-                    <option value="GBP">GBP (£) <span className="d-none d-sm-inline">- {t('settings.currency_gbp')}</span></option>
+                    <option value="USD">USD ($) - {t('settings.currency_usd')}</option>
+                    <option value="EUR">EUR (€) - {t('settings.currency_eur')}</option>
+                    <option value="TRY">TRY (₺) - {t('settings.currency_try')}</option>
+                    <option value="GBP">GBP (£) - {t('settings.currency_gbp')}</option>
                   </select>
 
                   <label className="form-label text-muted fw-bold d-block mb-1 text-truncate" style={{ fontSize: '0.7rem' }}>{t('settings.favorite_currencies').toUpperCase()}</label>

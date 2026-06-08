@@ -160,7 +160,7 @@ function Navbar() {
 
               {/* Uygulamayı İndir (Akıllı Buton - Sadece Webde/Tarayıcıda Görünür) */}
               {!Capacitor.isNativePlatform() && (
-                <button onClick={handleAppDownloadClick} className="btn btn-sm btn-outline-primary d-flex align-items-center me-2 me-md-3" style={{ borderRadius: '20px' }}>
+                <button onClick={handleAppDownloadClick} className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center me-2 me-md-3 text-nowrap flex-shrink-0" style={{ borderRadius: '20px' }}>
                   <FaMobileAlt className="me-0 me-md-2" />
                   <span className="d-none d-md-inline">Mobil Uygulamayı İndir</span>
                 </button>
