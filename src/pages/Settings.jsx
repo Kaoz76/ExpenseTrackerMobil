@@ -451,7 +451,6 @@ function Settings() {
                     <input
                       type="number"
                       className="form-control px-1 text-center text-sm-start"
-                      placeholder={t('common.placeholder_budget')}
                       value={budgetInput}
                       onChange={(e) => setBudgetInput(e.target.value)}
                       onKeyDown={(e) => { if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault(); }}

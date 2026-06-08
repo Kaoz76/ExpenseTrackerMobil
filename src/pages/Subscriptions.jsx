@@ -206,7 +206,6 @@ function Subscriptions() {
                     <input
                       type="text"
                       className="form-control"
-                      placeholder={t('common.eg_netflix')}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       disabled={!user || adding}
@@ -272,7 +271,6 @@ function Subscriptions() {
                       type="text"
                       inputMode="numeric"
                       className="form-control"
-                      placeholder={t('common.eg_5')}
                       value={dayOfMonth}
                       onChange={(e) => {
                         const val = e.target.value.replace(/[^0-9]/g, '');
