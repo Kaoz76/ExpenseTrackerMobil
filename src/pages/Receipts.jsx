@@ -360,9 +360,7 @@ function Receipts() {
             });
           }
 
-          console.log("Raw Tesseract OCR Text:\n", result.data.text);
           const processedText = groupTesseractWordsIntoLines(words);
-          console.log("Structured Tesseract OCR Text:\n", processedText);
           rawOcrText = processedText;
           extractedData = extractDataFromText(processedText, language, currency?.code || 'USD', tesseractParserRules);
           
