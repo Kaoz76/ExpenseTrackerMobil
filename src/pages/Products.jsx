@@ -120,7 +120,7 @@ function Products() {
   }, [products, searchTerm, selectedCategory, sortOption]);
 
   return (
-    <div className="dashboard-page-wrapper p-4">
+    <div className="dashboard-page-wrapper p-4 enlarge-web-8">
       <div className="container-fluid">
 
         {/* Breadcrumb Navigasyonu */}

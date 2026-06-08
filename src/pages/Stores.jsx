@@ -62,7 +62,7 @@ function Stores() {
   }, [stores, searchTerm]);
 
   return (
-    <div className="dashboard-page-wrapper p-4">
+    <div className="dashboard-page-wrapper p-4 enlarge-web-8">
       <div className="container-fluid">
         <nav aria-label="breadcrumb" className="mb-3">
           <ol className="breadcrumb">

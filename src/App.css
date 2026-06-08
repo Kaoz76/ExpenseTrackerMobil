@@ -26,17 +26,19 @@ html {
    GLOBAL FORM RESETS
    ============================================== */
 /* Hide number input arrows (spinners) globally */
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-  -webkit-appearance: none; 
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
   appearance: none;
-  margin: 0; 
+  margin: 0;
 }
 
 input[type=number] {
-  -moz-appearance: textfield; /* Firefox */
+  -moz-appearance: textfield;
+  /* Firefox */
   appearance: textfield;
 }
+
 [data-bs-theme="dark"] {
   --bs-body-bg: #0f172a;
   /* Deep modern dark blue */
@@ -744,10 +746,12 @@ body::after {
     padding: 2px;
     border-radius: 0.75rem;
   }
+
   .magic-link-info {
     padding: 0.5rem 0.3rem;
     border-radius: 0.6rem;
   }
+
   .magic-link-title {
     font-size: 0.7rem;
     letter-spacing: 0;
@@ -1372,12 +1376,15 @@ body::after {
   .d-md-none {
     display: none !important;
   }
+
   .d-none.d-md-block {
     display: block !important;
   }
+
   .d-none.d-md-flex {
     display: flex !important;
   }
+
   .d-none.d-sm-inline {
     display: inline !important;
   }
@@ -1499,11 +1506,13 @@ body::after {
   overflow-x: auto;
   padding: 8px 4px 12px;
   margin-bottom: 8px;
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 .category-scroll-container::-webkit-scrollbar {
-  display: none; /* Safari and Chrome */
+  display: none;
+  /* Safari and Chrome */
 }
 
 .category-pill {
@@ -1564,4 +1573,11 @@ body::after {
 .sort-select:focus {
   border-color: var(--modern-primary);
   box-shadow: 0 0 0 3px var(--bs-primary-bg-subtle);
+}
+
+/* UI Enlarge Web (Desktop/Mouse) Only */
+@media (min-width: 992px) and (pointer: fine) {
+  .enlarge-web-8 {
+    zoom: 1.25;
+  }
 }

@@ -348,7 +348,7 @@ function Settings() {
 
 
   return (
-    <div className="dashboard-page-wrapper p-4">
+    <div className="dashboard-page-wrapper p-4 enlarge-web-8">
       <div className="container-fluid">
         <h1 className="display-6 fw-bold mb-4">{t('settings.title')}</h1>
 

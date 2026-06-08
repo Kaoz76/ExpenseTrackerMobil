@@ -79,7 +79,7 @@ function Reports() {
   }, [availableMonths, language]);
 
   return (
-    <div className="dashboard-page-wrapper p-4">
+    <div className="dashboard-page-wrapper p-4 enlarge-web-8">
       <div className="container">
         <div className="mb-5 text-center">
           <h1 className="display-5 fw-bold mb-3">{t('common.view_reports')}</h1>
