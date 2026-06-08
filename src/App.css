@@ -23,6 +23,14 @@ html {
 }
 
 /* ==============================================
+   RECHARTS OVERRIDES
+   ============================================== */
+.recharts-wrapper {
+  outline: none !important;
+}
+
+
+/* ==============================================
    GLOBAL FORM RESETS
    ============================================== */
 /* Hide number input arrows (spinners) globally */

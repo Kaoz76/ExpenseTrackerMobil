@@ -93,6 +93,7 @@ function SpendingChart({ data, totalSpent, timeRangeLabel, chartTheme, isDark })
               <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={chartTheme.gridOpacity} />
 
               <Tooltip
+                cursor={{ stroke: chartTheme.futureColor, strokeWidth: 1, strokeDasharray: '4 4' }}
                 contentStyle={{
                   backgroundColor: chartTheme.tooltipBg,
                   borderRadius: '12px',
@@ -107,7 +108,7 @@ function SpendingChart({ data, totalSpent, timeRangeLabel, chartTheme, isDark })
               />
 
               <Area 
-                type="monotone" 
+                type="monotoneX" 
                 dataKey="amount" 
                 stroke="url(#lineColorGradient)" 
                 strokeWidth={3} 
@@ -129,7 +130,14 @@ function SpendingChart({ data, totalSpent, timeRangeLabel, chartTheme, isDark })
                   
                   return <circle cx={cx} cy={cy} r={dotRadius} fill={dotColor} stroke={isDark ? '#1e293b' : '#fff'} strokeWidth={2} key={`dot-${payload.name}`} />;
                 }}
-                activeDot={{ r: 6, strokeWidth: 0 }}
+                activeDot={(props) => {
+                  const { cx, cy, payload } = props;
+                  if (!cx || !cy) return null;
+                  let color = chartTheme.lineColor;
+                  if (payload.timeStatus === 'current') color = chartTheme.accentColor;
+                  else if (payload.timeStatus === 'future') color = chartTheme.futureColor;
+                  return <circle cx={cx} cy={cy} r={6} fill={color} stroke={isDark ? '#1e293b' : '#fff'} strokeWidth={2} key={`active-${payload.name}`} />;
+                }}
               />
             </AreaChart>
           </ResponsiveContainer>
