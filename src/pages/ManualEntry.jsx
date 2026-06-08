@@ -12,6 +12,10 @@ import { suggestedCategoriesTR, suggestedCategoriesEN, localizeCategory } from '
 import { enrichItemsWithGemini } from '../services/geminiService';
 import { cleanStoreName } from '../utils/stringUtils';
 
+const generateUniqueId = () => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+};
+
 function ManualEntry() {
   const { user } = useAuth();
   const { formatPrice, currency, favoriteCurrencies } = useCurrency();
@@ -29,7 +33,7 @@ function ManualEntry() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [storeName, setStoreName] = useState('');
-  const [products, setProducts] = useState([{ id: Date.now(), type: '', brand: '', name: '', size: '', price: '' }]);
+  const [products, setProducts] = useState([{ id: generateUniqueId(), type: '', brand: '', name: '', size: '', price: '' }]);
   const [manualEntries, setManualEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
@@ -54,7 +58,7 @@ function ManualEntry() {
       }
       if (items && items.length > 0) {
         const mappedProducts = items.map((item, index) => ({
-          id: Date.now() + index,
+          id: `${generateUniqueId()}-${index}`,
           type: item.type || '',
           brand: item.brand || '',
           name: item.name || '',
@@ -101,7 +105,7 @@ function ManualEntry() {
   const addProductRow = () => {
     setProducts([
       ...products,
-      { id: Date.now(), type: '', brand: '', name: '', size: '', price: '' }
+      { id: generateUniqueId(), type: '', brand: '', name: '', size: '', price: '' }
     ]);
   };
 
@@ -204,7 +208,7 @@ function ManualEntry() {
 
       setSuccess(t('common.msg_save_success'));
       setStoreName('');
-      setProducts([{ id: Date.now(), type: '', brand: '', name: '', size: '', price: '' }]);
+      setProducts([{ id: generateUniqueId(), type: '', brand: '', name: '', size: '', price: '' }]);
       setTimeout(() => setSuccess(''), 3000);
 
     } catch (err) {

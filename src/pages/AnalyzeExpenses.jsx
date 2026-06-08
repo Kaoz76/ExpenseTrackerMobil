@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Link } from 'react-router-dom';
-import { getCategoryInfo } from '../utils/categoryMap';
+import { getCategoryInfo, getStringColor } from '../utils/categoryMap';
 
 import { useExpenseAnalysis } from '../hooks/useExpenseAnalysis';
 import SpendingChart from '../components/charts/SpendingChart';
@@ -220,7 +220,7 @@ function AnalyzeExpenses() {
                                 <div className="d-flex align-items-center gap-2">
                                   <span style={{
                                     width: 32, height: 32, borderRadius: '8px',
-                                    backgroundColor: `${getCategoryInfo(item.name).color}15`,
+                                    backgroundColor: `${getStringColor(item.name)}15`,
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                                     fontSize: '1rem'
                                   }}>
@@ -271,7 +271,7 @@ function AnalyzeExpenses() {
                                 <div className="d-flex align-items-center gap-2">
                                   <span style={{
                                     width: 32, height: 32, borderRadius: '8px',
-                                    backgroundColor: `${getCategoryInfo(item.name).color}15`,
+                                    backgroundColor: `${getStringColor(item.name)}15`,
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                                     fontSize: '1rem'
                                   }}>

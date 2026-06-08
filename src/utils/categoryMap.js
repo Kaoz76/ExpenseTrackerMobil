@@ -133,6 +133,22 @@ const colorPool = [
 ];
 
 /**
+ * Generates a stable, hash-based color code from any given string (e.g., store or brand name).
+ * @param {string} str - The input string
+ * @returns {string} HEX color code
+ */
+export const getStringColor = (str) => {
+  if (!str) return '#94a3b8';
+  const normalized = str.toString().trim().toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const colorIndex = Math.abs(hash) % colorPool.length;
+  return colorPool[colorIndex];
+};
+
+/**
  * Verilen kategori ismine göre ikon ve renk döner.
  * @param {string} categoryName - Kategori ismi (örn: 'Market', 'Giyim')
  * @returns {Object} { icon: '🛒', color: '#10b981' }

@@ -7,7 +7,7 @@ import { collection, query, where, getDocs, doc, getDoc, setDoc, orderBy } from 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { parseDate } from '../utils/dateFormatter';
-import { getCategoryInfo, localizeCategory } from '../utils/categoryMap';
+import { getCategoryInfo, getStringColor, localizeCategory } from '../utils/categoryMap';
 
 const ReportContext = createContext(null);
 
@@ -698,7 +698,7 @@ ${sheet3Rows}  </Table>
       };
 
       // Donut chart drawing helper
-      const drawDonutChart = (pdf, cx, cy, r, data) => {
+      const drawDonutChart = (pdf, cx, cy, r, data, isCategory = false) => {
         if (!data || data.length === 0) return;
         const total = data.reduce((sum, d) => sum + d.amount, 0);
         if (total === 0) return;
@@ -708,7 +708,7 @@ ${sheet3Rows}  </Table>
           const pct = item.amount / total;
           const angleDelta = pct * 360;
           const endAngle = currentAngle + angleDelta;
-          const color = getCategoryInfo(item.name).color;
+          const color = isCategory ? getCategoryInfo(item.name).color : getStringColor(item.name);
           drawPieSector(pdf, cx, cy, r, currentAngle, endAngle, color);
           currentAngle = endAngle;
         });
@@ -719,7 +719,7 @@ ${sheet3Rows}  </Table>
       };
 
       // Chart Section helper with Legend
-      const drawChartSection = (pdf, title, cx, cy, r, data) => {
+      const drawChartSection = (pdf, title, cx, cy, r, data, isCategory = false) => {
         pdf.setFont(fontUsed, 'bold');
         pdf.setFontSize(10.5);
         pdf.setTextColor(40);
@@ -733,7 +733,7 @@ ${sheet3Rows}  </Table>
           return;
         }
 
-        drawDonutChart(pdf, cx, cy, r, data);
+        drawDonutChart(pdf, cx, cy, r, data, isCategory);
 
         const total = data.reduce((sum, d) => sum + d.amount, 0);
         let legendY = cy - r + 3;
@@ -757,7 +757,7 @@ ${sheet3Rows}  </Table>
 
         major.slice(0, 7).forEach((item) => {
           const pct = ((item.amount / total) * 100).toFixed(1);
-          const color = getCategoryInfo(item.name).color;
+          const color = isCategory ? getCategoryInfo(item.name).color : getStringColor(item.name);
           
           pdf.setFillColor(color);
           pdf.rect(legendX, legendY - 2, 2.5, 2.5, 'F');
@@ -777,11 +777,11 @@ ${sheet3Rows}  </Table>
       };
 
       // Draw Row 1: Category & Store charts
-      drawChartSection(pdfDoc, t('common.category_breakdown') || "Category Breakdown", 45, 90, 18, sortedCategoryData);
-      drawChartSection(pdfDoc, t('common.store_breakdown') || "Store Breakdown", 136, 90, 18, sortedStoreData);
+      drawChartSection(pdfDoc, t('common.category_breakdown') || "Category Breakdown", 45, 90, 18, sortedCategoryData, true);
+      drawChartSection(pdfDoc, t('common.store_breakdown') || "Store Breakdown", 136, 90, 18, sortedStoreData, false);
 
       // Draw Row 2: Brand chart & Insights
-      drawChartSection(pdfDoc, t('common.brand_breakdown') || "Brand Breakdown", 45, 165, 18, sortedBrandData);
+      drawChartSection(pdfDoc, t('common.brand_breakdown') || "Brand Breakdown", 45, 165, 18, sortedBrandData, false);
 
       // Draw insights in the Row 2 Right slot
       pdfDoc.setFont(fontUsed, 'bold');

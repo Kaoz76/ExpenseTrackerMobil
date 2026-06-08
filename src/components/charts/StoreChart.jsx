@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Sector } from 'recha
 import { FaStore } from 'react-icons/fa';
 import { useCurrency } from '../../context/CurrencyContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { getCategoryInfo } from '../../utils/categoryMap';
+import { getStringColor } from '../../utils/categoryMap';
 
 // Minimum slice percentage — anything below this gets merged into "Others"
 const MIN_SLICE_PCT = 3;
@@ -118,7 +118,7 @@ function StoreChart({ data, chartTheme }) {
                   {processedData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={getCategoryInfo(entry.name).color}
+                      fill={getStringColor(entry.name)}
                       style={{ cursor: 'pointer', outline: 'none' }}
                     />
                   ))}
@@ -144,7 +144,7 @@ function StoreChart({ data, chartTheme }) {
         {processedData.length > 0 && (
           <div className="d-flex flex-wrap justify-content-center gap-2 mt-2" style={{ maxHeight: '80px', overflowY: 'auto' }}>
             {processedData.map((entry, index) => {
-              const color = getCategoryInfo(entry.name).color;
+              const color = getStringColor(entry.name);
               const isActive = index === activeIndex;
               return (
                 <span
