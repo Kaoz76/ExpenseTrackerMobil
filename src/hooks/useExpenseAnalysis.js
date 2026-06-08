@@ -98,6 +98,31 @@ export function useExpenseAnalysis(user, timeRange) {
     let total = 0;
 
     const now = new Date();
+    
+    // First pass to find minDate for all_time dynamic grouping
+    let minDate = new Date(now);
+    rawReceipts.forEach(data => {
+      if (data.createdAt) {
+        const d = parseDate(data.createdAt);
+        if (d < minDate) minDate = d;
+      }
+    });
+    rawSubs.forEach(sub => {
+       let subStart = new Date(now);
+       if (sub.startDate) {
+          const parts = sub.startDate.split('-');
+          if (parts.length === 3) subStart = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+       } else if (sub.createdAt) {
+          subStart = parseDate(sub.createdAt);
+       }
+       if (subStart < minDate) minDate = subStart;
+    });
+
+    const monthsDiff = (now.getFullYear() - minDate.getFullYear()) * 12 + now.getMonth() - minDate.getMonth();
+    let allTimeGrouping = 'year';
+    if (monthsDiff <= 24) allTimeGrouping = 'month';
+    else if (monthsDiff <= 60) allTimeGrouping = 'quarter';
+
     const useDailyGrouping = (timeRange === 'this_week' || timeRange === 'this_month');
 
     let startDate = null;
@@ -120,14 +145,12 @@ export function useExpenseAnalysis(user, timeRange) {
       for (let i = 0; i < 7; i++) {
         const d = new Date(start);
         d.setDate(start.getDate() + i);
-        if (d > now) break;
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         monthlyMap[key] = 0;
       }
     } else if (timeRange === 'this_month') {
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       for (let i = 1; i <= daysInMonth; i++) {
-        if (i > now.getDate()) break;
         const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         monthlyMap[key] = 0;
       }
@@ -139,14 +162,34 @@ export function useExpenseAnalysis(user, timeRange) {
       }
     } else if (timeRange === 'this_year') {
       for (let i = 1; i <= 12; i++) {
-        if (i > now.getMonth() + 1) break;
         const key = `${now.getFullYear()}-${String(i).padStart(2, '0')}`;
         monthlyMap[key] = 0;
       }
+    } else if (timeRange === 'all_time') {
+      if (allTimeGrouping === 'month') {
+        let curr = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+        const endMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        while(curr <= endMonth) {
+           const key = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}`;
+           monthlyMap[key] = 0;
+           curr.setMonth(curr.getMonth() + 1);
+        }
+      } else if (allTimeGrouping === 'quarter') {
+        let currY = minDate.getFullYear();
+        let currQ = Math.floor(minDate.getMonth() / 3) + 1;
+        const endY = now.getFullYear();
+        const endQ = Math.floor(now.getMonth() / 3) + 1;
+        while (currY < endY || (currY === endY && currQ <= endQ)) {
+           monthlyMap[`${currY}-Q${currQ}`] = 0;
+           currQ++;
+           if (currQ > 4) { currQ = 1; currY++; }
+        }
+      } else {
+        for(let y = minDate.getFullYear(); y <= now.getFullYear(); y++) {
+           monthlyMap[`${y}`] = 0;
+        }
+      }
     }
-
-    let minYear = now.getFullYear();
-    let maxYear = now.getFullYear();
 
     rawReceipts.forEach((data) => {
       const rawPrice = Number(data.price) || 0;
@@ -164,11 +207,15 @@ export function useExpenseAnalysis(user, timeRange) {
         const date = parseDate(data.createdAt);
         const y = date.getFullYear();
         
-        if (y < minYear) minYear = y;
-        if (y > maxYear) maxYear = y;
-
         if (timeRange === 'all_time') {
-          groupKey = `${y}`;
+          if (allTimeGrouping === 'month') {
+             groupKey = `${y}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          } else if (allTimeGrouping === 'quarter') {
+             const q = Math.floor(date.getMonth() / 3) + 1;
+             groupKey = `${y}-Q${q}`;
+          } else {
+             groupKey = `${y}`;
+          }
         } else if (useDailyGrouping) {
           const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');
@@ -245,14 +292,6 @@ export function useExpenseAnalysis(user, timeRange) {
       }
     });
 
-    if (timeRange === 'all_time') {
-      for (let y = minYear; y <= maxYear; y++) {
-        if (monthlyMap[`${y}`] === undefined) {
-          monthlyMap[`${y}`] = 0;
-        }
-      }
-    }
-
     if (rawSubs && rawSubs.length > 0) {
       const localizedSubsLabel = localizeCategory(t('nav.subscriptions') || "Subscriptions", language);
 
@@ -302,14 +341,19 @@ export function useExpenseAnalysis(user, timeRange) {
 
           let key = null;
           if (timeRange === 'all_time') {
-            key = `${y}`;
-            // Ensure the year exists in monthlyMap even if no receipts exist for it
-            if (monthlyMap[key] === undefined) monthlyMap[key] = 0;
+            if (allTimeGrouping === 'month') {
+               key = `${y}-${mStr}`;
+            } else if (allTimeGrouping === 'quarter') {
+               const q = Math.floor(m / 3) + 1;
+               key = `${y}-Q${q}`;
+            } else {
+               key = `${y}`;
+            }
           } else if (timeRange === 'this_year') {
             if (y === now.getFullYear()) key = `${y}-${mStr}`;
           } else if (timeRange === 'last_3_months') {
-            const minDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-            if (iterMonth >= minDate) key = `${y}-${mStr}`;
+            const minMonth = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+            if (iterMonth >= minMonth) key = `${y}-${mStr}`;
           } else if (timeRange === 'this_month') {
             if (y === now.getFullYear() && m === now.getMonth()) {
                key = `${y}-${mStr}-${String(paymentDate.getDate()).padStart(2, '0')}`;
@@ -342,20 +386,66 @@ export function useExpenseAnalysis(user, timeRange) {
     const formattedChartData = Object.keys(monthlyMap)
       .sort()
       .map(key => {
-        if (key === "Unknown") return { name: "Unknown", amount: monthlyMap[key] };
+        if (key === "Unknown") return { name: "Unknown", amount: monthlyMap[key], timeStatus: 'past' };
+
+        let timeStatus = 'past';
 
         if (timeRange === 'all_time') {
-          return { name: key, amount: monthlyMap[key] };
+          if (allTimeGrouping === 'month') {
+            const [y, m] = key.split('-');
+            const dateObj = new Date(y, m - 1);
+            const displayMonth = dateObj.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { month: 'short', year: 'numeric' });
+            
+            const targetMonth = new Date(parseInt(y), parseInt(m) - 1, 1);
+            const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            if (targetMonth.getTime() === currentMonth.getTime()) timeStatus = 'current';
+            else if (targetMonth < currentMonth) timeStatus = 'past';
+            else timeStatus = 'future';
+            
+            return { name: displayMonth, amount: monthlyMap[key], timeStatus };
+          } else if (allTimeGrouping === 'quarter') {
+            const [y, qStr] = key.split('-');
+            const q = parseInt(qStr.replace('Q', ''));
+            const currentQ = Math.floor(now.getMonth() / 3) + 1;
+            
+            if (parseInt(y) === now.getFullYear() && q === currentQ) timeStatus = 'current';
+            else if (parseInt(y) < now.getFullYear() || (parseInt(y) === now.getFullYear() && q < currentQ)) timeStatus = 'past';
+            else timeStatus = 'future';
+            
+            return { name: key, amount: monthlyMap[key], timeStatus };
+          } else {
+            const y = parseInt(key);
+            if (y === now.getFullYear()) timeStatus = 'current';
+            else if (y < now.getFullYear()) timeStatus = 'past';
+            else timeStatus = 'future';
+            return { name: key, amount: monthlyMap[key], timeStatus };
+          }
         } else if (useDailyGrouping) {
           const [y, m, d] = key.split('-');
           const dateObj = new Date(y, m - 1, d);
           const displayDay = dateObj.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'short' });
-          return { name: displayDay, amount: monthlyMap[key] };
+          
+          const targetDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          
+          if (targetDate.getTime() === today.getTime()) timeStatus = 'current';
+          else if (targetDate < today) timeStatus = 'past';
+          else timeStatus = 'future';
+
+          return { name: displayDay, amount: monthlyMap[key], timeStatus };
         } else {
           const [y, m] = key.split('-');
           const dateObj = new Date(y, m - 1);
           const displayMonth = dateObj.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { month: 'short', year: 'numeric' });
-          return { name: displayMonth, amount: monthlyMap[key] };
+          
+          const targetMonth = new Date(parseInt(y), parseInt(m) - 1, 1);
+          const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+          if (targetMonth.getTime() === currentMonth.getTime()) timeStatus = 'current';
+          else if (targetMonth < currentMonth) timeStatus = 'past';
+          else timeStatus = 'future';
+
+          return { name: displayMonth, amount: monthlyMap[key], timeStatus };
         }
       });
 

@@ -44,7 +44,9 @@ function AnalyzeExpenses() {
     lineColor: isDark ? '#818cf8' : '#4f46e5', // More saturated indigo for light mode
     areaStop1: isDark ? '#818cf8' : '#4f46e5',
     areaStop2: isDark ? '#c084fc' : '#9333ea',
-    areaOpacity: isDark ? 0.4 : 0.6, // Higher opacity for light mode visibility
+    areaOpacity: isDark ? 0.4 : 0.6,
+    accentColor: isDark ? '#fbbf24' : '#f59e0b', // Current
+    futureColor: isDark ? '#475569' : '#cbd5e1', // Future (grayed out)
   }), [isDark]);
 
   const getRangeLabel = () => {

@@ -8,6 +8,17 @@ function SpendingChart({ data, totalSpent, timeRangeLabel, chartTheme, isDark })
   const { formatPrice } = useCurrency();
   const { t } = useLanguage();
 
+  let currentPercent = 100;
+  if (data && data.length > 1) {
+    const currentIndex = data.findIndex(d => d.timeStatus === 'current');
+    if (currentIndex >= 0) {
+      currentPercent = (currentIndex / (data.length - 1)) * 100;
+    } else {
+      if (data[0]?.timeStatus === 'future') currentPercent = 0;
+      else currentPercent = 100;
+    }
+  }
+
   return (
     <div className="card border-0 shadow-sm h-100 card-accent">
       <div className="card-body p-3 p-md-4">
@@ -34,13 +45,50 @@ function SpendingChart({ data, totalSpent, timeRangeLabel, chartTheme, isDark })
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={data} margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
               <defs>
-                <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartTheme.areaStop1} stopOpacity={chartTheme.areaOpacity} />
-                  <stop offset="50%" stopColor={chartTheme.areaStop2} stopOpacity={chartTheme.areaOpacity * 0.4} />
-                  <stop offset="95%" stopColor={chartTheme.areaStop1} stopOpacity={0} />
+                <linearGradient id="lineColorGradient" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor={chartTheme.lineColor} />
+                  <stop offset={`${currentPercent}%`} stopColor={chartTheme.lineColor} />
+                  <stop offset={`${currentPercent}%`} stopColor={chartTheme.futureColor} />
+                  <stop offset="100%" stopColor={chartTheme.futureColor} />
+                </linearGradient>
+
+                <linearGradient id="colorAmountHorizontal" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor={chartTheme.areaStop1} stopOpacity={chartTheme.areaOpacity} />
+                  <stop offset={`${currentPercent}%`} stopColor={chartTheme.areaStop2} stopOpacity={chartTheme.areaOpacity * 0.4} />
+                  <stop offset={`${currentPercent}%`} stopColor={chartTheme.futureColor} stopOpacity={chartTheme.areaOpacity * 0.15} />
+                  <stop offset="100%" stopColor={chartTheme.futureColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: chartTheme.axisColor, fontSize: 12 }} />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                padding={{ left: 30, right: 30 }}
+                minTickGap={15}
+                interval="preserveStartEnd"
+                tick={(props) => {
+                  const { x, y, payload } = props;
+                  const timeStatus = data.find(d => d.name === payload.value)?.timeStatus || 'past';
+                  
+                  let fillColor = chartTheme.axisColor;
+                  if (timeStatus === 'current') fillColor = chartTheme.accentColor;
+                  else if (timeStatus === 'future') fillColor = chartTheme.futureColor;
+
+                  return (
+                    <text 
+                      x={x} 
+                      y={y} 
+                      dy={16} 
+                      textAnchor="middle" 
+                      fill={fillColor}
+                      fontWeight={timeStatus === 'current' ? "bold" : "normal"}
+                      fontSize={12}
+                    >
+                      {payload.value}
+                    </text>
+                  );
+                }} 
+              />
               <YAxis hide={true} />
               <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={chartTheme.gridOpacity} />
 
@@ -61,11 +109,26 @@ function SpendingChart({ data, totalSpent, timeRangeLabel, chartTheme, isDark })
               <Area 
                 type="monotone" 
                 dataKey="amount" 
-                stroke={chartTheme.lineColor} 
+                stroke="url(#lineColorGradient)" 
                 strokeWidth={3} 
                 fillOpacity={1} 
-                fill="url(#colorAmount)"
-                dot={{ r: 3, fill: chartTheme.lineColor, strokeWidth: 2, stroke: isDark ? '#1e293b' : '#fff' }}
+                fill="url(#colorAmountHorizontal)"
+                dot={(props) => {
+                  const { cx, cy, payload } = props;
+                  if (!cx || !cy) return null;
+                  
+                  let dotColor = chartTheme.lineColor;
+                  let dotRadius = 3;
+                  
+                  if (payload.timeStatus === 'current') {
+                    dotColor = chartTheme.accentColor;
+                    dotRadius = 5;
+                  } else if (payload.timeStatus === 'future') {
+                    dotColor = chartTheme.futureColor;
+                  }
+                  
+                  return <circle cx={cx} cy={cy} r={dotRadius} fill={dotColor} stroke={isDark ? '#1e293b' : '#fff'} strokeWidth={2} key={`dot-${payload.name}`} />;
+                }}
                 activeDot={{ r: 6, strokeWidth: 0 }}
               />
             </AreaChart>

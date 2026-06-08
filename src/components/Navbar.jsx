@@ -55,11 +55,29 @@ function Navbar() {
     return () => unsubscribe();
   }, [user]);
 
-  const hasNotification = (reportContext?.hasNotification || false) || expiringSubs.length > 0;
+  const getDismissedState = () => {
+    try {
+      const stored = localStorage.getItem('notificationsDismissedDate');
+      if (stored === new Date().toLocaleDateString()) return true;
+    } catch(e) {}
+    return false;
+  };
+  const [dismissedSubs, setDismissedSubs] = useState(getDismissedState());
+
+  const hasNotification = (reportContext?.hasNotification || false) || (expiringSubs.length > 0 && !dismissedSubs);
   const reportMonthText = reportContext?.reportMonthText || "Monthly";
   const generateAndDownloadPDF = reportContext?.generateAndDownloadPDF || (() => { });
   const isGenerating = reportContext?.isGenerating || false;
   const markAsRead = reportContext?.markAsRead || (() => { });
+
+  const handleMarkAsRead = () => {
+    if (reportContext?.markAsRead) reportContext.markAsRead();
+    if (expiringSubs.length > 0) {
+      setDismissedSubs(true);
+      localStorage.setItem('notificationsDismissedDate', new Date().toLocaleDateString());
+    }
+    setShowDropdown(false);
+  };
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAppModal, setShowAppModal] = useState(false);
@@ -202,23 +220,25 @@ function Navbar() {
 
                     {hasNotification ? (
                       <>
-                        <div className="p-3 rounded bg-body-tertiary mb-3">
-                          <div className="d-flex align-items-start">
-                            <div className="bg-success-subtle text-success rounded p-2 me-2">
-                              <FaBell />
-                            </div>
-                            <div>
-                              <p className="fw-bold mb-1 text-body small">
-                                {reportMonthText} {t('common.nav_report_ready')}
-                              </p>
-                              <p className="text-muted small mb-0" style={{ fontSize: '0.75rem' }}>
-                                {t('common.nav_report_desc')}
-                              </p>
+                        {reportContext?.hasNotification && (
+                          <div className="p-3 rounded bg-body-tertiary mb-3">
+                            <div className="d-flex align-items-start">
+                              <div className="bg-success-subtle text-success rounded p-2 me-2">
+                                <FaBell />
+                              </div>
+                              <div>
+                                <p className="fw-bold mb-1 text-body small">
+                                  {reportMonthText} {t('common.nav_report_ready')}
+                                </p>
+                                <p className="text-muted small mb-0" style={{ fontSize: '0.75rem' }}>
+                                  {t('common.nav_report_desc')}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
-                        {expiringSubs.map(sub => (
+                        {!dismissedSubs && expiringSubs.map(sub => (
                           <div key={sub.id} className="p-3 rounded bg-danger-subtle mb-3">
                             <div className="d-flex align-items-start">
                               <div className="bg-danger text-white rounded p-2 me-2">
@@ -242,21 +262,23 @@ function Navbar() {
                         ))}
 
                         <div className="d-grid gap-2">
-                          <button
-                            className="btn btn-primary btn-sm d-flex align-items-center justify-content-center"
-                            onClick={async () => {
-                              await generateAndDownloadPDF();
-                              setShowDropdown(false);
-                            }}
-                            disabled={isGenerating}
-                          >
-                            {isGenerating ? (
-                              <>{t('common.nav_generating')}</>
-                            ) : (
-                              <> <FaFilePdf className="me-2" /> {t('common.nav_download_pdf')} </>
-                            )}
-                          </button>
-                          <button className="btn btn-outline-secondary btn-sm" onClick={() => { markAsRead(); setShowDropdown(false); }}>{t('common.nav_mark_read')}</button>
+                          {reportContext?.hasNotification && (
+                            <button
+                              className="btn btn-primary btn-sm d-flex align-items-center justify-content-center"
+                              onClick={async () => {
+                                await generateAndDownloadPDF();
+                                setShowDropdown(false);
+                              }}
+                              disabled={isGenerating}
+                            >
+                              {isGenerating ? (
+                                <>{t('common.nav_generating')}</>
+                              ) : (
+                                <> <FaFilePdf className="me-2" /> {t('common.nav_download_pdf')} </>
+                              )}
+                            </button>
+                          )}
+                          <button className="btn btn-outline-secondary btn-sm" onClick={handleMarkAsRead}>{t('common.nav_mark_read')}</button>
                         </div>
                       </>
                     ) : (
