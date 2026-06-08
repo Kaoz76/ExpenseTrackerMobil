@@ -59,7 +59,9 @@ function Navbar() {
     try {
       const stored = localStorage.getItem('notificationsDismissedDate');
       if (stored === new Date().toLocaleDateString()) return true;
-    } catch(e) {}
+    } catch (error) {
+      console.warn("Could not read localStorage for notifications", error);
+    }
     return false;
   };
   const [dismissedSubs, setDismissedSubs] = useState(getDismissedState());
@@ -68,7 +70,6 @@ function Navbar() {
   const reportMonthText = reportContext?.reportMonthText || "Monthly";
   const generateAndDownloadPDF = reportContext?.generateAndDownloadPDF || (() => { });
   const isGenerating = reportContext?.isGenerating || false;
-  const markAsRead = reportContext?.markAsRead || (() => { });
 
   const handleMarkAsRead = () => {
     if (reportContext?.markAsRead) reportContext.markAsRead();
