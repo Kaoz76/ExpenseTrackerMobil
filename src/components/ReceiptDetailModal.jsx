@@ -130,7 +130,7 @@ const ReceiptDetailModal = ({ show, onClose, receipt }) => {
               </div>
             </div>
 
-            <div className="modal-footer border-0 bg-body-tertiary rounded-bottom">
+            <div className="modal-footer border-0 bg-body-tertiary rounded-bottom flex-wrap" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
               <button type="button" className="btn btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
             </div>
           </div>

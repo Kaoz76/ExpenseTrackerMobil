@@ -183,7 +183,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
 
   return (
     <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }} tabIndex="-1">
-      <div className="modal-dialog modal-dialog-centered modal-lg">
+      <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div className="modal-content bg-dark text-white border-secondary">
           <div className="modal-header border-secondary">
             <h5 className="modal-title">{title || t('common.perspective_crop_title')}</h5>
@@ -266,7 +266,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
             </div>
             
           </div>
-          <div className="modal-footer border-secondary d-flex justify-content-between">
+          <div className="modal-footer border-secondary d-flex justify-content-between flex-wrap" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
             <button type="button" className="btn btn-outline-light" onClick={handleRotate} disabled={isProcessing}>
               <FaSyncAlt className="me-2" /> {t('common.perspective_crop_rotate')}
             </button>
