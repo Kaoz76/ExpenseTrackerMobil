@@ -31,3 +31,7 @@ src/firebase.js
 .env
 .env.local
 .env.*.local
+
+# Android Keystore files
+*.jks
+*.keystore
