@@ -659,11 +659,24 @@ function Receipts() {
         };
       });
 
-      // 🔥 If offline, skip waiting for the background storage upload entirely to make saving instantaneous
-      const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      // 🔥 Helper: race a promise against a timeout
+      const withTimeout = (promise, ms) => {
+        let timer;
+        return Promise.race([
+          promise,
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('TIMEOUT')), ms); })
+        ]).finally(() => clearTimeout(timer));
+      };
+
+      // 🔥 Try upload with timeout — if offline or slow, skip gracefully
       let uploadResult = { imageUrl: null, storagePath: null };
-      if (!isOffline && verifyData.uploadPromise) {
-        uploadResult = await verifyData.uploadPromise;
+      if (verifyData.uploadPromise) {
+        try {
+          uploadResult = await withTimeout(verifyData.uploadPromise, 6000);
+        } catch (uploadErr) {
+          console.warn("Upload skipped (offline/slow):", uploadErr.message);
+          // Continue without image — Firebase will sync when back online
+        }
       }
 
       // 🔥 Abort if user clicked Cancel or the modal changed while we were waiting!
@@ -688,14 +701,27 @@ function Receipts() {
         storeNameCleaned: cleanStoreName(verifyData.fileName)
       };
 
-      const docRef = await addDoc(collection(db, "receipts"), newReceiptData);
+      // 🔥 Firestore write with timeout — offline persistence queues it locally
+      let docId = null;
+      try {
+        const docRef = await withTimeout(addDoc(collection(db, "receipts"), newReceiptData), 6000);
+        docId = docRef.id;
+      } catch (writeErr) {
+        if (writeErr.message === 'TIMEOUT') {
+          // Firestore offline persistence will sync this when back online
+          console.warn("Firestore write queued for offline sync");
+          docId = 'offline_' + Date.now();
+        } else {
+          throw writeErr; // Re-throw real errors
+        }
+      }
 
       if (verifyData.tempImageUrl) {
         URL.revokeObjectURL(verifyData.tempImageUrl);
       }
 
       // Add to local receipts array so it shows up in real-time
-      setAllReceipts(prev => [{ id: docRef.id, ...newReceiptData }, ...prev]);
+      setAllReceipts(prev => [{ id: docId, ...newReceiptData }, ...prev]);
 
       moveToNextOrClose(processedScans);
 
