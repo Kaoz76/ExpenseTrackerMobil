@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { useTheme } from '../context/ThemeContext';
 import { useCurrency, CURRENCY_MAP } from '../context/CurrencyContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -267,15 +269,36 @@ function Settings() {
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => doc.data());
       
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", `expense_backup_${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
+      const fileName = `expense_backup_${new Date().toISOString().split('T')[0]}.json`;
       
-      setBackupMessage(t('common.msg_export_success') || 'Veriler başarıyla dışa aktarıldı.');
+      if (Capacitor.isNativePlatform()) {
+        const base64Data = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+        try {
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache
+          });
+          await Share.share({
+            title: fileName,
+            url: result.uri
+          });
+          setBackupMessage(t('common.msg_export_success') || 'Veriler başarıyla dışa aktarıldı.');
+        } catch (e) {
+          console.error("Native Export Error:", e);
+          setBackupMessage(t('common.msg_export_failed') || 'Dışa aktarma başarısız oldu.');
+        }
+      } else {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", fileName);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        
+        setBackupMessage(t('common.msg_export_success') || 'Veriler başarıyla dışa aktarıldı.');
+      }
     } catch (err) {
       console.error(err);
       setBackupMessage(t('common.msg_export_failed') || 'Dışa aktarma başarısız oldu.');

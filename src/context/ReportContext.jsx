@@ -8,6 +8,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { parseDate } from '../utils/dateFormatter';
 import { getCategoryInfo, getStringColor, localizeCategory } from '../utils/categoryMap';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 const ReportContext = createContext(null);
 
@@ -411,20 +414,38 @@ ${sheet3Rows}  </Table>
  </Worksheet>
 </Workbook>`;
 
-      // ─── Download ───
-      const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
       const dateStamp = new Date().toISOString().slice(0, 10);
       const fileName = language === 'tr'
         ? `Harcama_Raporu_${dateStamp}.xls`
         : `Expense_Report_${dateStamp}.xls`;
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+
+      if (Capacitor.isNativePlatform()) {
+        const base64Data = btoa(unescape(encodeURIComponent(xml)));
+        try {
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache
+          });
+          await Share.share({
+            title: fileName,
+            url: result.uri
+          });
+        } catch (e) {
+          console.error("Native Excel Share Error:", e);
+          alert(t('common.msg_export_failed') + `: ${e.message}`);
+        }
+      } else {
+        const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
 
       setTimeout(() => alert(t('common.msg_export_success')), 300);
 
@@ -935,7 +956,26 @@ ${sheet3Rows}  </Table>
       }
 
       const safeFileName = `Expense_Report_${monthName.replace(/\s/g, '_')}.pdf`;
-      pdfDoc.save(safeFileName);
+      
+      if (Capacitor.isNativePlatform()) {
+        const pdfBase64 = pdfDoc.output('datauristring').split(',')[1];
+        try {
+          const result = await Filesystem.writeFile({
+            path: safeFileName,
+            data: pdfBase64,
+            directory: Directory.Cache
+          });
+          await Share.share({
+            title: safeFileName,
+            url: result.uri
+          });
+        } catch (e) {
+          console.error("Native PDF Share Error:", e);
+          alert(t('common.msg_export_failed') + `: ${e.message}`);
+        }
+      } else {
+        pdfDoc.save(safeFileName);
+      }
 
       // Kullanıcıya indirme başarılı bildirimi veriyoruz
       setTimeout(() => alert(t('common.msg_export_success')), 300);

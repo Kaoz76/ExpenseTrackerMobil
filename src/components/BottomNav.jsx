@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { FaHome, FaCamera, FaPlusCircle, FaLayerGroup, FaStore, FaBox, FaSync } from 'react-icons/fa';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -7,6 +7,10 @@ function BottomNav() {
   const { t } = useLanguage();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
+  const location = useLocation();
+
+  const hideOnRoutes = ['/login', '/signup', '/'];
+  const shouldHide = hideOnRoutes.includes(location.pathname);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -17,6 +21,10 @@ function BottomNav() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <nav

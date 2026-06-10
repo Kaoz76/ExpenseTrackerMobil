@@ -553,6 +553,9 @@ body::after {
   .main-content-area {
     padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   }
+  .main-content-area.no-bottom-padding {
+    padding-bottom: 0 !important;
+  }
 }
 
 /* ========================================

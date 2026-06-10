@@ -1,5 +1,5 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
@@ -50,6 +50,10 @@ const checkIsMobile = () => {
 
 function App() {
   const [isMobile, setIsMobile] = useState(checkIsMobile());
+  const location = useLocation();
+
+  const hideBottomNavRoutes = ['/login', '/signup', '/'];
+  const isBottomNavHidden = hideBottomNavRoutes.includes(location.pathname);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(checkIsMobile());
@@ -67,7 +71,7 @@ function App() {
       <Navbar />
 
       {/* Capacitor "Safe Area" destekli mobil boşluk mantığı mükemmel çalışıyor */}
-      <main className="main-content-area">
+      <main className={`main-content-area ${isBottomNavHidden ? 'no-bottom-padding' : ''}`}>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* 🔥 Kök dizin (/) mobil uygulamada Dashboard'a yönlendirilir, web'de Landing gösterilir */}
