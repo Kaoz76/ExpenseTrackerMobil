@@ -431,9 +431,12 @@ ${sheet3Rows}  </Table>
             title: fileName,
             url: result.uri
           });
+          setTimeout(() => alert(t('common.msg_export_success')), 300);
         } catch (e) {
           console.error("Native Excel Share Error:", e);
-          alert(t('common.msg_export_failed') + `: ${e.message}`);
+          if (!e.message || (!e.message.includes('canceled') && !e.message.includes('Share canceled'))) {
+            alert(t('common.msg_export_failed') + `: ${e.message}`);
+          }
         }
       } else {
         const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
@@ -445,9 +448,8 @@ ${sheet3Rows}  </Table>
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        setTimeout(() => alert(t('common.msg_export_success')), 300);
       }
-
-      setTimeout(() => alert(t('common.msg_export_success')), 300);
 
     } catch (error) {
       console.error("Excel Export Error:", error);
@@ -969,16 +971,17 @@ ${sheet3Rows}  </Table>
             title: safeFileName,
             url: result.uri
           });
+          setTimeout(() => alert(t('common.msg_export_success')), 300);
         } catch (e) {
           console.error("Native PDF Share Error:", e);
-          alert(t('common.msg_export_failed') + `: ${e.message}`);
+          if (!e.message || (!e.message.includes('canceled') && !e.message.includes('Share canceled'))) {
+            alert(t('common.msg_export_failed') + `: ${e.message}`);
+          }
         }
       } else {
         pdfDoc.save(safeFileName);
+        setTimeout(() => alert(t('common.msg_export_success')), 300);
       }
-
-      // Kullanıcıya indirme başarılı bildirimi veriyoruz
-      setTimeout(() => alert(t('common.msg_export_success')), 300);
 
       markAsRead();
 

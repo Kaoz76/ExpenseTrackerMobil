@@ -286,7 +286,12 @@ function Settings() {
           setBackupMessage(t('common.msg_export_success') || 'Veriler başarıyla dışa aktarıldı.');
         } catch (e) {
           console.error("Native Export Error:", e);
-          setBackupMessage(t('common.msg_export_failed') || 'Dışa aktarma başarısız oldu.');
+          if (!e.message || (!e.message.includes('canceled') && !e.message.includes('Share canceled'))) {
+            setBackupMessage(t('common.msg_export_failed') || 'Dışa aktarma başarısız oldu.');
+          } else {
+            // User cancelled share
+            setBackupMessage('');
+          }
         }
       } else {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
