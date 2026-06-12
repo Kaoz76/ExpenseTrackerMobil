@@ -71,9 +71,6 @@ function ProductDetails() {
     let foundItems = [];
     let typeFound = ''; // Döngü içinde türü yakalamak için
 
-    console.log('=== ProductDetails Debug ===');
-    console.log('Looking for productName:', JSON.stringify(productName));
-    console.log('Looking for brandName:', JSON.stringify(brandName));
 
     rawReceipts.forEach((data) => {
       if (data.items && Array.isArray(data.items)) {
@@ -88,7 +85,6 @@ function ProductDetails() {
           const matchBrand = brandName || '';
           const cleanedItemName = cleanName(item.name);
 
-          console.log(`  Item: ${JSON.stringify(item.name)} -> cleaned: ${JSON.stringify(cleanedItemName)} | brand: ${JSON.stringify(itemBrand)} | nameMatch: ${cleanedItemName === productName} | brandMatch: ${itemBrand === matchBrand}`);
 
           if (cleanedItemName === productName && itemBrand === matchBrand) {
             // Tür bilgisini ilk bulduğumuz kayıttan alalım
@@ -111,8 +107,6 @@ function ProductDetails() {
       }
     });
 
-    console.log('Found items count:', foundItems.length);
-    console.log('=== End Debug ===');
 
     // Sort client-side by createdAt descending
     foundItems.sort((a, b) => {

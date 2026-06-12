@@ -267,7 +267,10 @@ function Settings() {
     try {
       const q = query(collection(db, "receipts"), where("userId", "==", user.uid));
       const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(doc => doc.data());
+      const data = querySnapshot.docs.map(d => {
+        const { userId, ...rest } = d.data();
+        return rest;
+      });
       
       const fileName = `expense_backup_${new Date().toISOString().split('T')[0]}.json`;
       
@@ -316,6 +319,13 @@ function Settings() {
   const handleImportData = async (e) => {
     const file = e.target.files[0];
     if (!file || !user?.uid) return;
+
+    // 10MB dosya boyut sınırı — bellek sorunlarını önlemek için
+    const MAX_IMPORT_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_IMPORT_SIZE) {
+      setBackupMessage(t('common.msg_import_failed') || 'Dosya çok büyük (maks. 10MB).');
+      return;
+    }
 
     setIsProcessingBackup(true);
     setBackupMessage('');
