@@ -268,7 +268,7 @@ function Settings() {
       const q = query(collection(db, "receipts"), where("userId", "==", user.uid));
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(d => {
-        const { userId, ...rest } = d.data();
+        const { userId: _userId, ...rest } = d.data();
         return rest;
       });
       
