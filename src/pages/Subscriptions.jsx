@@ -29,7 +29,7 @@ function Subscriptions() {
   });
   const [endDate, setEndDate] = useState('');
 
-  // Set initial currency when context currency is loaded
+  // Bağlam para birimi yüklendiğinde başlangıç para birimini ayarla
   useEffect(() => {
     if (currency?.code && !selectedCurrency) {
       setSelectedCurrency(currency.code);

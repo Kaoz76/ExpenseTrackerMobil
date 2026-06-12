@@ -66,7 +66,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
     if (draggingIdx === null || !containerRef.current) return;
     
     const rect = containerRef.current.getBoundingClientRect();
-    // Calculate new position bounded by container
+    // Konteyner ile sınırlı yeni konumu hesapla
     let clientX = e.clientX;
     let clientY = e.clientY;
     
@@ -134,7 +134,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
     setIsProcessing(true);
     
     try {
-      // Calculate scale ratio between visual size and natural size
+      // Görsel boyut ile doğal boyut arasındaki ölçek oranını hesapla
       const img = imageRef.current;
       const scaleX = img.naturalWidth / imageSize.width;
       const scaleY = img.naturalHeight / imageSize.height;

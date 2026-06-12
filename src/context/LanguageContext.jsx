@@ -30,7 +30,7 @@ export const LanguageProvider = ({ children }) => {
           if (fallbackValue && fallbackValue[fk] !== undefined) {
             fallbackValue = fallbackValue[fk];
           } else {
-            return key; // return key if completely not found
+            return key; // Tamamen bulunamazsa anahtarı döndür
           }
         }
         return fallbackValue || key;

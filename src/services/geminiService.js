@@ -78,7 +78,7 @@ export const enrichItemsWithGemini = async (items, storeName = '', language = 'e
     return processedItems;
   } catch (error) {
     console.error('Gemini AI enrichment failed, falling back to original items:', error);
-    // Graceful fallback: return items without enrichment, and keep discount items as discount
+    // Güvenli geri dönüş: Zenginleştirme olmadan öğeleri döndür ve indirimli öğeleri indirim olarak koru
     return items.map((item, index) => {
       if (processedItems[index] !== null) {
         return processedItems[index];

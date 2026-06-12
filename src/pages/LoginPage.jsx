@@ -15,7 +15,7 @@ function LoginPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  // ŞİFRE SIFIRLAMA MODAL STATE'LERİ
+  // Şifre sıfırlama modal state'leri
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
@@ -24,7 +24,7 @@ function LoginPage() {
 
   const [lockoutTime, setLockoutTime] = useState(0);
 
-  // Check lockout on mount
+  // Bileşen yüklendiğinde kilitlenme durumunu kontrol et
   useEffect(() => {
     const lockoutUntil = localStorage.getItem('login_lockout_until');
     if (lockoutUntil) {
@@ -39,7 +39,7 @@ function LoginPage() {
     }
   }, [t]);
 
-  // Handle lockout countdown timer
+  // Kilitlenme geri sayım sayacını yönet
   useEffect(() => {
     if (lockoutTime <= 0) return;
     const timer = setInterval(() => {
@@ -59,13 +59,13 @@ function LoginPage() {
     return () => clearInterval(timer);
   }, [lockoutTime, t]);
 
-  // GELİŞTİRME 1: Kullanıcı yazmaya başladığında login hatasını temizle
+  // Kullanıcı yazmaya başladığında giriş hatasını temizle
   useEffect(() => {
     if (error && lockoutTime === 0) setError('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, password]);
 
-  // GELİŞTİRME 3: Modal için ESC tuşu desteği
+  // Modal için ESC tuşu desteği
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && showResetModal) {
@@ -76,14 +76,14 @@ function LoginPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showResetModal]);
 
-  // GELİŞTİRME 3: Modalı kapatırken içindeki eski mesajları temizle
+  // Modalı kapatırken içindeki eski mesajları temizle
   const closeResetModal = () => {
     setShowResetModal(false);
     setResetMessage('');
     setResetError('');
   };
 
-  // GİRİŞ İŞLEMİ
+  // Giriş İşlemi
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (lockoutTime > 0) return;
@@ -100,7 +100,7 @@ function LoginPage() {
       localStorage.setItem('login_attempts', attempts.toString());
 
       if (attempts >= 5) {
-        const lockoutDuration = 60 * 1000; // 60 seconds
+        const lockoutDuration = 60 * 1000; // 60 saniye
         const lockoutUntil = Date.now() + lockoutDuration;
         localStorage.setItem('login_lockout_until', lockoutUntil.toString());
         setLockoutTime(60);
@@ -114,7 +114,7 @@ function LoginPage() {
     }
   };
 
-  // ŞİFRE SIFIRLAMA İŞLEMİ
+  // Şifre Sıfırlama İşlemi
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setResetMessage('');
@@ -165,7 +165,7 @@ function LoginPage() {
                   <div className="mb-4">
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <label htmlFor="password" className="form-label mb-0">{t('common.login_password')}</label>
-                      {/* Forgot Password Linki */}
+                      {/* Şifremi Unuttum Linki */}
                       <button
                         type="button"
                         className="btn btn-link btn-sm text-decoration-none p-0"
@@ -178,7 +178,7 @@ function LoginPage() {
                       </button>
                     </div>
 
-                    {/* GELİŞTİRME 2: Bootstrap Input Group ile Şifre Göster/Gizle */}
+                    {/* Bootstrap Input Group ile Şifre Göster/Gizle */}
                     <div className="input-group">
                       <input
                         type={showPassword ? 'text' : 'password'}
@@ -218,7 +218,7 @@ function LoginPage() {
         </div>
       </div>
 
-      {/* PASSWORD RESET MODAL */}
+      {/* Şifre Sıfırlama Modalı */}
       {showResetModal && (
         <>
           <div className="modal-backdrop fade show" style={{ zIndex: 1050 }} onClick={closeResetModal}></div>

@@ -1,9 +1,9 @@
 // src/utils/perspectiveTransform.js
 
-// Function to calculate the homography matrix using Gaussian elimination
-// We map 4 source points to 4 destination points.
+// Gauss eliminasyon yöntemiyle homografi matrisini hesaplayan fonksiyon
+// 4 kaynak noktayı 4 hedef noktayla eşleştiriyoruz.
 function solveHomography(src, dst) {
-  // 8 equations for 8 parameters (h11 to h32, h33=1)
+  // 8 parametre için 8 denklem (h11'den h32'ye, h33=1)
   const A = [];
   const B = [];
   
@@ -20,18 +20,18 @@ function solveHomography(src, dst) {
     B.push(v);
   }
   
-  // Gaussian elimination
+  // Gauss eliminasyonu
   const h = solveLinearSystem(A, B);
   h.push(1); // h33 = 1
   return h;
 }
 
-// Basic Gaussian elimination
+// Temel Gauss eliminasyonu
 function solveLinearSystem(A, B) {
   const n = 8;
-  // Forward elimination
+  // İleri eliminasyon
   for (let i = 0; i < n; i++) {
-    // Find pivot
+    // Pivot bul
     let maxRow = i;
     for (let k = i + 1; k < n; k++) {
       if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) {
@@ -39,7 +39,7 @@ function solveLinearSystem(A, B) {
       }
     }
     
-    // Swap rows
+    // Satırları değiştir
     const tempA = [...A[i]];
     A[i] = A[maxRow];
     A[maxRow] = tempA;
@@ -48,7 +48,7 @@ function solveLinearSystem(A, B) {
     B[i] = B[maxRow];
     B[maxRow] = tempB;
     
-    // Eliminate
+    // Yok et
     for (let k = i + 1; k < n; k++) {
       const c = -A[k][i] / A[i][i];
       for (let j = i; j < n; j++) {
@@ -62,7 +62,7 @@ function solveLinearSystem(A, B) {
     }
   }
   
-  // Back substitution
+  // Geriye doğru yerine koyma
   const x = new Array(n).fill(0);
   for (let i = n - 1; i >= 0; i--) {
     let sum = 0;
@@ -82,7 +82,7 @@ function solveLinearSystem(A, B) {
  * @returns {HTMLCanvasElement} - The warped cropped canvas
  */
 export function perspectiveWarp(img, corners) {
-  // Estimate destination width and height
+  // Hedef genişliği ve yüksekliği tahmin et
   const wTop = Math.hypot(corners[1].x - corners[0].x, corners[1].y - corners[0].y);
   const wBot = Math.hypot(corners[2].x - corners[3].x, corners[2].y - corners[3].y);
   let width = Math.max(wTop, wBot);
@@ -91,7 +91,7 @@ export function perspectiveWarp(img, corners) {
   const hRight = Math.hypot(corners[2].x - corners[1].x, corners[2].y - corners[1].y);
   let height = Math.max(hLeft, hRight);
 
-  // Cap the resolution to 1600px max dimension for optimal OCR performance and JS memory safety
+  // Optimum OCR performansı ve bellek güvenliği için maksimum boyutu 1600px ile sınırla
   const MAX_DIMENSION = 1600;
   if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
     const scale = MAX_DIMENSION / Math.max(width, height);
@@ -109,7 +109,7 @@ export function perspectiveWarp(img, corners) {
     { x: 0, y: height }
   ];
   
-  // Solve for the inverse homography (from destination rectangle to source quadrilateral)
+  // Ters homografiyi çöz (hedef dikdörtgenden kaynak dörtgene)
   const H_inv = solveHomography(dstCorners, corners);
   
   const srcCanvas = document.createElement('canvas');
@@ -131,7 +131,7 @@ export function perspectiveWarp(img, corners) {
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      // Apply inverse homography to find corresponding source pixel
+      // İlgili kaynak pikseli bulmak için ters homografiyi uygula
       const w = H_inv[6] * x + H_inv[7] * y + H_inv[8];
       const sx = (H_inv[0] * x + H_inv[1] * y + H_inv[2]) / w;
       const sy = (H_inv[3] * x + H_inv[4] * y + H_inv[5]) / w;
@@ -139,7 +139,7 @@ export function perspectiveWarp(img, corners) {
       const dstIdx = (y * width + x) * 4;
       
       if (sx >= 0 && sx < srcW - 1 && sy >= 0 && sy < srcH - 1) {
-        // Bilinear interpolation
+        // Çift doğrusal (bilinear) interpolasyon
         const x0 = Math.floor(sx);
         const x1 = x0 + 1;
         const y0 = Math.floor(sy);
@@ -160,11 +160,11 @@ export function perspectiveWarp(img, corners) {
           dstPixels[dstIdx + c] = val;
         }
       } else {
-        // Out of bounds
+        // Sınırların dışında
         dstPixels[dstIdx] = 0;
         dstPixels[dstIdx + 1] = 0;
         dstPixels[dstIdx + 2] = 0;
-        dstPixels[dstIdx + 3] = 0; // Transparent
+        dstPixels[dstIdx + 3] = 0; // Saydam
       }
     }
   }

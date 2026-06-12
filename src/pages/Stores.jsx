@@ -7,7 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useStores } from '../hooks/useStores';
 import StoreFilters from '../components/stores/StoreFilters';
 
-// Removed cleanStoreName export
+// cleanStoreName dışa aktarımı kaldırıldı
 
 function Stores() {
   const { user } = useAuth();

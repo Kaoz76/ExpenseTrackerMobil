@@ -20,10 +20,10 @@ function AnalyzeExpenses() {
   const [timeRange, setTimeRange] = useState('this_year');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Custom hook extracts all Firebase queries and data formatting logic
+  // Özel kanca (hook) tüm Firebase sorgularını ve veri biçimlendirme mantığını çıkarır
   const { loading, chartData, categoryData, storeData, brandData, totalSpent } = useExpenseAnalysis(user, timeRange);
 
-  // Detect dark mode for chart theming
+  // Grafik temaları için karanlık modu algıla
   const [isDark, setIsDark] = useState(false);
   useEffect(() => {
     const el = document.documentElement;
@@ -34,19 +34,19 @@ function AnalyzeExpenses() {
     return () => observer.disconnect();
   }, []);
 
-  // Theme-aware chart styles
+  // Temaya duyarlı grafik stilleri
   const chartTheme = useMemo(() => ({
     tooltipBg: isDark ? '#1e293b' : '#ffffff',
     tooltipBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
     tooltipColor: isDark ? 'rgba(255,255,255,0.9)' : '#334155',
     axisColor: isDark ? 'rgba(255,255,255,0.45)' : '#6c757d',
     gridOpacity: isDark ? 0.06 : 0.1,
-    lineColor: isDark ? '#818cf8' : '#4f46e5', // More saturated indigo for light mode
+    lineColor: isDark ? '#818cf8' : '#4f46e5', // Açık mod için daha doygun çivit mavisi
     areaStop1: isDark ? '#818cf8' : '#4f46e5',
     areaStop2: isDark ? '#c084fc' : '#9333ea',
     areaOpacity: isDark ? 0.4 : 0.6,
-    accentColor: isDark ? '#fbbf24' : '#f59e0b', // Current
-    futureColor: isDark ? '#475569' : '#cbd5e1', // Future (grayed out)
+    accentColor: isDark ? '#fbbf24' : '#f59e0b', // Mevcut
+    futureColor: isDark ? '#475569' : '#cbd5e1', // Gelecek (gri renkli)
   }), [isDark]);
 
   const getRangeLabel = () => {
@@ -64,7 +64,7 @@ function AnalyzeExpenses() {
     <div className="dashboard-page-wrapper p-0 p-md-4 py-3">
       <div className="container-fluid px-3">
 
-        {/* HEADER & FİLTRELER */}
+        {/* Başlık ve Filtreler */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
           <div className="mb-3 mb-md-0">
             <h1 className="display-6 fw-bold">{t('common.expense_analysis')}</h1>
@@ -102,14 +102,14 @@ function AnalyzeExpenses() {
           </div>
         </div>
 
-        {/* YÜKLENİYORSA */}
+        {/* Yükleniyorsa */}
         {loading && (
           <div className="text-center p-5">
             <div className="spinner-border text-primary" role="status"></div>
           </div>
         )}
 
-        {/* KULLANICI GİRİŞ YAPMAMIŞSA */}
+        {/* Kullanıcı Giriş Yapmamışsa */}
         {!user && !loading && (
           <div className="alert alert-info text-center p-5">
             <h4 className="alert-heading fw-bold">{t('common.login_required')}</h4>
@@ -118,7 +118,7 @@ function AnalyzeExpenses() {
           </div>
         )}
 
-        {/* KULLANICI VARSA AMA VERİ YOKSA */}
+        {/* Kullanıcı Varsa Ama Veri Yoksa */}
         {user && !loading && chartData.length === 0 && (
           <div className="alert alert-light text-center p-5 border border-dashed">
             <h5 className="text-muted">{t('common.no_data_period')}</h5>
@@ -126,7 +126,7 @@ function AnalyzeExpenses() {
           </div>
         )}
 
-        {/* VERİ VARSA GRAFİKLERİ GÖSTER */}
+        {/* Veri Varsa Grafikleri Göster */}
         {user && !loading && chartData.length > 0 && (
           <>
             <div className="row mb-5">
@@ -142,7 +142,7 @@ function AnalyzeExpenses() {
             </div>
 
             <div className="row mb-5">
-              {/* Category Section */}
+              {/* Kategori Bölümü */}
               <div className="col-lg-4 mb-5 mb-lg-0">
                 <div className="mb-4">
                   <CategoryChart 
@@ -193,7 +193,7 @@ function AnalyzeExpenses() {
                 </div>
               </div>
 
-              {/* Store Section */}
+              {/* Mağaza Bölümü */}
               <div className="col-lg-4 mb-5 mb-lg-0">
                 <div className="mb-4">
                   <StoreChart 
@@ -244,7 +244,7 @@ function AnalyzeExpenses() {
                 </div>
               </div>
 
-              {/* Brand Section */}
+              {/* Marka Bölümü */}
               <div className="col-lg-4">
                 <div className="mb-4">
                   <BrandChart 

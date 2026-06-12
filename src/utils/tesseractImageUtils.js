@@ -27,7 +27,7 @@ export const resizeImageForTesseract = (file, maxWidth = 1400, maxHeight = 1800,
         width = Math.round(width * ratio);
         height = Math.round(height * ratio);
       } else {
-        // Return original file directly to preserve quality if it fits the bounds
+        // Sınırlara uyuyorsa kaliteyi korumak için orijinal dosyayı doğrudan döndür
         resolve(file);
         return;
       }

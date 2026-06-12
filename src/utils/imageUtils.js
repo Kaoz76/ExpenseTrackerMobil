@@ -174,7 +174,7 @@ export const preprocessForOCR = (file) => {
       // 5) Sharpening (unsharp mask: original + strength * (original - blurred))
       ctx.putImageData(imageData, 0, 0);
 
-      // Create a blurred copy
+      // Bulanıklaştırılmış bir kopya oluştur
       const blurCanvas = document.createElement('canvas');
       blurCanvas.width = w;
       blurCanvas.height = h;
@@ -228,7 +228,7 @@ export const getCroppedImg = (imageElement, crop, fileName) => {
   const canvas = document.createElement('canvas');
   const scaleX = imageElement.naturalWidth / imageElement.width;
   const scaleY = imageElement.naturalHeight / imageElement.height;
-  // Add padding so ML Kit doesn't struggle with edge text
+  // ML Kit'in kenardaki metinlerde zorlanmaması için dolgu (padding) ekle
   const padding = 40;
   canvas.width = crop.width + (padding * 2);
   canvas.height = crop.height + (padding * 2);

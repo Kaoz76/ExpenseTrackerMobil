@@ -23,25 +23,25 @@ function ReceiptDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Editable states
+  // Düzenlenebilir state'ler
   const [editingStoreName, setEditingStoreName] = useState(false);
   const [storeName, setStoreName] = useState('');
   const [editingTotal, setEditingTotal] = useState(false);
   const [totalPrice, setTotalPrice] = useState(0);
 
-  // Items state (local copy for editing)
+  // Öğeler (düzenleme için yerel kopya)
   const [items, setItems] = useState([]);
   const [editingItemIdx, setEditingItemIdx] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // New item form
+  // Yeni öğe formu
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', price: '', brand: '', type: '', size: '' });
 
-  // Image lightbox
+  // Resim önizleme
   const [showImageLightbox, setShowImageLightbox] = useState(false);
 
-  // Fetch receipt data in real-time
+  // Fiş verilerini gerçek zamanlı getir
   useEffect(() => {
     // 🔥 DÜZELTME 3: user.uid garantisi eklendi
     if (!user?.uid || !receiptId) {
@@ -69,10 +69,10 @@ function ReceiptDetail() {
     return () => unsubscribe();
   }, [user, receiptId]);
 
-  // Mark changes
+  // Değişiklikleri işaretle
   const markChanged = () => setHasChanges(true);
 
-  // ─── STORE NAME ────────────────────────────────
+  // ─── Mağaza Adı ────────────────────────────────
   const handleSaveStoreName = async () => {
     if (!storeName.trim()) return;
     setEditingStoreName(false);
@@ -86,7 +86,7 @@ function ReceiptDetail() {
     }
   };
 
-  // ─── TOTAL PRICE ───────────────────────────────
+  // ─── Toplam Fiyat ───────────────────────────────
   const handleSaveTotal = async () => {
     setEditingTotal(false);
     try {
@@ -98,7 +98,7 @@ function ReceiptDetail() {
     }
   };
 
-  // ─── ITEM CRUD ─────────────────────────────────
+  // ─── Öğe İşlemleri ─────────────────────────────────
   const handleItemChange = (index, field, value) => {
     const updated = [...items];
     let updatedItem = { ...updated[index], [field]: value };
@@ -140,7 +140,7 @@ function ReceiptDetail() {
     markChanged();
   };
 
-  // ─── SAVE ALL ITEM CHANGES ────────────────────
+  // ─── Tüm Değişiklikleri Kaydet ────────────────────
   const handleSaveItems = async () => {
     setSaving(true);
     try {
@@ -167,7 +167,7 @@ function ReceiptDetail() {
         price: newItemsTotal // Ana fiş tutarı otomatik güncelleniyor
       });
 
-      setTotalPrice(newItemsTotal); // Local state'i de güncelliyoruz
+      setTotalPrice(newItemsTotal); // Yerel state'i de güncelle
       setHasChanges(false);
       setEditingItemIdx(null);
     } catch (err) {
@@ -177,13 +177,13 @@ function ReceiptDetail() {
     }
   };
 
-  // ─── DELETE RECEIPT ────────────────────────────
+  // ─── Fişi Sil ────────────────────────────
   const handleDeleteReceipt = async () => {
     if (!window.confirm(t('common.msg_delete_receipt_full_confirm'))) {
       return;
     }
     try {
-      // 🔥 Delete image from Firebase Storage if it exists
+      // Varsa Firebase Storage'dan resmi sil
       if (receipt?.storagePath) {
         try {
           await deleteObject(ref(storage, receipt.storagePath));
@@ -234,7 +234,7 @@ function ReceiptDetail() {
     <div className="dashboard-page-wrapper p-4">
       <div className="container-fluid">
 
-        {/* BREADCRUMB */}
+        {/* Yönlendirme Menüsü */}
         <nav aria-label="breadcrumb" className="mb-4">
           <ol className="breadcrumb">
             <li className="breadcrumb-item">
@@ -265,7 +265,7 @@ function ReceiptDetail() {
           itemsTotal={itemsTotal}
         />
 
-        {/* ITEMS TABLE */}
+        {/* Öğeler Tablosu */}
         <ReceiptItemList
           receipt={receipt}
           items={items}
@@ -284,7 +284,7 @@ function ReceiptDetail() {
           handleRemoveItem={handleRemoveItem}
         />
 
-        {/* Floating save bar */}
+        {/* Kayan Kaydetme Çubuğu */}
         {hasChanges && (
           <div
             className="position-fixed bottom-0 start-0 end-0 bg-body border-top shadow-lg p-3 d-flex justify-content-center align-items-center gap-3"
@@ -315,7 +315,7 @@ function ReceiptDetail() {
 
       </div>
 
-      {/* IMAGE LIGHTBOX */}
+      {/* Resim Önizleme */}
       {showImageLightbox && receipt?.imageUrl && (
         <>
           <div

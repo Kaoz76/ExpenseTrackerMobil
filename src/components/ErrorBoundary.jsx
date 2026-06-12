@@ -8,7 +8,7 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError() {
-    // Update state so the next render will show the fallback UI.
+    // Sonraki render'ın yedek UI'ı göstermesi için durumu güncelle.
     return { hasError: true };
   }
 
@@ -21,7 +21,7 @@ class ErrorBoundary extends React.Component {
     // You can also log the error to an error reporting service
     console.error("ErrorBoundary caught an error", error, errorInfo);
 
-    // Check if the error is a failed dynamic import/chunk loading
+    // Hatanın dinamik import/chunk yükleme başarısızlığı olup olmadığını kontrol et
     const isChunkLoadFailed = error && (
       error.message?.includes('Failed to fetch dynamically imported module') ||
       error.message?.includes('Loading chunk') ||

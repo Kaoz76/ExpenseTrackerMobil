@@ -10,7 +10,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit } from "firebase/firestore";
 
-// Image loading wrapper component for smoother UX
+// Daha akıcı bir deneyim için resim yükleme sarmalayıcı bileşeni
 const DashboardImage = ({ src, alt }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -55,7 +55,7 @@ function Dashboard() {
   const [loadingScans, setLoadingScans] = useState(true);
   const [budgetLimit, setBudgetLimit] = useState(0);
 
-  // Raw Firestore data — currency conversion happens in useMemo, not in the listener
+  // Ham Firestore verisi - döviz dönüşümü dinleyicide değil, useMemo'da yapılır
   const [currentMonthRawReceipts, setCurrentMonthRawReceipts] = useState([]);
   const [lastMonthRawReceipts, setLastMonthRawReceipts] = useState([]);
   const [rawSubscriptions, setRawSubscriptions] = useState([]);
@@ -64,7 +64,7 @@ function Dashboard() {
   const [selectedImage, setSelectedImage] = useState({ url: '', alt: '' });
 
 
-  // KULLANICI BÜTÇESİNİ ÇEKME
+  // Kullanıcı bütçesini getir
   useEffect(() => {
     if (user) {
       const fetchBudget = async () => {
@@ -84,7 +84,7 @@ function Dashboard() {
     }
   }, [user]);
 
-  // ABONELİKLERİ ÇEKME
+  // Abonelikleri getir
   useEffect(() => {
     if (user) {
       const q = query(
@@ -102,7 +102,7 @@ function Dashboard() {
     }
   }, [user]);
 
-  // AYLIK HARCAMALARI ÇEKME — Sadece bu ayın fişlerini indir
+  // Aylık harcamaları getir (Sadece bu ayın fişleri)
   useEffect(() => {
     if (!user) {
       setCurrentMonthRawReceipts([]);
@@ -129,7 +129,7 @@ function Dashboard() {
     return () => unsubscribe();
   }, [user]);
 
-  // GEÇMİŞ AY HARCAMALARI — Tek seferlik çekim, trend karşılaştırması için
+  // Geçmiş ay harcamaları (Trend karşılaştırması için tek seferlik)
   useEffect(() => {
     if (!user) {
       setLastMonthRawReceipts([]);
@@ -152,7 +152,7 @@ function Dashboard() {
     }).catch(err => console.error("Error fetching last month receipts:", err));
   }, [user]);
 
-  // SON 3 KAYIT — Dashboard kartları için gerçek zamanlı
+  // Son 3 kayıt (Gösterge paneli kartları için gerçek zamanlı)
   useEffect(() => {
     if (!user) {
       setRecentScans([]);
@@ -180,7 +180,7 @@ function Dashboard() {
     return () => unsubscribe();
   }, [user]);
 
-  // HESAPLANAN DEĞERLER — Döviz kuru değiştiğinde sadece hesaplama yenilenir, Firestore sorgusu tekrar çalışmaz
+  // Hesaplanan değerler (Döviz kuru değiştiğinde sadece hesaplama yenilenir)
   const subscriptionTotal = useMemo(() => {
     return rawSubscriptions.reduce((acc, data) => {
       const subPrice = Number(data.price) || 0;
@@ -255,7 +255,7 @@ function Dashboard() {
 
       <div className={`dashboard-content-wrapper ${isImageModalShowing ? 'content-blurred' : ''}`} style={{ transition: 'filter 0.3s ease-in-out' }}>
 
-        {/* BAŞLIK */}
+        {/* Başlık */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
           <div className="mb-3 mb-md-0">
             <h1 className="display-6 fw-bold mb-1 text-gradient text-nowrap" style={{ paddingBottom: '0.2rem' }}>{t('nav.dashboard')}</h1>
@@ -274,7 +274,7 @@ function Dashboard() {
           )}
         </div>
 
-        {/* CURRENT BALANCE (Mobil RN stili mavi kart) */}
+        {/* Mevcut Bakiye (Mobil mavi kart) */}
         {user && (
           <div className="card border-0 mb-4 text-white shadow-sm d-md-none" style={{ background: 'linear-gradient(135deg, var(--modern-primary), #a855f7)', borderRadius: '20px' }}>
             <div className="card-body text-center p-4">
@@ -284,7 +284,7 @@ function Dashboard() {
           </div>
         )}
 
-        {/* RECENT SCANS */}
+        {/* Son Taramalar */}
         <h3 className="h5 mb-3">{t('common.recent_scans')}</h3>
         <div className="row mb-4">
           {loadingScans && (
@@ -344,7 +344,7 @@ function Dashboard() {
           ))}
         </div>
 
-        {/* QUICK LINKS (Mobile Only) */}
+        {/* Hızlı Bağlantılar (Sadece Mobil) */}
         <div className="d-md-none">
           <h3 className="h5 mb-3">{t('common.quick_links')}</h3>
           <div className="row mb-4 g-2 g-md-4">
@@ -363,7 +363,7 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* BÜTÇE DURUMU */}
+        {/* Bütçe Durumu */}
         {budgetLimit > 0 && (
           <div className="mb-5">
             <div className="d-flex justify-content-between align-items-end mb-2">
@@ -401,7 +401,7 @@ function Dashboard() {
           </div>
         )}
 
-        {/* MONTHLY SPENDING */}
+        {/* Aylık Harcama */}
         <h3 className="h5 mb-3 fw-bold text-secondary">{t('common.monthly_spending')}</h3>
         <div className="row mb-4">
           <div className="col-lg-4 col-md-6 mb-4">
@@ -433,7 +433,7 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* ABONELİKLER */}
+        {/* Abonelikler */}
         <h3 className="h5 mb-3 fw-bold text-secondary">{t('common.subscription_expenses')}</h3>
         <div className="row">
           <div className="col-12">

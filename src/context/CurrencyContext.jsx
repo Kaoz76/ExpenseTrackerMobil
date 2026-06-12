@@ -30,7 +30,7 @@ export const CurrencyProvider = ({ children }) => {
   const { user } = useAuth();
   const { language } = useLanguage();
 
-  // Load Primary Currency
+  // Ana Para Birimini Yükle
   const [currency, setCurrency] = useState(() => {
     try {
       const saved = localStorage.getItem('app_currency');
@@ -41,7 +41,7 @@ export const CurrencyProvider = ({ children }) => {
     }
   });
 
-  // Load Favorite Currencies
+  // Favori Para Birimlerini Yükle
   const [favoriteCurrencies, setFavoriteCurrencies] = useState(() => {
     try {
       const saved = localStorage.getItem('favorite_currencies');
@@ -65,7 +65,7 @@ export const CurrencyProvider = ({ children }) => {
     return fallback;
   }, []);
 
-  // Fetch Exchange Rates
+  // Döviz Kurlarını Getir
   const fetchRates = useCallback(async (baseCode) => {
     setRatesLoading(true);
     try {
@@ -88,7 +88,7 @@ export const CurrencyProvider = ({ children }) => {
       
       if (data.result === 'success' && data.rates) {
         setRates(data.rates);
-        // Save to cache
+        // Önbelleğe kaydet
         localStorage.setItem(CACHE_KEY, JSON.stringify({
           timestamp: Date.now(),
           base: baseCode,
@@ -119,14 +119,14 @@ export const CurrencyProvider = ({ children }) => {
     }
   }, [getFallbackRates]);
 
-  // Fetch rates whenever the primary currency changes
+  // Ana para birimi değiştiğinde kurları getir
   useEffect(() => {
     if (currency?.code) {
       fetchRates(currency.code);
     }
   }, [currency?.code, fetchRates]);
 
-  // Fetch User Preferences on Login
+  // Giriş Yapıldığında Kullanıcı Tercihlerini Getir
   useEffect(() => {
     if (user) {
       const fetchUserPreferences = async () => {
@@ -166,7 +166,7 @@ export const CurrencyProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Update Primary Currency
+  // Ana Para Birimini Güncelle
   const updateCurrency = useCallback(async (code) => {
     const newCurrency = CURRENCY_MAP[code] || CURRENCY_MAP['USD'];
 
@@ -197,7 +197,7 @@ export const CurrencyProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Update Favorite Currencies
+  // Favori Para Birimlerini Güncelle
   const updateFavoriteCurrencies = useCallback(async (codes) => {
     // Keep favorites valid (must contain currency codes present in CURRENCY_MAP)
     const validCodes = codes.filter(code => CURRENCY_MAP[code]);

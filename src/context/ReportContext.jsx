@@ -290,7 +290,7 @@ export const ReportProvider = ({ children }) => {
         }
       });
 
-      // Add subscription totals
+      // Abonelik toplamlarını ekle
       let subsTotal = 0;
       allSubs.forEach(sub => {
         const subPrice = Number(sub.price) || 0;

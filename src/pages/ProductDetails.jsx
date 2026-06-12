@@ -20,13 +20,13 @@ function ProductDetails() {
   const [rawReceipts, setRawReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // İsim Temizleme Fonksiyonu
+  // İsim temizleme fonksiyonu
   const cleanName = (name) => {
     if (!name) return "";
     let cleaned = name.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
-    // Decode any URI-encoded characters (e.g. literal %20 from OCR)
+    // URI kodlanmış karakterleri çöz (örn. OCR'dan gelen %20)
     try { cleaned = decodeURIComponent(cleaned); } catch { /* ignore */ }
-    // Collapse multiple whitespace into single space
+    // Çoklu boşlukları tek boşluğa indir
     cleaned = cleaned.replace(/\s+/g, ' ');
     return trTitleCase(cleaned).trim();
   };
@@ -35,7 +35,7 @@ function ProductDetails() {
   try {
     rawProductName = decodeURIComponent(rawProductName);
   } catch (e) {
-    // If decoding fails (malformed URI), use the raw value as-is
+    // Çözümleme başarısız olursa (hatalı URI), ham değeri olduğu gibi kullan
     console.warn('Failed to decode productId, using raw value:', e);
   }
   const productName = cleanName(rawProductName);
@@ -44,7 +44,7 @@ function ProductDetails() {
     if (user) {
       setLoading(true);
 
-      // Query all receipts (not just manual) — consistent with Products page
+      // Tüm fişleri sorgula (sadece manuel olanları değil) - Ürünler sayfasıyla tutarlı
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
@@ -75,12 +75,12 @@ function ProductDetails() {
     rawReceipts.forEach((data) => {
       if (data.items && Array.isArray(data.items)) {
         data.items.forEach(item => {
-          // Skip items with negative prices (discounts/sales) or discount categories
+          // Negatif fiyatlı veya indirim kategorisindeki öğeleri atla
           const itemPrice = Number(item.price);
           const normalizedType = (item.type || '').trim().toLowerCase();
           if (itemPrice < 0 || normalizedType === 'discount' || normalizedType === 'indirim' || normalizedType === 'i̇ndirim') return;
 
-          // Normalize brand comparison: treat null/undefined/empty as equivalent
+          // Marka karşılaştırmasını normalleştir: null/undefined/boş değerleri eşdeğer kabul et
           const itemBrand = item.brand || '';
           const matchBrand = brandName || '';
           const cleanedItemName = cleanName(item.name);
@@ -108,7 +108,7 @@ function ProductDetails() {
     });
 
 
-    // Sort client-side by createdAt descending
+    // İstemci tarafında oluşturulma tarihine göre azalan şekilde sırala
     foundItems.sort((a, b) => {
       const aTime = a.createdAt?.toMillis?.() || 0;
       const bTime = b.createdAt?.toMillis?.() || 0;
@@ -150,7 +150,7 @@ function ProductDetails() {
     });
   }
 
-  // Başlık Formatı Oluşturma
+  // Başlık formatı oluşturma
   // Örn: "Sütaş Tam Yağlı Süt"
   const fullName = (brandName && !productName.toLowerCase().startsWith(brandName.toLowerCase()))
     ? `${brandName} ${productName}`
@@ -160,7 +160,7 @@ function ProductDetails() {
     <div className="dashboard-page-wrapper p-4">
       <div className="container-fluid">
 
-        {/* BREADCRUMB */}
+        {/* Yönlendirme Menüsü */}
         <nav aria-label="breadcrumb" className="mb-4">
           <ol className="breadcrumb">
             <li className="breadcrumb-item">
@@ -173,7 +173,7 @@ function ProductDetails() {
           </ol>
         </nav>
 
-        {/* SAYFA BAŞLIĞI (H1) */}
+        {/* Sayfa Başlığı */}
         <div className="d-flex flex-column flex-md-row align-items-md-center mb-4 gap-3">
           <h1 className="display-6 fw-bold mb-0">
             {fullName}
@@ -193,7 +193,7 @@ function ProductDetails() {
           <>
             {/* İstatistik Kartları */}
             <div className="row mb-5 g-3">
-              {/* Average Price */}
+              {/* Ortalama Fiyat */}
               <div className="col-md-4">
                 <div className="card border-0 shadow-sm h-100 p-3 bg-primary-subtle text-primary">
                   <div className="d-flex justify-content-between align-items-center mb-2">
@@ -205,7 +205,7 @@ function ProductDetails() {
                 </div>
               </div>
 
-              {/* Lowest Price */}
+              {/* En Düşük Fiyat */}
               <div className="col-md-4">
                 <div className="card border-0 shadow-sm h-100 p-3 bg-success-subtle text-success">
                   <div className="d-flex justify-content-between align-items-center mb-2">
@@ -226,7 +226,7 @@ function ProductDetails() {
                 </div>
               </div>
 
-              {/* Highest Price */}
+              {/* En Yüksek Fiyat */}
               <div className="col-md-4">
                 <div className="card border-0 shadow-sm h-100 p-3 bg-danger-subtle text-danger">
                   <div className="d-flex justify-content-between align-items-center mb-2">

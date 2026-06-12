@@ -315,7 +315,7 @@ export const localizeCategory = (categoryName, lang = 'en') => {
     return lang === 'tr' ? 'Alkol & Tütün' : 'Alcohol & Tobacco';
   }
 
-  // Check if it matches exactly
+  // Tam eşleşip eşleşmediğini kontrol et
   if (lang === 'tr') {
     if (suggestedCategoriesTR.includes(trimmed)) {
       return trimmed;

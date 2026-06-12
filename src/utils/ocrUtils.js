@@ -25,7 +25,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
     preCleanedText = preCleanedText.replace(/£T/gi, 'TL');
   }
 
-  // Remove spaces between digits and dots/commas (e.g. "135, 00" -> "135,00")
+  // Rakamlar ve noktalar/virgüller arasındaki boşlukları kaldır (örn. "135, 00" -> "135,00")
   // Also remove spaces after a minus sign followed by a digit (e.g. "- 47,25" -> "-47,25")
   const cleanedText = preCleanedText
     .replace(/(\d+)\s*([.,])\s*(\d+)/g, '$1$2$3')
@@ -121,7 +121,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
   const cleanAndParseNumber = (valStr) => {
     let cleanStr = valStr.replace(/[^0-9.,-]/g, '');
 
-    // Check if both exist to find the actual decimal
+    // Gerçek ondalık kısmını bulmak için her ikisinin de olup olmadığını kontrol et
     if (cleanStr.includes(',') && cleanStr.includes('.')) {
       const lastComma = cleanStr.lastIndexOf(',');
       const lastDot = cleanStr.lastIndexOf('.');

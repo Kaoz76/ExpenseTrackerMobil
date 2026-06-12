@@ -22,7 +22,7 @@ function SignUpPage() {
 
   const [lockoutTime, setLockoutTime] = useState(0);
 
-  // Check lockout on mount
+  // Bileşen yüklendiğinde kilitlenme durumunu kontrol et
   useEffect(() => {
     const lockoutUntil = localStorage.getItem('signup_lockout_until');
     if (lockoutUntil) {
@@ -37,7 +37,7 @@ function SignUpPage() {
     }
   }, [t]);
 
-  // Handle lockout countdown timer
+  // Kilitlenme geri sayım sayacını yönet
   useEffect(() => {
     if (lockoutTime <= 0) return;
     const timer = setInterval(() => {
@@ -57,7 +57,7 @@ function SignUpPage() {
     return () => clearInterval(timer);
   }, [lockoutTime, t]);
 
-  // GELİŞTİRME 2: Kullanıcı formda düzeltme yapmaya başladığında genel hatayı gizle
+  // Kullanıcı formda düzeltme yaparken genel hatayı gizle
   useEffect(() => {
     if (error && lockoutTime === 0) setError('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,7 +90,7 @@ function SignUpPage() {
       localStorage.setItem('signup_attempts', attempts.toString());
 
       if (attempts >= 5) {
-        const lockoutDuration = 60 * 1000; // 60 seconds
+        const lockoutDuration = 60 * 1000; // 60 saniye
         const lockoutUntil = Date.now() + lockoutDuration;
         localStorage.setItem('signup_lockout_until', lockoutUntil.toString());
         setLockoutTime(60);
@@ -109,7 +109,7 @@ function SignUpPage() {
         }
       }
     } finally {
-      // GELİŞTİRME 3: Güvenli Loading kapanışı
+      // Güvenli loading kapanışı
       setLoading(false);
     }
   };
@@ -141,7 +141,7 @@ function SignUpPage() {
                 <form onSubmit={handleSubmit}>
                   {error && <div className="alert alert-danger">{error}</div>}
 
-                  {/* Email */}
+                  {/* E-posta */}
                   <div className="mb-3">
                     <label htmlFor="email" className="form-label">{t('common.signup_email')}</label>
                     <input
@@ -155,10 +155,10 @@ function SignUpPage() {
                     />
                   </div>
 
-                  {/* Password */}
+                  {/* Şifre */}
                   <div className="mb-3">
                     <label htmlFor="password" className="form-label">{t('common.signup_password')}</label>
-                    {/* GELİŞTİRME 1: Bootstrap Input Group yapısı */}
+                    {/* Bootstrap Input Group yapısı */}
                     <div className="input-group">
                       <input
                         type={showPassword ? 'text' : 'password'}
@@ -180,10 +180,10 @@ function SignUpPage() {
                     </div>
                   </div>
 
-                  {/* Confirm Password */}
+                  {/* Şifre Tekrarı */}
                   <div className="mb-3">
                     <label htmlFor="confirmPassword" className="form-label">{t('common.signup_confirm')}</label>
-                    {/* GELİŞTİRME 1: Bootstrap Input Group yapısı */}
+                    {/* Bootstrap Input Group yapısı */}
                     <div className="input-group">
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
@@ -210,7 +210,7 @@ function SignUpPage() {
                     )}
                   </div>
 
-                  {/* Terms & Privacy */}
+                  {/* Şartlar ve Gizlilik */}
                   <div className="form-check mb-4 mt-4">
                     <input
                       className="form-check-input"
@@ -225,7 +225,7 @@ function SignUpPage() {
                     </label>
                   </div>
 
-                  {/* Create Account Button */}
+                  {/* Hesap Oluştur Butonu */}
                   <div className="d-grid">
                     <button type="submit" className="btn btn-primary" disabled={loading || lockoutTime > 0}>
                       {loading ? t('common.signup_creating') : t('common.signup_create')}
@@ -235,7 +235,7 @@ function SignUpPage() {
               </div>
             </div>
 
-            {/* Sign In Link */}
+            {/* Giriş Yap Linki */}
             <div className="text-center mt-4">
               <p className="text-muted">
                 {t('common.signup_already')} <Link to="/login" className="fw-medium text-decoration-none">{t('common.signup_login_link')}</Link>

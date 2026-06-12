@@ -229,7 +229,7 @@ function Receipts() {
                     }
                   }
 
-                  // Calculate median slope to correctly sort items top-to-bottom despite skew
+                  // Eğikliğe rağmen öğeleri yukarıdan aşağıya doğru düzgün bir şekilde sıralamak için medyan eğimi hesapla
                   let slopes = [];
                   detections.forEach(item => {
                     if (item.topLeft && item.topRight) {
@@ -283,7 +283,7 @@ function Receipts() {
                     }
 
                     if (!added) {
-                      // Calculate the angle between topLeft and topRight for this specific word
+                      // Bu belirli kelime için sol üst ve sağ üst arasındaki açıyı hesapla
                       let dx = (item.topRight && item.topLeft) ? (item.topRight[0] - item.topLeft[0]) : 0;
                       let dy = (item.topRight && item.topLeft) ? (item.topRight[1] - item.topLeft[1]) : 0;
                       let itemSlope = Math.abs(dx) > 0.0001 ? dy / dx : medianSlope;
@@ -324,7 +324,7 @@ function Receipts() {
           const worker = await Tesseract.createWorker(ocrLang, 1, {
             logger: m => {
               if (m.status === 'recognizing text') {
-                setUploadProgress(parseInt(m.progress * 100)); // Update progress (approximate, max 100)
+                setUploadProgress(parseInt(m.progress * 100)); // İlerlemeyi güncelle (yaklaşık, maks 100)
               }
             }
           });
@@ -413,7 +413,7 @@ function Receipts() {
 
       return {
         userId: user.uid,
-        uploadPromise, // Save the background upload promise to await it during final save
+        uploadPromise, // Son kaydetme sırasında beklemek üzere arka plan yükleme promise'ini kaydet
         tempImageUrl: URL.createObjectURL(processedFileForSave), // Provide a local object URL for immediate display (colored image)
         fileName: '',
         originalFileName: processedFileForSave.name,
@@ -432,7 +432,7 @@ function Receipts() {
     try {
       const results = [];
       for (let i = 0; i < filesToProcess.length; i++) {
-        // Update the status text for sequential processing
+        // Sıralı işleme için durum metnini güncelle
         setStatusText(
           t('common.msg_analyzing_receipt')
             .replace('{{current}}', String(i + 1))
@@ -645,7 +645,7 @@ function Receipts() {
           finalType = verifyData.currency === 'TRY' || language === 'tr' ? 'İndirim' : 'Discount';
         }
 
-        // Remove internal tracking fields before saving to Firebase
+        // Firebase'e kaydetmeden önce dahili izleme alanlarını kaldır
         const finalItem = { ...item };
         delete finalItem._isLearned;
 
@@ -720,7 +720,7 @@ function Receipts() {
         URL.revokeObjectURL(verifyData.tempImageUrl);
       }
 
-      // Add to local receipts array so it shows up in real-time
+      // Gerçek zamanlı görünmesi için yerel fişler dizisine ekle
       setAllReceipts(prev => [{ id: docId, ...newReceiptData }, ...prev]);
 
       moveToNextOrClose(processedScans);
@@ -901,7 +901,7 @@ const groupTesseractWordsIntoLines = (words) => {
     }
   }
 
-  // Calculate median slope
+  // Medyan eğimi hesapla
   let slopes = [];
   detections.forEach(item => {
     if (item.topLeft && item.topRight) {
