@@ -10,7 +10,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
   const imageRef = useRef(null);
   const [currentImageSrc, setCurrentImageSrc] = useState(imageSrc);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const [corners, setCorners] = useState([]); // TL, TR, BR, BL in visual pixels
+  const [corners, setCorners] = useState([]); // Görsel pikseller cinsinden sol-üst, sağ-üst, sağ-alt, sol-alt
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -20,7 +20,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
     }
   }, [visible, imageSrc]);
 
-  // Cleanup rotated images on unmount or change
+  // Bileşen kaldırıldığında veya resim değiştiğinde döndürülmüş resimleri temizle
   useEffect(() => {
     return () => {
       if (currentImageSrc && currentImageSrc.startsWith('blob:') && currentImageSrc !== imageSrc) {
@@ -66,7 +66,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
     if (draggingIdx === null || !containerRef.current) return;
     
     const rect = containerRef.current.getBoundingClientRect();
-    // Konteyner ile sınırlı yeni konumu hesapla
+    // Konteyner tarafından sınırlanan yeni konumu hesapla
     let clientX = e.clientX;
     let clientY = e.clientY;
     
@@ -88,19 +88,19 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
     
     setCorners(prev => {
       const next = [...prev];
-      const gap = 20; // Minimum distance between corners to prevent collapse
+      const gap = 20; // Çökmeyi önlemek için köşeler arası minimum mesafe
 
-      // Restrict dragging so corners cannot cross each other (Anti-Crazy User Protection)
-      if (draggingIdx === 0) { // Top-Left
+      // Köşelerin birbirini geçmesini engelle (Çılgın Kullanıcı Koruması)
+      if (draggingIdx === 0) { // Sol Üst
         x = Math.min(x, prev[1].x - gap, prev[2].x - gap);
         y = Math.min(y, prev[3].y - gap, prev[2].y - gap);
-      } else if (draggingIdx === 1) { // Top-Right
+      } else if (draggingIdx === 1) { // Sağ Üst
         x = Math.max(x, prev[0].x + gap, prev[3].x + gap);
         y = Math.min(y, prev[2].y - gap, prev[3].y - gap);
-      } else if (draggingIdx === 2) { // Bottom-Right
+      } else if (draggingIdx === 2) { // Sağ Alt
         x = Math.max(x, prev[3].x + gap, prev[0].x + gap);
         y = Math.max(y, prev[1].y + gap, prev[0].y + gap);
-      } else if (draggingIdx === 3) { // Bottom-Left
+      } else if (draggingIdx === 3) { // Sol Alt
         x = Math.min(x, prev[2].x - gap, prev[1].x - gap);
         y = Math.max(y, prev[0].y + gap, prev[1].y + gap);
       }
@@ -118,7 +118,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
     if (draggingIdx !== null) {
       window.addEventListener('pointermove', handlePointerMove, { passive: false });
       window.addEventListener('pointerup', handlePointerUp);
-      window.addEventListener('touchmove', handlePointerMove, { passive: false }); // iOS Safari fallback
+      window.addEventListener('touchmove', handlePointerMove, { passive: false }); // iOS Safari uyumluluğu
       window.addEventListener('touchend', handlePointerUp);
     }
     return () => {
@@ -134,19 +134,19 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
     setIsProcessing(true);
     
     try {
-      // Görsel boyut ile doğal boyut arasındaki ölçek oranını hesapla
+      // Görsel boyut ve doğal boyut arasındaki ölçek oranını hesapla
       const img = imageRef.current;
       const scaleX = img.naturalWidth / imageSize.width;
       const scaleY = img.naturalHeight / imageSize.height;
       
-      // Convert visual corners to natural image coordinates
+      // Görsel köşeleri orijinal resim koordinatlarına çevir
       const naturalCorners = corners.map(c => ({
         x: c.x * scaleX,
         y: c.y * scaleY
       }));
       
-      // Perform the perspective warp off the main thread (although JS is single threaded, we yield)
-      await new Promise(resolve => setTimeout(resolve, 10)); // Yield to UI
+      // Perspektif bükme işlemini UI'ı kilitlemeden yap
+      await new Promise(resolve => setTimeout(resolve, 10)); // Arayüze izin ver
       const canvas = perspectiveWarp(img, naturalCorners);
       
       canvas.toBlob((blob) => {
@@ -159,7 +159,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
     } catch (err) {
       console.error("Crop failed:", err);
       setIsProcessing(false);
-      onClose(); // Fallback if error occurs
+      onClose(); // Hata durumunda geri dön
     }
   };
 
@@ -196,7 +196,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
             <div 
               className="d-inline-block position-relative" 
               ref={containerRef}
-              style={{ touchAction: 'none' }} // Prevent scrolling while dragging on mobile
+              style={{ touchAction: 'none' }} // Mobilde sürüklerken kaydırmayı engelle
             >
               <img
                 ref={imageRef}
@@ -212,7 +212,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
                 draggable={false}
               />
               
-              {/* Overlay SVG for drawing the crop polygon */}
+              {/* Kırpma çokgenini çizmek için SVG katmanı */}
               {corners.length === 4 && (
                 <svg
                   style={{
@@ -221,7 +221,7 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    pointerEvents: 'none' // Let events pass through to handles
+                    pointerEvents: 'none' // Tıklamaların tutamaçlara geçmesine izin ver
                   }}
                 >
                   <polygon
@@ -234,12 +234,12 @@ const PerspectiveCropModal = ({ visible, onClose, imageSrc, onCropComplete, titl
                 </svg>
               )}
               
-              {/* Draggable handles */}
+              {/* Sürüklenebilir tutamaçlar */}
               {corners.map((corner, idx) => (
                 <div
                   key={idx}
                   onPointerDown={(e) => handlePointerDown(e, idx)}
-                  onTouchStart={(e) => handlePointerDown(e, idx)} // Fallback for some mobile browsers
+                  onTouchStart={(e) => handlePointerDown(e, idx)} // Bazı mobil tarayıcılar için alternatif
                   style={{
                     position: 'absolute',
                     left: corner.x,

@@ -3,22 +3,22 @@ import { trToLower, trTitleCase, cleanItemName, brandAutoCorrect } from './strin
 import { isFuzzyMatch } from './receiptUtils';
 
 /**
- * Extracts structured data (total price, items, currency) from raw OCR text.
- * @param {string} text - Raw OCR text
- * @param {string} language - Current app language code (e.g. 'tr', 'en')
- * @param {string} defaultCurrencyCode - Fallback currency code (e.g. 'USD')
- * @param {Object} [rules] - OCR engine-specific parser rules (from mlKitParserRules or tesseractParserRules)
+ * Ham OCR metninden yapılandırılmış veri (toplam fiyat, ürünler, para birimi) çıkarır.
+ * @param {string} text - Ham OCR metni
+ * @param {string} language - Mevcut uygulama dil kodu (örn. 'tr', 'en')
+ * @param {string} defaultCurrencyCode - Yedek para birimi kodu (örn. 'USD')
+ * @param {Object} [rules] - OCR motoruna özel ayrıştırma kuralları
  * @returns {Object} { total, items, currency }
  */
 export const extractDataFromText = (text, language, defaultCurrencyCode, rules) => {
   if (!text) return { total: 0, items: [] };
 
-  // Pre-clean common Tesseract misreads:
-  // 1. Correct space-separated prices at the end of lines (e.g. "*534   47" -> "*534,47")
+  // Yaygın Tesseract okuma hatalarını temizle:
+  // 1. Satır sonlarındaki boşluklu fiyatları düzelt (örn. "*534   47" -> "*534,47")
   const spacePriceRegex = /\b(\d+)\s+(\d{2})(\s*[-*%₺$€£]?[a-zA-Z]*)$/gm;
   let preCleanedText = text.replace(spacePriceRegex, '$1,$2$3');
 
-  // 2. Correct British Pound sign misreads on Turkish receipts (e.g. "£T" -> "TL", "£" -> "TL")
+  // 2. Türkçe fişlerdeki Sterlin işareti hatalarını düzelt
   if (language === 'tr') {
     preCleanedText = preCleanedText.replace(/£T/gi, 'TL').replace(/£/g, 'TL');
   } else {
@@ -26,7 +26,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
   }
 
   // Rakamlar ve noktalar/virgüller arasındaki boşlukları kaldır (örn. "135, 00" -> "135,00")
-  // Also remove spaces after a minus sign followed by a digit (e.g. "- 47,25" -> "-47,25")
+  // Eksi işareti ile rakam arasındaki boşlukları kaldır (örn. "- 47,25" -> "-47,25")
   const cleanedText = preCleanedText
     .replace(/(\d+)\s*([.,])\s*(\d+)/g, '$1$2$3')
     .replace(/-\s*(\d+)/g, '-$1');
@@ -37,7 +37,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
   const normalizedText = trToLower(cleanedText.replace(/\r/g, '\n'));
   const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-  // Currency detection from OCR text
+  // OCR metninden para birimi tespiti
   let detectedCurrency = null;
   let tryCount = (normalizedText.match(/\b(tl|try|₺|türk\s*lirası|turk\s*lirasi)\b/g) || []).length;
   let usdCount = (normalizedText.match(/\b(usd|dollar|\$)\b/g) || []).length;
@@ -121,34 +121,34 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
   const cleanAndParseNumber = (valStr) => {
     let cleanStr = valStr.replace(/[^0-9.,-]/g, '');
 
-    // Gerçek ondalık kısmını bulmak için her ikisinin de olup olmadığını kontrol et
+    // Gerçek ondalık ayracı bulmak için ikisinin de olup olmadığını kontrol et
     if (cleanStr.includes(',') && cleanStr.includes('.')) {
       const lastComma = cleanStr.lastIndexOf(',');
       const lastDot = cleanStr.lastIndexOf('.');
 
       if (lastComma > lastDot) {
-        // Comma is the decimal separator (European/Turkish: 1.000,50)
+        // Virgül ondalık ayraç (Avrupa/Türkiye: 1.000,50)
         cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
       } else {
-        // Dot is the decimal separator (US/International: 1,000.50)
+        // Nokta ondalık ayraç (ABD/Uluslararası: 1,000.50)
         cleanStr = cleanStr.replace(/,/g, '');
       }
     } else if (cleanStr.includes(',')) {
-      // Only comma exists. Check if it's a thousands separator (e.g. 17,999 or 1,234,567)
+      // Sadece virgül var. Binlik ayraç olup olmadığını kontrol et
       if (/^\d{1,3}(,\d{3})+$/.test(cleanStr)) {
-        // Thousands separator only — remove all commas (17,999 → 17999)
+        // Sadece binlik ayraç — tüm virgülleri kaldır
         cleanStr = cleanStr.replace(/,/g, '');
       } else {
-        // Decimal separator (17,99 → 17.99)
+        // Ondalık ayraç
         cleanStr = cleanStr.replace(',', '.');
       }
     } else if (cleanStr.includes('.')) {
-      // Only dot exists. Check if it's a thousands separator (e.g. 17.999 or 1.234.567)
+      // Sadece nokta var. Binlik ayraç olup olmadığını kontrol et
       if (/^\d{1,3}(\.\d{3})+$/.test(cleanStr)) {
-        // Thousands separator only — remove all dots (17.999 → 17999)
+        // Sadece binlik ayraç — tüm noktaları kaldır
         cleanStr = cleanStr.replace(/\./g, '');
       }
-      // else: decimal dot, leave as is for parseFloat
+      // Değilse ondalık nokta, parseFloat için olduğu gibi bırak
     }
 
     const num = parseFloat(cleanStr);
@@ -227,7 +227,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
         let namePart = line.substring(0, line.lastIndexOf(lastMatch)).trim();
         let isGarbageName = namePart.length === 0 || namePart.length <= 4 || /^[%xX\d\s*#\-.,'":;]+$/.test(namePart);
 
-        // Ensure the name has at least 2 actual alphabet letters to not be considered garbage
+        // Çöp kabul edilmemesi için ismin en az 2 gerçek harf içerdiğinden emin ol
         const letterMatch = namePart.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
         if (!letterMatch || letterMatch.length < 2) isGarbageName = true;
 
@@ -263,7 +263,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
 
           const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
 
-          // Ensure the name has at least 2 actual alphabet letters to filter out pure numbers/punctuation (e.g. "3.995")
+          // Sadece sayı/noktalama içerenleri filtrelemek için en az 2 harf içerdiğinden emin ol
           const letterMatchFormatted = formattedName.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
           const hasEnoughLetters = letterMatchFormatted && letterMatchFormatted.length >= 2;
 
@@ -308,7 +308,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
 
           const isJustUnitOrMultiplier = /^([oO0-9.,]+\s*)?(kg|gr|g|l|lt|ml|cl|mg|adet|ad|kc)\s*([xX*]\s*[oO0-9.,]*)?$/i.test(formattedName);
 
-          // Ensure the name has at least 2 actual alphabet letters to filter out pure numbers/punctuation (e.g. "3.995")
+          // Sadece sayı/noktalama içerenleri filtrelemek için en az 2 harf içerdiğinden emin ol
           const letterMatchFormatted = formattedName.match(/[a-zA-ZğüşöçıİĞÜŞÖÇ]/g);
           const hasEnoughLetters = letterMatchFormatted && letterMatchFormatted.length >= 2;
 
@@ -335,7 +335,7 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
   const targetSum = itemsSum;
 
   if (possibleTotals.length > 0) {
-    // Filter out negative totals — a receipt total is always positive
+    // Negatif toplamları filtrele — fiş toplamı her zaman pozitiftir
     const positiveTotals = possibleTotals.filter(t => t > 0);
     const totalsToUse = positiveTotals.length > 0 ? positiveTotals : possibleTotals;
 
@@ -368,15 +368,14 @@ export const extractDataFromText = (text, language, defaultCurrencyCode, rules) 
     }
   }
 
-  // 🛡️ NEGATIVE TOTAL PROTECTION
-  // A receipt total can NEVER be negative. If it is, something went wrong
-  // (e.g., only discount lines were detected, real products were missed).
+  // 🛡️ Negatif toplam koruması
+  // Fiş toplamı ASLA negatif olamaz. Negatifse, bir şeyler yanlış gitmiştir (örn. ürünler kaçırılmış, sadece indirimler algılanmış).
   if (finalTotal <= 0) {
-    // Try to use the sum of positive-priced items
+    // Pozitif fiyatlı ürünlerin toplamını kullanmayı dene
     if (positiveItemsSum > 0) {
       finalTotal = positiveItemsSum;
     } else {
-      // Last resort: scan all numbers in the text and use the largest one
+      // Son çare: metindeki tüm sayıları tara ve en büyüğünü kullan
       const allMatches = normalizedText.match(priceRegex);
       if (allMatches) {
         const allNumbers = allMatches.map(cleanAndParseNumber).filter(num => num !== null && num > 0);

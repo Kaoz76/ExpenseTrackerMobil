@@ -1,19 +1,19 @@
 /**
- * Locale-aware string utilities
- * Automatically detects browser language for proper character conversion (especially Turkish i/I)
+ * Yerel dile duyarlı metin araçları
+ * Doğru karakter dönüşümü için tarayıcı dilini otomatik algılar (özellikle Türkçe i/I için)
  */
 import { brandDictionary, commonMisreads } from '../data/brandDictionary';
 
 const getLocale = () => {
-  // Use browser language if available, default to Turkish if not specified
-  // but allow it to fall back to English or others naturally.
+  // Tarayıcı dilini kullan, yoksa Türkçe varsay
+  // İngilizce veya diğer dillere doğal düşüşe izin ver
   return navigator.language || 'tr-TR';
 };
 
 const locale = getLocale();
 
 /**
- * Converts a string to lowercase using detected locale rules.
+ * Metni yerel dil kurallarına göre küçük harfe çevirir.
  */
 export const trToLower = (str) => {
   if (typeof str !== 'string') return "";
@@ -21,7 +21,7 @@ export const trToLower = (str) => {
 };
 
 /**
- * Converts a string to uppercase using detected locale rules.
+ * Metni yerel dil kurallarına göre büyük harfe çevirir.
  */
 export const trToUpper = (str) => {
   if (typeof str !== 'string') return "";
@@ -29,7 +29,7 @@ export const trToUpper = (str) => {
 };
 
 /**
- * Capitalizes each word in a string using detected locale rules.
+ * Metindeki her kelimenin ilk harfini büyük yapar.
  */
 export const trTitleCase = (str) => {
   if (typeof str !== 'string') return "";
@@ -41,7 +41,7 @@ export const trTitleCase = (str) => {
 };
 
 /**
- * Cleans and formats a store name.
+ * Mağaza ismini temizler ve biçimlendirir.
  */
 export const cleanStoreName = (name) => {
   if (!name) return "Unknown Store";
@@ -50,7 +50,7 @@ export const cleanStoreName = (name) => {
 };
 
 /**
- * Checks if a string includes another string, case-insensitively using locale rules.
+ * Bir metnin diğerini içerip içermediğini büyük/küçük harf duyarsız kontrol eder.
  */
 export const trIncludes = (source, target) => {
   if (typeof source !== 'string' || typeof target !== 'string') return false;
@@ -76,10 +76,10 @@ const levenshtein = (s, t) => {
         if (charS === charT) {
           cost = 0;
         } else {
-          // OCR character-swap pairs that should count as near-zero cost
+          // OCR'ın sık karıştırdığı karakter çiftleri (maliyeti sıfır sayılır)
           const ocrMistakes = new Set([
             '0o', 'o0', '1l', 'l1', '1i', 'i1', '5s', 's5', '8b', 'b8', 'ce', 'ec', 'rn', 'nr', '2z', 'z2',
-            // Turkish diacritic equivalences (OCR often drops/adds diacritics)
+            // Türkçe karakter eşdeğerleri
             'ıi', 'iı', 'öo', 'oö', 'üu', 'uü', 'şs', 'sş', 'çc', 'cç', 'ğg', 'gğ'
           ]);
           if (ocrMistakes.has(charS + charT)) {
@@ -138,24 +138,22 @@ export const cleanItemName = (name) => {
   // Çünkü "1200 B TUKLIMA" gibi isimlerde 1200 ve B'nin silinmesi veriyi bozar.
   const words = cleaned.split(' ');
   const filteredWords = words.filter(w => {
-    // Keep everything if it's the only word
+    // Tek kelimeyse koru
     if (words.length === 1) return true;
     
-    // If it's a single character at the very beginning or end, and it's not a number, maybe drop it
-    // But honestly, it's safer to keep most things since we already stripped garbage symbols.
-    // Let's only drop isolated single non-alphanumeric characters if they survived
+    // Başta veya sonda kalan tekil alfasayısal olmayan karakterleri sil
     if (w.length === 1 && !/[a-zA-Z0-9çğıöşüÇĞİÖŞÜ]/.test(w)) return false;
     
-    // Don't drop purely numeric words like "1200" or single letters like "B" because they might be model numbers!
+    // Model numarası olabilecekleri için "1200" veya "B" gibi şeyleri silme
     return true;
   });
 
   cleaned = filteredWords.join(' ').trim();
 
-  // 7. Strip trailing 1-2 char garbage words (OCR artifacts from adjacent text: "Ai", "Bi", "Da")
+  // 7. Sonda kalan 1-2 karakterli anlamsız OCR kelimelerini sil
   cleaned = cleaned.replace(/\s+[a-zA-ZçğıöşüÇĞİÖŞÜ]{1,2}\s*$/, '').trim();
 
-  // 8. Strip trailing number+period artifacts like "10006." (misread sizes like 1000G.)
+  // 8. Sonda kalan sayı ve nokta artıklarını sil ("1000G." okunamadığı için "10006." vb.)
   cleaned = cleaned.replace(/\s+\d{3,}[.,]?\s*$/, '').trim();
 
   // Eğer temizleme sonrası tamamen boş kaldıysa, bu kelimenin tamamen çöp/çarpan olduğunu anlarız.

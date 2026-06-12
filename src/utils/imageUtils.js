@@ -1,11 +1,11 @@
 // src/utils/imageUtils.js
 
 /**
- * Client-side image resizing to speed up OCR and reduce memory/storage footprint
- * @param {File} file - Original image file
- * @param {number} maxWidth - Maximum width
- * @param {number} maxHeight - Maximum height
- * @returns {Promise<File>} Resized image file
+ * OCR'yi hızlandırmak ve bellek/depolama alanını azaltmak için istemci tarafında görüntü yeniden boyutlandırma.
+ * @param {File} file - Orijinal görüntü
+ * @param {number} maxWidth - Maksimum genişlik
+ * @param {number} maxHeight - Maksimum yükseklik
+ * @returns {Promise<File>} Yeniden boyutlandırılmış görüntü
  */
 export const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
   return new Promise((resolve) => {
@@ -44,7 +44,7 @@ export const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
           lastModified: Date.now(),
         });
         resolve(resizedFile);
-      }, 'image/jpeg', 0.75); // Reduced from 0.85 to decrease memory usage
+      }, 'image/jpeg', 0.75); // Bellek kullanımını azaltmak için kalite düşürüldü
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -55,10 +55,10 @@ export const resizeImage = (file, maxWidth = 1500, maxHeight = 2000) => {
 };
 
 /**
- * Preprocesses an image for optimal OCR accuracy.
- * Applies: Grayscale → Contrast Enhancement → Sharpening
- * @param {File} file - Image file to preprocess
- * @returns {Promise<File>} Preprocessed image file
+ * OCR doğruluğunu artırmak için görüntüyü önceden işler.
+ * Uygulananlar: Gri Tonlama → Kontrast Artırma → Keskinleştirme
+ * @param {File} file - İşlenecek görüntü
+ * @returns {Promise<File>} İşlenmiş görüntü
  */
 export const preprocessForOCR = (file) => {
   return new Promise((resolve) => {
@@ -82,7 +82,7 @@ export const preprocessForOCR = (file) => {
       const imageData = ctx.getImageData(0, 0, w, h);
       const data = imageData.data;
 
-      // 1) Convert to grayscale
+      // 1) Gri tonlamaya çevir
       for (let i = 0; i < data.length; i += 4) {
         const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
         data[i] = gray;
@@ -90,9 +90,7 @@ export const preprocessForOCR = (file) => {
         data[i + 2] = gray;
       }
 
-      // 2) Shadow Removal / Illumination Equalization
-      // Estimate background illumination via heavy Gaussian blur, then divide
-      // to normalize uneven lighting (phone shadow, desk lamp glare, etc.)
+      // 2) Gölge kaldırma ve aydınlatma dengeleme
       ctx.putImageData(imageData, 0, 0);
       const shadowBlurRadius = Math.max(30, Math.round(Math.min(w, h) * 0.03));
       const bgCanvas = document.createElement('canvas');
@@ -103,25 +101,24 @@ export const preprocessForOCR = (file) => {
       bgCtx.drawImage(canvas, 0, 0);
       const bgData = bgCtx.getImageData(0, 0, w, h).data;
 
-      // Divide original by background: result = (pixel / background) * targetWhite
-      // This flattens shadows while preserving text contrast
+      // Gölge etkilerini düzleştir, metin kontrastını koru
       const targetWhite = 200;
       for (let i = 0; i < data.length; i += 4) {
-        const bg = bgData[i] || 1; // prevent division by zero
+        const bg = bgData[i] || 1; // Sıfıra bölünmeyi önle
         const normalized = Math.min(255, Math.max(0, (data[i] / bg) * targetWhite));
         data[i] = normalized;
         data[i + 1] = normalized;
         data[i + 2] = normalized;
       }
 
-      // 3) Contrast enhancement (percentile-based histogram stretch, ignoring outlier pixels)
+      // 3) Kontrast artırma
       const histogram = new Uint32Array(256);
       for (let i = 0; i < data.length; i += 4) {
         histogram[Math.round(data[i])]++;
       }
       const totalPixels = w * h;
-      const lowCut = totalPixels * 0.01;  // ignore darkest 1%
-      const highCut = totalPixels * 0.99; // ignore brightest 1%
+      const lowCut = totalPixels * 0.01;  // En karanlık %1'i yoksay
+      const highCut = totalPixels * 0.99; // En aydınlık %1'i yoksay
       let cumulative = 0;
       let minVal = 0, maxVal = 255;
       for (let i = 0; i < 256; i++) {
@@ -141,8 +138,7 @@ export const preprocessForOCR = (file) => {
         data[i + 2] = stretched;
       }
 
-      // 4) Dynamic Gamma Correction
-      // Adaptively adjust midtones: brighten dark images, darken washed-out images
+      // 4) Dinamik gama düzeltmesi (orta tonları ayarla)
       let sumBrightness = 0;
       for (let i = 0; i < data.length; i += 4) {
         sumBrightness += data[i];
@@ -151,15 +147,15 @@ export const preprocessForOCR = (file) => {
 
       let gamma = 1.0;
       if (avgBrightness < 100) {
-        // Dark image: gamma < 1 brightens midtones (range: 0.6 → 1.0)
+        // Karanlık görüntü: Orta tonları aydınlat
         gamma = 0.6 + (avgBrightness / 100) * 0.4;
       } else if (avgBrightness > 200) {
-        // Washed-out image: gamma > 1 darkens midtones (range: 1.0 → 1.5)
+        // Soluk görüntü: Orta tonları karart
         gamma = 1.0 + ((avgBrightness - 200) / 55) * 0.5;
       }
 
       if (Math.abs(gamma - 1.0) > 0.05) {
-        // Pre-compute lookup table for fast per-pixel gamma application
+        // Hızlı gama uygulaması için arama tablosu oluştur
         const gammaLUT = new Uint8Array(256);
         for (let v = 0; v < 256; v++) {
           gammaLUT[v] = Math.min(255, Math.max(0, Math.round(255 * Math.pow(v / 255, gamma))));
@@ -171,7 +167,7 @@ export const preprocessForOCR = (file) => {
         }
       }
 
-      // 5) Sharpening (unsharp mask: original + strength * (original - blurred))
+      // 5) Keskinleştirme (Unsharp mask)
       ctx.putImageData(imageData, 0, 0);
 
       // Bulanıklaştırılmış bir kopya oluştur
@@ -183,7 +179,7 @@ export const preprocessForOCR = (file) => {
       blurCtx.drawImage(canvas, 0, 0);
       const blurData = blurCtx.getImageData(0, 0, w, h).data;
 
-      // Apply unsharp mask
+      // Keskinliği uygula
       const sharpStrength = 0.5;
       for (let i = 0; i < data.length; i += 4) {
         const diff = data[i] - blurData[i];
@@ -195,7 +191,7 @@ export const preprocessForOCR = (file) => {
 
       ctx.putImageData(imageData, 0, 0);
 
-      // 6) Add white padding border so ML Kit doesn't miss edge text
+      // 6) ML Kit'in kenardaki metinleri kaçırmaması için beyaz kenarlık ekle
       const padding = 30;
       const paddedCanvas = document.createElement('canvas');
       paddedCanvas.width = w + padding * 2;
@@ -222,7 +218,7 @@ export const preprocessForOCR = (file) => {
 };
 
 /**
- * Extract cropped portion of image
+ * Görüntünün kırpılmış bölümünü çıkartır
  */
 export const getCroppedImg = (imageElement, crop, fileName) => {
   const canvas = document.createElement('canvas');
@@ -234,7 +230,7 @@ export const getCroppedImg = (imageElement, crop, fileName) => {
   canvas.height = crop.height + (padding * 2);
   const ctx = canvas.getContext('2d');
 
-  // Fill background with white
+  // Arka planı beyaza boya
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -259,17 +255,17 @@ export const getCroppedImg = (imageElement, crop, fileName) => {
       blob.name = fileName;
       const file = new File([blob], fileName, { type: 'image/jpeg', lastModified: Date.now() });
       resolve(file);
-    }, 'image/jpeg', 0.80); // Reduced from 1.0 to compress cropped files and save memory
+    }, 'image/jpeg', 0.80); // Bellek tasarrufu için kalite düşürüldü
   });
 };
 
 /**
- * Smartly detect the bounds of the receipt within the image.
- * Returns a crop object in percentages.
+ * Görüntü içindeki fiş sınırlarını akıllıca algılar.
+ * Yüzde olarak bir kırpma nesnesi döndürür.
  */
 export const getSmartCropBox = (imageElement) => {
   const canvas = document.createElement('canvas');
-  const size = 200; // Higher resolution for better edge detection
+  const size = 200; // Kenar algılama için yüksek çözünürlük
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
@@ -286,7 +282,7 @@ export const getSmartCropBox = (imageElement) => {
   }
   const avgBrightness = totalBrightness / (size * size);
 
-  // Lower threshold to catch shadowed receipt edges
+  // Gölgeli fiş kenarlarını yakalamak için düşük eşik
   const threshold = Math.max(avgBrightness * 0.85, 90);
 
   let minX = size, minY = size, maxX = 0, maxY = 0;
@@ -308,12 +304,12 @@ export const getSmartCropBox = (imageElement) => {
     }
   }
 
-  // Fallback if bounds are meaningless
+  // Sınırlar anlamsızsa varsayılana dön
   if (brightPixels < (size * size * 0.05) || brightPixels > (size * size * 0.95)) {
     return { unit: '%', x: 3, y: 3, width: 94, height: 94 };
   }
 
-  // Generous margin (8%) to ensure no text is clipped at edges
+  // Kenarlarda metin kesilmemesi için pay bırak (%8)
   const marginX = size * 0.08;
   const marginY = size * 0.08;
 
@@ -332,7 +328,7 @@ export const getSmartCropBox = (imageElement) => {
 };
 
 /**
- * Rotates an image by 90 degrees clockwise and returns a new Object URL.
+ * Görüntüyü saat yönünde 90 derece döndürür ve yeni bir URL döndürür.
  */
 export const rotateImage90Deg = (imageSrc) => {
   return new Promise((resolve, reject) => {

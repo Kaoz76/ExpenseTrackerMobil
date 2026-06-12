@@ -18,7 +18,7 @@ function Subscriptions() {
   const [adding, setAdding] = useState(false);
   const [subscriptions, setSubscriptions] = useState([]);
 
-  // Form State'leri
+  // Form state'leri
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState('1');
@@ -29,14 +29,14 @@ function Subscriptions() {
   });
   const [endDate, setEndDate] = useState('');
 
-  // Bağlam para birimi yüklendiğinde başlangıç para birimini ayarla
+  // Context'ten para birimi yüklendiğinde başlangıç değerini ayarla
   useEffect(() => {
     if (currency?.code && !selectedCurrency) {
       setSelectedCurrency(currency.code);
     }
   }, [currency, selectedCurrency]);
 
-  // VERİ ÇEKME
+  // Verileri getir
   useEffect(() => {
     setLoading(true);
 
@@ -73,7 +73,7 @@ function Subscriptions() {
     }
   }, [user]);
 
-  // ABONELİK EKLEME
+  // Abonelik ekle
   const handleAddSubscription = async (e) => {
     e.preventDefault();
     if (!name || !price || !dayOfMonth || !user) return;
@@ -85,7 +85,7 @@ function Subscriptions() {
       return;
     }
 
-    // Day of Month Validation (between 1 and 31)
+    // Ayın günü doğrulaması (1-31 arası)
     const dayValue = parseInt(dayOfMonth, 10);
     if (isNaN(dayValue) || dayValue < 1 || dayValue > 31) {
       alert(t('common.msg_day_invalid'));
@@ -147,7 +147,7 @@ function Subscriptions() {
     }
   };
 
-  // SİLME
+  // Silme
   const handleDelete = async (id) => {
     if (!window.confirm(t('common.confirm_delete_sub'))) return;
     try {
@@ -158,7 +158,7 @@ function Subscriptions() {
     }
   };
 
-  // 🔥 DÜZELTME 2: Gereksiz render hesaplamalarını engelleyen useMemo
+  // Gereksiz render hesaplamalarını engellemek için useMemo
   const totalMonthlyFixed = useMemo(() => {
     return subscriptions.reduce((acc, curr) => {
       const convPrice = convertPrice(curr.price || 0, curr.currency || currency?.code || 'USD', currency?.code || 'USD');
@@ -192,7 +192,7 @@ function Subscriptions() {
         )}
 
         <div className="row g-4">
-          {/* EKLEME FORMU */}
+          {/* Ekleme Formu */}
           <div className="col-lg-4">
             <div className="card border-0 shadow-sm h-100">
               <div className="card-body p-4">
@@ -235,7 +235,7 @@ function Subscriptions() {
                     </div>
                   </div>
 
-                  {/* Currency Selection Pills */}
+                  {/* Para Birimi Seçimi */}
                   {favoriteCurrencies.length > 1 && (
                     <div className="mb-3">
                       <label className="form-label small text-muted fw-bold">{t('settings.favorite_currencies')}</label>
@@ -314,7 +314,7 @@ function Subscriptions() {
             </div>
           </div>
 
-          {/* LİSTE */}
+          {/* Liste */}
           <div className="col-lg-8">
             <div className="card border-0 shadow-sm h-100">
               <div className="card-header bg-body-tertiary py-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
@@ -335,7 +335,7 @@ function Subscriptions() {
                   <div style={{ width: '40px' }}></div>
                 </div>
 
-                {/* YÜKLENİYOR */}
+                {/* Yükleniyor */}
                 {loading && (
                   <div className="p-5 text-center text-muted">
                     <div className="spinner-border spinner-border-sm me-2" role="status"></div>
@@ -343,7 +343,7 @@ function Subscriptions() {
                   </div>
                 )}
 
-                {/* BOŞ DURUM */}
+                {/* Boş Durum */}
                 {!loading && subscriptions.length === 0 && (
                   <div className="p-5 text-center">
                     <div className="text-body fs-5 mb-2">{t('common.no_active_subs')}</div>
@@ -351,7 +351,7 @@ function Subscriptions() {
                   </div>
                 )}
 
-                {/* LİSTE ELEMANLARI */}
+                {/* Liste Elemanları */}
                 {!loading && subscriptions.map(sub => {
                   let isExpired = false;
                   if (sub.endDate) {

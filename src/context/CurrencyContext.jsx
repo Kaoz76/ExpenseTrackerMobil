@@ -15,7 +15,7 @@ export const CURRENCY_MAP = {
   USD: { code: 'USD', symbol: '$', locale: 'en-US' }
 };
 
-// Static rates with USD as pivot to use if API is offline and no cache is present
+// API kapalıysa ve önbellek yoksa kullanılacak USD tabanlı sabit kurlar
 const STATIC_USD_RATES = {
   USD: 1.0,
   TRY: 32.5,
@@ -24,13 +24,13 @@ const STATIC_USD_RATES = {
 };
 
 const CACHE_KEY = 'currency_rates_cache';
-const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours cache
+const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 saatlik önbellek
 
 export const CurrencyProvider = ({ children }) => {
   const { user } = useAuth();
   const { language } = useLanguage();
 
-  // Ana Para Birimini Yükle
+  // Ana para birimini yükle
   const [currency, setCurrency] = useState(() => {
     try {
       const saved = localStorage.getItem('app_currency');
@@ -41,7 +41,7 @@ export const CurrencyProvider = ({ children }) => {
     }
   });
 
-  // Favori Para Birimlerini Yükle
+  // Favori para birimlerini yükle
   const [favoriteCurrencies, setFavoriteCurrencies] = useState(() => {
     try {
       const saved = localStorage.getItem('favorite_currencies');
@@ -51,11 +51,11 @@ export const CurrencyProvider = ({ children }) => {
     }
   });
 
-  // Rates and Loading State
+  // Kurlar ve yüklenme durumu
   const [rates, setRates] = useState({});
   const [ratesLoading, setRatesLoading] = useState(true);
 
-  // Helper to compute local fallback rates when API is offline and cache is empty
+  // API kapalı ve önbellek boş olduğunda yerel yedek kurları hesapla
   const getFallbackRates = useCallback((baseCode) => {
     const fallback = {};
     const baseUsdRate = STATIC_USD_RATES[baseCode] || 1.0;
@@ -65,11 +65,11 @@ export const CurrencyProvider = ({ children }) => {
     return fallback;
   }, []);
 
-  // Döviz Kurlarını Getir
+  // Döviz kurlarını getir
   const fetchRates = useCallback(async (baseCode) => {
     setRatesLoading(true);
     try {
-      // 1. Check local storage cache first
+      // 1. Önce yerel önbelleği kontrol et
       const cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
         const cacheData = JSON.parse(cached);
@@ -81,7 +81,7 @@ export const CurrencyProvider = ({ children }) => {
         }
       }
 
-      // 2. Fetch from free public exchange rate API
+      // 2. Ücretsiz açık döviz kuru API'sinden veri çek
       const res = await fetch(`https://open.er-api.com/v6/latest/${baseCode}`);
       if (!res.ok) throw new Error("API request failed");
       const data = await res.json();
@@ -100,7 +100,7 @@ export const CurrencyProvider = ({ children }) => {
     } catch (error) {
       console.warn("Could not fetch online exchange rates, using local cache or fallbacks:", error);
       
-      // Fallback 1: Try expired cache if base matches
+      // Yedek 1: Taban eşleşiyorsa süresi dolmuş önbelleği dene
       const cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
         const cacheData = JSON.parse(cached);
@@ -111,7 +111,7 @@ export const CurrencyProvider = ({ children }) => {
         }
       }
 
-      // Fallback 2: Generate fallback rates using static USD rates pivot
+      // Yedek 2: Sabit USD kurlarını kullanarak yedek kurlar oluştur
       const fallback = getFallbackRates(baseCode);
       setRates(fallback);
     } finally {
@@ -126,7 +126,7 @@ export const CurrencyProvider = ({ children }) => {
     }
   }, [currency?.code, fetchRates]);
 
-  // Giriş Yapıldığında Kullanıcı Tercihlerini Getir
+  // Giriş yapıldığında kullanıcı tercihlerini getir
   useEffect(() => {
     if (user) {
       const fetchUserPreferences = async () => {
@@ -137,7 +137,7 @@ export const CurrencyProvider = ({ children }) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // Resolve primary currency
+            // Ana para birimini çözümle
             if (data.currency) {
               const dbCurrency = data.currency;
               let resolvedCurrency;
@@ -152,7 +152,7 @@ export const CurrencyProvider = ({ children }) => {
               localStorage.setItem('app_currency', JSON.stringify(resolvedCurrency));
             }
 
-            // Resolve favorite currencies
+            // Favori para birimlerini çözümle
             if (data.favoriteCurrencies && Array.isArray(data.favoriteCurrencies)) {
               setFavoriteCurrencies(data.favoriteCurrencies);
               localStorage.setItem('favorite_currencies', JSON.stringify(data.favoriteCurrencies));
@@ -166,14 +166,14 @@ export const CurrencyProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Ana Para Birimini Güncelle
+  // Ana para birimini güncelle
   const updateCurrency = useCallback(async (code) => {
     const newCurrency = CURRENCY_MAP[code] || CURRENCY_MAP['USD'];
 
     setCurrency(newCurrency);
     localStorage.setItem('app_currency', JSON.stringify(newCurrency));
 
-    // Auto-add new primary currency to favorites if not already present
+    // Yeni ana para birimini favorilere otomatik ekle (yoksa)
     setFavoriteCurrencies(prev => {
       if (!prev.includes(code)) {
         const updated = [...prev, code];
@@ -197,12 +197,12 @@ export const CurrencyProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Favori Para Birimlerini Güncelle
+  // Favori para birimlerini güncelle
   const updateFavoriteCurrencies = useCallback(async (codes) => {
-    // Keep favorites valid (must contain currency codes present in CURRENCY_MAP)
+    // Favorileri geçerli tut (CURRENCY_MAP'te olanları içermeli)
     const validCodes = codes.filter(code => CURRENCY_MAP[code]);
     
-    // Ensure primary currency is ALWAYS in the favorites
+    // Ana para biriminin HER ZAMAN favorilerde olmasını sağla
     if (currency?.code && !validCodes.includes(currency.code)) {
       validCodes.push(currency.code);
     }
@@ -221,36 +221,36 @@ export const CurrencyProvider = ({ children }) => {
     }
   }, [user, currency?.code]);
 
-  // Currency Converter Utility
+  // Para birimi dönüştürme aracı
   const convertPrice = useCallback((amount, fromCode, toCode) => {
     const val = Number(amount) || 0;
     if (fromCode === toCode) return val;
 
-    // Use current rates relative to the base currency
+    // Taban para birimine göre güncel kurları kullan
     const baseCode = currency?.code || 'USD';
     const activeRates = rates && Object.keys(rates).length > 0 ? rates : getFallbackRates(baseCode);
 
     const fromRate = activeRates[fromCode];
     const toRate = activeRates[toCode];
 
-    // If both rates are defined, convert using pivot
+    // Her iki kur da tanımlıysa dönüştür
     if (fromRate && toRate) {
       const amountInBase = fromCode === baseCode ? val : val / fromRate;
       return toCode === baseCode ? amountInBase : amountInBase * toRate;
     }
 
-    // Secondary fallback using direct static rates
+    // Doğrudan sabit kurları kullanan ikincil yedek
     const fromStatic = STATIC_USD_RATES[fromCode] || 1.0;
     const toStatic = STATIC_USD_RATES[toCode] || 1.0;
     const amountInUsd = val / fromStatic;
     return amountInUsd * toStatic;
   }, [currency?.code, rates, getFallbackRates]);
 
-  // Format Price Helper
+  // Fiyat formatlama yardımcısı
   const formatPrice = useCallback((amount, specificCurrencyCode = null) => {
     const validAmount = Number(amount) || 0;
     
-    // Determine which currency formatting metadata to use
+    // Hangi para birimi formatlamasının kullanılacağını belirle
     const targetCode = specificCurrencyCode || (currency && currency.code) || 'USD';
     const targetMeta = CURRENCY_MAP[targetCode] || CURRENCY_MAP['USD'];
     const activeLocale = language === 'tr' ? targetMeta.locale : 'en-US';

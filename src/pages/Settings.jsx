@@ -18,26 +18,26 @@ function Settings() {
   const { language, setLanguage, t } = useLanguage();
   const { user, logout } = useAuth();
 
-  // Bütçe State'i
+  // Bütçe state'leri
   const [budgetInput, setBudgetInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Veri Sıfırlama State'i
+  // Veri sıfırlama state'i
   const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
 
-  // Yedekleme State'leri
+  // Yedekleme state'leri
   const [backupMessage, setBackupMessage] = useState('');
   const [isProcessingBackup, setIsProcessingBackup] = useState(false);
   const fileInputRef = React.useRef(null);
 
 
-  // BİLDİRİM VE SAAT STATE'LERİ
+  // Bildirim ve saat state'leri
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderTime, setReminderTime] = useState('20:00'); // Varsayılan
 
-  // Verileri Çekme
+  // Verileri getir
   useEffect(() => {
     if (user?.uid) {
       const fetchData = async () => {
@@ -59,7 +59,7 @@ function Settings() {
     }
   }, [user]);
 
-  // BİLDİRİMİ SİSTEME KAYDET
+  // Bildirimi sisteme kaydet
   const scheduleNotification = async (time) => {
     if (!Capacitor.isNativePlatform()) return; // Sadece mobilde çalışır
 
@@ -85,13 +85,13 @@ function Settings() {
     });
   };
 
-  // BİLDİRİMİ İPTAL ET
+  // Bildirimi iptal et
   const cancelNotification = async () => {
     if (!Capacitor.isNativePlatform()) return;
     await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
   };
 
-  // Bütçeyi Kaydetme
+  // Bütçeyi kaydet
   const handleSaveBudget = async () => {
     if (!user?.uid) return;
 
@@ -120,7 +120,7 @@ function Settings() {
     }
   };
 
-  // Bütçeyi Sıfırlama
+  // Bütçeyi sıfırla
   const handleResetBudget = async () => {
     if (!user?.uid) return;
 
@@ -143,14 +143,14 @@ function Settings() {
     }
   };
 
-  // BİLDİRİM AÇMA/KAPAMA
+  // Bildirim açma/kapama
   const handleToggleReminder = async (e) => {
     if (!user?.uid) return;
 
     const isChecked = e.target.checked;
 
     if (isChecked) {
-      // 🔥 GELİŞTİRME 2: Web tarayıcıda izne çalışıp çökmemesi için koruma
+      // Web tarayıcıda izin isteyip çökmemesi için koruma
       if (!Capacitor.isNativePlatform()) {
         alert(t('common.msg_push_mobile_only'));
         setReminderEnabled(false);
@@ -183,7 +183,7 @@ function Settings() {
     }
   };
 
-  // SAAT DEĞİŞİP KUTUDAN ÇIKILDIĞINDA
+  // Saat değiştiğinde bildirim zamanını güncelle
   const handleTimeBlur = async (e) => {
     const newTime = e.target.value;
     saveReminderSettings(reminderEnabled, newTime);
@@ -195,7 +195,7 @@ function Settings() {
     }
   };
 
-  // Firestore Yardımcısı
+  // Firestore yardımcısı
   const saveReminderSettings = async (enabled, time) => {
     if (!user?.uid) return;
     try {
@@ -208,7 +208,7 @@ function Settings() {
     }
   };
 
-  // Veri Sıfırlama
+  // Veri sıfırlama
   const handleResetData = async () => {
     if (!user?.uid) return;
 
@@ -224,7 +224,7 @@ function Settings() {
       const querySnapshot = await getDocs(q);
       const docsArray = querySnapshot.docs;
 
-      // 🔥 Delete receipt images from Firebase Storage before removing documents
+      // Belgeleri kaldırmadan önce Firebase Storage'dan fiş görsellerini sil
       const storageDeletePromises = docsArray
         .map((document) => document.data().storagePath)
         .filter(Boolean)
@@ -235,8 +235,7 @@ function Settings() {
         );
       await Promise.all(storageDeletePromises);
 
-      // 🔥 GELİŞTİRME 1: Firebase 500 Belge Sınırı Çözümü (Chunking)
-      // Belgeleri 500'lük parçalara ayırarak siliyoruz
+      // Belgeleri 500'lük parçalara (batch) ayırarak sil (Firebase sınırı)
       for (let i = 0; i < docsArray.length; i += 500) {
         const batch = writeBatch(db);
         const chunk = docsArray.slice(i, i + 500);
@@ -259,7 +258,7 @@ function Settings() {
     }
   };
 
-  // Veri Dışa Aktarma
+  // Veri dışa aktarma
   const handleExportData = async () => {
     if (!user?.uid) return;
     setIsProcessingBackup(true);
@@ -292,7 +291,7 @@ function Settings() {
           if (!e.message || (!e.message.includes('canceled') && !e.message.includes('Share canceled'))) {
             setBackupMessage(t('common.msg_export_failed') || 'Dışa aktarma başarısız oldu.');
           } else {
-            // User cancelled share
+            // Kullanıcı paylaşımı iptal etti
             setBackupMessage('');
           }
         }
@@ -315,12 +314,12 @@ function Settings() {
     }
   };
 
-  // Veri İçe Aktarma
+  // Veri içe aktarma
   const handleImportData = async (e) => {
     const file = e.target.files[0];
     if (!file || !user?.uid) return;
 
-    // 10MB dosya boyut sınırı — bellek sorunlarını önlemek için
+    // 10MB dosya boyut sınırı (bellek sorunlarını önlemek için)
     const MAX_IMPORT_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_IMPORT_SIZE) {
       setBackupMessage(t('common.msg_import_failed') || 'Dosya çok büyük (maks. 10MB).');
@@ -335,7 +334,7 @@ function Settings() {
       const data = JSON.parse(text);
       if (!Array.isArray(data)) throw new Error("Invalid format");
       
-      // Batch işlemi ile aktar (Firestore 500 limitini düşünerek parçalara ayırabiliriz)
+      // Batch işlemi ile aktar (Firestore 500 limiti için parçalayarak)
       for (let i = 0; i < data.length; i += 500) {
         const batch = writeBatch(db);
         const chunk = data.slice(i, i + 500);
@@ -344,7 +343,7 @@ function Settings() {
           if (item.items) {
              const docRef = doc(collection(db, "receipts"));
              
-             // Convert serialized plain object createdAt to a real Firestore Timestamp
+             // Serileştirilmiş createdAt objesini gerçek Firestore Timestamp'ine dönüştür
              let importedCreatedAt = Timestamp.now();
              if (item.createdAt) {
                if (item.createdAt.seconds !== undefined) {
@@ -359,7 +358,7 @@ function Settings() {
                }
              }
 
-             // Override item.userId with user.uid to guarantee ownership
+             // Sahipliği garanti altına almak için item.userId'yi user.uid ile ez
              const importedItem = {
                ...item,
                userId: user.uid,
@@ -373,7 +372,7 @@ function Settings() {
       }
 
       setBackupMessage(t('common.msg_import_success') || 'Veriler başarıyla içe aktarıldı.');
-      // clear input
+      // Girdiyi temizle
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       console.error(err);
@@ -392,7 +391,7 @@ function Settings() {
 
         <div className="row g-4">
 
-          {/* Para Birimi Seçimi */}
+          {/* Para birimi seçimi */}
           <div className="col-6 col-md-6">
             <div className="card border-0 shadow-sm h-100">
               <div className="card-body p-2 p-sm-3 p-md-4 flex-column d-flex">
@@ -471,7 +470,7 @@ function Settings() {
             </div>
           </div>
 
-          {/* Bütçe Hedefleri */}
+          {/* Bütçe hedefleri */}
           <div className="col-6 col-md-6">
             <div className="card border-0 shadow-sm h-100">
               <div className="card-body p-2 p-sm-3 p-md-4 flex-column d-flex">
@@ -592,7 +591,7 @@ function Settings() {
             </div>
           </div>
 
-          {/* VERİ YEDEKLEME */}
+          {/* Veri yedekleme */}
           <div className="col-md-12">
             <div className="card border-0 shadow-sm h-100">
               <div className="card-body p-4">
@@ -637,7 +636,7 @@ function Settings() {
             </div>
           </div>
 
-          {/* HESAP */}
+          {/* Hesap */}
           <div className="col-md-12">
             <div className="card border-0 shadow-sm h-100">
               <div className="card-body p-4">

@@ -23,7 +23,7 @@ export const ReportProvider = ({ children }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportMonthText, setReportMonthText] = useState("");
 
-  // BİLDİRİM KONTROLÜ
+  // Bildirim kontrolü
   useEffect(() => {
     if (user) {
       const checkNotificationStatus = async () => {
@@ -54,7 +54,7 @@ export const ReportProvider = ({ children }) => {
     }
   }, [user, language]);
 
-  // Font Yükleme (Timeout ile)
+  // Font yükleme (Zaman aşımı limitli)
   const loadFile = async (url) => {
     try {
       const controller = new AbortController();
@@ -79,22 +79,20 @@ export const ReportProvider = ({ children }) => {
     }
   };
 
-  // EXCEL EXPORT — Generates an Excel 2003 XML Spreadsheet (.xls)
-  // Uses XML format which natively supports Unicode (all Turkish chars render perfectly)
-  // No external dependencies needed — works with zero npm packages
+  // Excel Export: Excel 2003 XML formatında, bağımlılık olmadan dışa aktarır (Türkçe karakter destekli)
   const exportAllDataToCSV = useCallback(async () => {
     if (!user) return;
     setIsGenerating(true);
 
     try {
-      // 1. Fetch all receipts
+      // 1. Tüm fişleri getir
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid)
       );
       const querySnapshot = await getDocs(q);
 
-      // 2. Fetch all subscriptions
+      // 2. Tüm abonelikleri getir
       const subsQuery = query(
         collection(db, "subscriptions"),
         where("userId", "==", user.uid)
@@ -107,7 +105,7 @@ export const ReportProvider = ({ children }) => {
         return;
       }
 
-      // Parse and sort receipts by date descending
+      // Fişleri tarihe göre azalan şekilde sırala
       const allReceipts = [];
       querySnapshot.forEach((docSnap) => {
         allReceipts.push({
@@ -126,7 +124,7 @@ export const ReportProvider = ({ children }) => {
         allSubs.push(docSnap.data());
       });
 
-      // ─── Helper: format date for Excel ───
+      // Yardımcı: Excel için tarih formatlama
       const formatExcelDate = (dateVal) => {
         if (!dateVal) return "-";
         const dateObj = parseDate(dateVal);
@@ -137,7 +135,7 @@ export const ReportProvider = ({ children }) => {
         return language === 'tr' ? `${d}.${m}.${y}` : `${y}-${m}-${d}`;
       };
 
-      // ─── Helper: escape XML special characters ───
+      // Yardımcı: XML özel karakterlerini kaçış dizisine çevir
       const escXml = (val) => {
         if (val == null) return '';
         return String(val)
@@ -148,7 +146,7 @@ export const ReportProvider = ({ children }) => {
           .replace(/'/g, '&apos;');
       };
 
-      // ─── Helper: generate an XML row ───
+      // Yardımcı: XML satırı oluştur
       const makeRow = (cells, isHeader = false) => {
         const styleId = isHeader ? 'header' : 'default';
         const numStyle = isHeader ? 'header' : 'number';
@@ -166,7 +164,7 @@ export const ReportProvider = ({ children }) => {
         return row;
       };
 
-      // ─── Localized labels ───
+      // Yerelleştirilmiş etiketler
       const labels = {
         date: t('common.date'),
         store: t('common.store') || t('common.store_name'),
@@ -200,7 +198,7 @@ export const ReportProvider = ({ children }) => {
         count: language === 'tr' ? 'Adet' : 'Count',
       };
 
-      // ─── Sheet 1: All Expenses (itemized) ───
+      // Sayfa 1: Tüm harcamalar (detaylı)
       let sheet1Rows = '';
       const sheet1Headers = [
         labels.date, labels.store, labels.totalPrice, labels.currency,
@@ -239,7 +237,7 @@ export const ReportProvider = ({ children }) => {
         }
       });
 
-      // ─── Sheet 2: Subscriptions ───
+      // Sayfa 2: Abonelikler
       let sheet2Rows = '';
       const sheet2Headers = [
         labels.subscriptionName || labels.itemName,
@@ -258,8 +256,8 @@ export const ReportProvider = ({ children }) => {
         ]);
       });
 
-      // ─── Sheet 3: Summary ───
-      // Build aggregations
+      // Sayfa 3: Özet
+      // Toplamları hesapla
       const categoryTotals = {};
       const storeTotals = {};
       const brandTotals = {};
@@ -269,18 +267,16 @@ export const ReportProvider = ({ children }) => {
         const price = receipt.price;
         grandTotal += price;
 
-        // Store
+        // Mağaza toplamları
         const storeName = receipt.fileName || receipt.title || labels.noStore;
         storeTotals[storeName] = (storeTotals[storeName] || 0) + price;
 
-        // Category & Brand from items
+        // Kategori ve marka toplamları
         if (receipt.items && Array.isArray(receipt.items) && receipt.items.length > 0) {
           receipt.items.forEach(item => {
             const itemPrice = Number(item.price) || 0;
-            // Category
             const cat = item.type ? localizeCategory(item.type, language) : (receipt.isManual ? labels.manualEntry : labels.scannedReceipt);
             categoryTotals[cat] = (categoryTotals[cat] || 0) + itemPrice;
-            // Brand
             const brand = item.brand && item.brand.trim() ? item.brand.trim() : (language === 'tr' ? 'Bilinmeyen Marka' : 'Unknown Brand');
             brandTotals[brand] = (brandTotals[brand] || 0) + itemPrice;
           });
@@ -307,31 +303,31 @@ export const ReportProvider = ({ children }) => {
 
       let sheet3Rows = '';
 
-      // General summary section
+      // Genel özet bölümü
       sheet3Rows += makeRow([labels.generalSummary, ''], true);
       sheet3Rows += makeRow([labels.totalSpent, grandTotal]);
       sheet3Rows += makeRow([labels.numberOfReceipts, allReceipts.length]);
       sheet3Rows += makeRow([labels.numberOfSubs, allSubs.length]);
-      sheet3Rows += makeRow(['', '']); // blank row
+      sheet3Rows += makeRow(['', '']);
 
-      // Category breakdown
+      // Kategori dağılımı
       sheet3Rows += makeRow([labels.categoryBreakdown, labels.amount, labels.percentage], true);
       sortedCats.forEach(([name, amount]) => {
         const pct = grandTotal > 0 ? `${((amount / grandTotal) * 100).toFixed(1)}%` : '0%';
         sheet3Rows += makeRow([name, amount, pct]);
       });
-      sheet3Rows += makeRow(['', '']); // blank row
+      sheet3Rows += makeRow(['', '']);
 
-      // Store breakdown
+      // Mağaza dağılımı
       sheet3Rows += makeRow([labels.storeBreakdown, labels.amount, labels.percentage], true);
       sortedStores.forEach(([name, amount]) => {
-        const receiptGrandTotal = grandTotal - subsTotal; // stores don't include subscriptions
+        const receiptGrandTotal = grandTotal - subsTotal; // Mağazalara abonelikler dahil değil
         const pct = receiptGrandTotal > 0 ? `${((amount / receiptGrandTotal) * 100).toFixed(1)}%` : '0%';
         sheet3Rows += makeRow([name, amount, pct]);
       });
-      sheet3Rows += makeRow(['', '']); // blank row
+      sheet3Rows += makeRow(['', '']);
 
-      // Brand breakdown
+      // Marka dağılımı
       sheet3Rows += makeRow([labels.brandBreakdown, labels.amount, labels.percentage], true);
       sortedBrands.forEach(([name, amount]) => {
         const receiptGrandTotal = grandTotal - subsTotal;
@@ -339,7 +335,7 @@ export const ReportProvider = ({ children }) => {
         sheet3Rows += makeRow([name, amount, pct]);
       });
 
-      // ─── Build Excel 2003 XML Spreadsheet ───
+      // Excel 2003 XML şablonunu oluştur
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
@@ -459,7 +455,7 @@ ${sheet3Rows}  </Table>
     }
   }, [user, t, language]);
 
-  // OKUNDU OLARAK İŞARETLEME (Geliştirme: useCallback eklendi, yukarı alındı)
+  // Okundu olarak işaretle
   const markAsRead = useCallback(async () => {
     if (!user) return;
     setHasNotification(false);
@@ -476,7 +472,7 @@ ${sheet3Rows}  </Table>
     }
   }, [user]);
 
-  // PDF OLUŞTURMA (Geliştirme: useCallback eklendi ve pdfDoc isimlendirmesi yapıldı)
+  // PDF oluşturma
   const generateAndDownloadPDF = useCallback(async (selectedYearAndMonth = null) => {
     if (!user) return;
     setIsGenerating(true);
@@ -496,7 +492,7 @@ ${sheet3Rows}  </Table>
 
       const monthName = startOfMonth.toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US', { month: 'long', year: 'numeric' });
 
-      // 1. Fetch Receipts
+      // 1. Fişleri getir
       const q = query(
         collection(db, "receipts"),
         where("userId", "==", user.uid),
@@ -519,7 +515,7 @@ ${sheet3Rows}  </Table>
         totalSpent += convertPrice(safeData.price, safeData.currency || currency.code || 'USD', currency.code);
       });
 
-      // Client-side sorting
+      // İstemci tarafında sıralama
       receipts.sort((a, b) => {
         const dateA = a.createdAt ? parseDate(a.createdAt) : new Date(0);
         const dateB = b.createdAt ? parseDate(b.createdAt) : new Date(0);
@@ -532,7 +528,7 @@ ${sheet3Rows}  </Table>
         return;
       }
 
-      // 2. Fetch Subscriptions to include
+      // 2. Abonelikleri getir
       const subsQuery = query(
         collection(db, "subscriptions"),
         where("userId", "==", user.uid)
@@ -548,7 +544,7 @@ ${sheet3Rows}  </Table>
         subsTotal += subPrice;
       });
 
-      // 3. Aggregate Categories, Stores, and Brands
+      // 3. Kategori, mağaza ve marka toplamlarını hesapla
       const categoryMap = {};
       const storeMap = {};
       const brandMap = {};
@@ -557,13 +553,13 @@ ${sheet3Rows}  </Table>
         const rawPrice = Number(data.price) || 0;
         const price = convertPrice(rawPrice, data.currency || currency.code || 'USD', currency.code);
 
-        // Store aggregation
+        // Mağaza toplamları
         const storeName = data.fileName || data.title || t('common.unknown_store');
         const cleanStore = storeName.trim().charAt(0).toUpperCase() + storeName.trim().slice(1);
         if (!storeMap[cleanStore]) storeMap[cleanStore] = 0;
         storeMap[cleanStore] += price;
 
-        // Category aggregation
+        // Kategori toplamları
         if (data.items && Array.isArray(data.items) && data.items.length > 0) {
           let hasTypedItems = false;
           data.items.forEach(item => {
@@ -590,7 +586,7 @@ ${sheet3Rows}  </Table>
           categoryMap[catName] += price;
         }
 
-        // Brand aggregation
+        // Marka toplamları
         if (data.items && Array.isArray(data.items) && data.items.length > 0) {
           let hasTypedBrands = false;
           data.items.forEach(item => {
@@ -616,7 +612,7 @@ ${sheet3Rows}  </Table>
         }
       });
 
-      // Subscription aggregation
+      // Abonelik toplamları
       subscriptions.forEach(sub => {
         const rawSubPrice = Number(sub.price) || 0;
         const subPrice = convertPrice(rawSubPrice, sub.currency || currency.code || 'USD', currency.code);
@@ -638,7 +634,7 @@ ${sheet3Rows}  </Table>
         categoryMap[localizedSubsLabel] += subsTotal;
       }
 
-      // Convert to sorted arrays
+      // Sıralı dizilere çevir
       const sortedCategoryData = Object.keys(categoryMap)
         .map(key => ({ name: key, amount: categoryMap[key] }))
         .sort((a, b) => b.amount - a.amount);
@@ -651,7 +647,7 @@ ${sheet3Rows}  </Table>
         .map(key => ({ name: key, amount: brandMap[key] }))
         .sort((a, b) => b.amount - a.amount);
 
-      // 4. Initialize PDF Document
+      // 4. PDF belgesini başlat
       const pdfDoc = new jsPDF();
       let fontUsed = 'helvetica';
 
@@ -678,7 +674,7 @@ ${sheet3Rows}  </Table>
         }
       }
 
-      // 5. Draw Page 1: Header, Stats and Vector Charts
+      // 5. Sayfa 1: Başlık, istatistikler ve vektör grafikleri
       pdfDoc.setFontSize(20);
       pdfDoc.setTextColor(40);
       pdfDoc.setFont(fontUsed, 'bold');
@@ -698,12 +694,12 @@ ${sheet3Rows}  </Table>
       pdfDoc.setTextColor(120);
       pdfDoc.text(`${t('common.pdf_receipts_logged')} ${receipts.length}  |  ${t('common.pdf_subscriptions')} ${subscriptions.length}`, 14, 45);
 
-      // Line Divider
+      // Çizgi ayırıcı
       pdfDoc.setDrawColor(220, 224, 230);
       pdfDoc.setLineWidth(0.5);
       pdfDoc.line(14, 50, 196, 50);
 
-      // Sector drawing helper using triangles
+      // Üçgenler kullanarak dilim çizim yardımcısı
       const drawPieSector = (pdf, cx, cy, r, startAngle, endAngle, color) => {
         const steps = 30;
         pdf.setFillColor(color);
@@ -720,13 +716,13 @@ ${sheet3Rows}  </Table>
         }
       };
 
-      // Donut chart drawing helper
+      // Donut grafik çizim yardımcısı
       const drawDonutChart = (pdf, cx, cy, r, data, isCategory = false) => {
         if (!data || data.length === 0) return;
         const total = data.reduce((sum, d) => sum + d.amount, 0);
         if (total === 0) return;
 
-        let currentAngle = -90; // Start at 12 o'clock
+        let currentAngle = -90; // Saat 12 yönünden başla
         data.forEach(item => {
           const pct = item.amount / total;
           const angleDelta = pct * 360;
@@ -736,12 +732,12 @@ ${sheet3Rows}  </Table>
           currentAngle = endAngle;
         });
 
-        // Center white cutout
+        // Ortadaki beyaz boşluk
         pdf.setFillColor('#ffffff');
         pdf.circle(cx, cy, r * 0.55, 'F');
       };
 
-      // Chart Section helper with Legend
+      // Grafik ve gösterge (legend) bölümü yardımcısı
       const drawChartSection = (pdf, title, cx, cy, r, data, isCategory = false) => {
         pdf.setFont(fontUsed, 'bold');
         pdf.setFontSize(10.5);
@@ -763,7 +759,7 @@ ${sheet3Rows}  </Table>
         const legendX = cx + r + 6;
         pdf.setFontSize(7.5);
 
-        // Group minor slices into Others for the legend
+        // Küçük dilimleri 'Diğer' olarak grupla
         const major = [];
         let othersAmount = 0;
         data.forEach((item) => {
@@ -803,10 +799,10 @@ ${sheet3Rows}  </Table>
       drawChartSection(pdfDoc, t('common.category_breakdown') || "Category Breakdown", 45, 90, 18, sortedCategoryData, true);
       drawChartSection(pdfDoc, t('common.store_breakdown') || "Store Breakdown", 136, 90, 18, sortedStoreData, false);
 
-      // Draw Row 2: Brand chart & Insights
+      // 2. Satır: Marka grafiği ve öngörüler
       drawChartSection(pdfDoc, t('common.brand_breakdown') || "Brand Breakdown", 45, 165, 18, sortedBrandData, false);
 
-      // Draw insights in the Row 2 Right slot
+      // Öngörüleri sağ tarafa çiz
       pdfDoc.setFont(fontUsed, 'bold');
       pdfDoc.setFontSize(10.5);
       pdfDoc.setTextColor(40);
@@ -843,7 +839,7 @@ ${sheet3Rows}  </Table>
       pdfDoc.setFont(fontUsed, 'normal');
       pdfDoc.text(`${subscriptions.length} (${formatPrice(subsTotal)})`, 112 + pdfDoc.getTextWidth(t('common.pdf_subs_active') + "  "), insightY);
 
-      // 6. Draw Page 2 onwards: Detailed Receipts & Items Breakdown
+      // 6. Sayfa 2 ve sonrası: Detaylı fişler ve ürün kırılımı
       pdfDoc.addPage();
       let currentY = 20;
 
@@ -854,7 +850,7 @@ ${sheet3Rows}  </Table>
       currentY += 12;
 
       receipts.forEach((receipt, index) => {
-        // Prevent layout overflow: if space left is less than 50mm, start a new page
+        // Sayfa taşmasını önlemek için 50mm'den az yer kaldıysa yeni sayfaya geç
         if (currentY > 230) {
           pdfDoc.addPage();
           currentY = 20;
@@ -876,7 +872,7 @@ ${sheet3Rows}  </Table>
         pdfDoc.text(`${index + 1}. ${storeName} (${dateStr}) - ${t('common.total')} ${formattedTotal}`, 14, currentY);
         currentY += 4;
 
-        // Draw items table
+        // Ürün tablosunu çiz
         const itemColumns = [
           t('common.pdf_item_name'),
           t('common.pdf_brand'),
@@ -923,7 +919,7 @@ ${sheet3Rows}  </Table>
         currentY = pdfDoc.lastAutoTable.finalY + 10;
       });
 
-      // 7. Draw Subscriptions table if any exist
+      // 7. Varsa abonelik tablosunu çiz
       if (subscriptions.length > 0) {
         if (currentY > 230) {
           pdfDoc.addPage();
@@ -993,7 +989,7 @@ ${sheet3Rows}  </Table>
     }
   }, [user, formatPrice, markAsRead, currency?.code, convertPrice, t, language]); // Bağımlılıklar güncellendi
 
-  // Geliştirme: Context value objesini useMemo ile sarmalayarak gereksiz renderları kestik
+  // Gereksiz renderları önlemek için Context objesini useMemo ile sarmala
   const contextValue = useMemo(() => ({
     hasNotification,
     reportMonthText,

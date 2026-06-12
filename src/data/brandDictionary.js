@@ -5,7 +5,7 @@
  */
 
 export const brandDictionary = {
-  // --- GROCERY & ZİNCİR MAĞAZALAR ---
+  // --- MARKET & ZİNCİR MAĞAZALAR ---
   'mlgros': 'Migros',
   'higros': 'Migros',
   'hıgros': 'Migros',
@@ -571,7 +571,7 @@ export const brandDictionary = {
   'chivas regal': 'Chivas Regal',
   'chivas': 'Chivas Regal',
 
-  // --- MARKET ÖZEL MARKALARI (Private Label) ---
+  // --- MARKET ÖZEL MARKALARI ---
   // BİM
   'dost': 'Dost',
   'saban': 'Saban',

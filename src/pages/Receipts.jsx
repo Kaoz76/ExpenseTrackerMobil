@@ -50,7 +50,7 @@ function Receipts() {
   const [currentCropIndex, setCurrentCropIndex] = useState(0);
   const [totalCropCount, setTotalCropCount] = useState(0);
 
-  // Revoke cropImageUrl on unmount
+  // Component kapanırken bellekten sil
   useEffect(() => {
     return () => {
       if (cropImageUrl) {
@@ -59,7 +59,7 @@ function Receipts() {
     };
   }, [cropImageUrl]);
 
-  // Prevention for offline duplicate saves
+  // Çevrimdışı tekrarlayan kayıtları engelleme
   const activeVerifyRef = useRef(null);
   const [isSavingDoc, setIsSavingDoc] = useState(false);
 
@@ -81,11 +81,11 @@ function Receipts() {
     return result;
   }, [allReceipts, searchTerm]);
 
-  // DOĞRULAMA MODALI STATE'LERİ
+  // Doğrulama modalı state'leri
   const [processedScans, setProcessedScans] = useState([]);
   const [verifiedPrice, setVerifiedPrice] = useState('');
 
-  // 🔥 Mevcut ürün isimlerini çek (Fuzzy Match için)
+  // Mevcut ürün isimlerini getir (Fuzzy Match için)
   useEffect(() => {
     if (user) {
       const q = query(
@@ -101,7 +101,7 @@ function Receipts() {
           if (data.items && Array.isArray(data.items)) {
             data.items.forEach(item => {
               if (item.name && item.name.trim().length > 2) {
-                // Clean the stored name so fuzzy matching works against clean names
+                // Karşılaştırma için ismi temizle
                 const cleanedName = trTitleCase(cleanItemName(brandAutoCorrect(item.name.trim())));
                 if (cleanedName.length > 2) names.add(cleanedName);
               }
@@ -115,7 +115,7 @@ function Receipts() {
 
 
 
-  // DOSYA YÜKLEME VE OCR
+  // Dosya yükleme ve OCR
   const processFiles = useCallback(async (acceptedFiles) => {
     if (!acceptedFiles || acceptedFiles.length === 0) return;
 
@@ -135,23 +135,21 @@ function Receipts() {
       let processedFileForSave = originalFile;
       let processedFileForOCR = originalFile;
 
-      // Optimize resolution dynamically to prevent "Not Responding" ANR on mobile APKs
-      // Passing a huge base64 string over the Capacitor bridge freezes the native UI thread.
+      // Mobil cihazlarda kasmayı önlemek için çözünürlüğü dinamik ayarla
       if (Capacitor.isNativePlatform()) {
         processedFileForSave = await resizeImage(originalFile, 1200, 1600);
-        // Enhance image for better OCR: grayscale + contrast + sharpening (only for ML Kit on mobile)
+        // OCR doğruluğu için görseli iyileştir (ML Kit için)
         processedFileForOCR = await preprocessForOCR(processedFileForSave);
       } else {
-        // Web: Use a higher resolution (1600x2000) and quality (0.95) to capture small receipt text clearly
+        // Web ortamında küçük yazılar için yüksek çözünürlük kullan
         processedFileForSave = await resizeImageForTesseract(originalFile, 1600, 2000, 0.95);
         processedFileForOCR = processedFileForSave;
-        // No preprocessForOCR for Tesseract as requested (original color & high resolution scans better)
       }
 
-      // 1. Background Firebase Upload (Uses the resized colored image)
+      // 1. Arka planda Firebase'e yükle
       let uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
       if (!privacyMode) {
-        // Skip waiting 10 seconds if we already know we are offline
+        // Çevrimdışı isek beklemeyi atla
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           uploadPromise = Promise.resolve({ storagePath: null, imageUrl: null });
         } else {
@@ -178,7 +176,7 @@ function Receipts() {
         }
       }
 
-      // 2. OCR Analysis (Runs on the preprocessed black/white image for higher accuracy)
+      // 2. OCR Analizi
       let extractedData = { total: 0, items: [] };
       let rawOcrText = "";
       try {
@@ -217,8 +215,7 @@ function Receipts() {
                     return Math.abs(bl[1] - tl[1]);
                   };
 
-                  // Detect Y-axis orientation dynamically from detections.
-                  // In flipped Y coordinates (native iOS/Android), the bottom of the word has a smaller Y than the top of the word.
+                  // Y ekseni yönünü dinamik algıla (iOS/Android eksen farkları için)
                   let isYFlipped = false;
                   for (let det of detections) {
                     if (det.topLeft && det.bottomLeft && typeof det.topLeft[1] === 'number' && typeof det.bottomLeft[1] === 'number') {
@@ -229,7 +226,7 @@ function Receipts() {
                     }
                   }
 
-                  // Eğikliğe rağmen öğeleri yukarıdan aşağıya doğru düzgün bir şekilde sıralamak için medyan eğimi hesapla
+                  // Eğimli çekimlerde doğru sıralama için medyan eğimi hesapla
                   let slopes = [];
                   detections.forEach(item => {
                     if (item.topLeft && item.topRight) {
@@ -241,12 +238,10 @@ function Receipts() {
                   slopes.sort((a, b) => a - b);
                   let medianSlope = slopes.length > 0 ? slopes[Math.floor(slopes.length / 2)] : 0;
 
-                  // Clamp medianSlope to 0 for small tilts to enforce strict, stable vertical sorting
+                  // Ufak eğimlerde dikey sıralamayı sabitlemek için eğimi sıfırla
                   if (Math.abs(medianSlope) < 0.05) medianSlope = 0;
 
-                  // Sort items by their projected Y-intercept (where X=0) to ensure strict top-to-bottom order.
-                  // If Y is flipped (Y=1 is top, Y=0 is bottom), sort descending.
-                  // Otherwise (Y=0 is top, Y=1 is bottom), sort ascending.
+                  // Yukarıdan aşağıya sıralamayı güvenceye almak için Y eksenine göre sırala
                   detections.sort((a, b) => {
                     let cA = getCenter(a);
                     let cB = getCenter(b);
@@ -260,20 +255,20 @@ function Receipts() {
                   detections.forEach(item => {
                     let center = getCenter(item);
                     let itemHeight = getHeight(item);
-                    // Determine coordinate scale: normalized coords (< 1) use 0.02 min height, pixels (>= 1) use 15px min height
+                    // Koordinat ölçeğini belirle
                     const minHeight = itemHeight < 1 ? 0.02 : 15;
                     const effectiveHeight = Math.max(itemHeight, minHeight);
 
                     let added = false;
                     for (let group of lineGroups) {
-                      // Project expected Y using the global median slope for stability
+                      // Eğime göre beklenen Y değerini hesapla
                       let projectedY = group.startY + medianSlope * (center.x - group.startX);
 
-                      // Use the maximum of the group's height and the current item's height for tolerance calculation
+                      // Tolerans hesabı için yüksekliği baz al
                       const compareHeight = Math.max(effectiveHeight, group.height || effectiveHeight);
-                      const tolerance = compareHeight * 0.5; // 0.5 multiplier to separate adjacent receipt lines
+                      const tolerance = compareHeight * 0.5;
 
-                      // If the item's center is close to the projected line vector, add it!
+                      // Satır hizasındaysa gruba ekle
                       if (Math.abs(center.y - projectedY) < tolerance) {
                         group.items.push(item);
                         group.height = Math.max(group.height || 0, effectiveHeight);
@@ -283,7 +278,7 @@ function Receipts() {
                     }
 
                     if (!added) {
-                      // Bu belirli kelime için sol üst ve sağ üst arasındaki açıyı hesapla
+                      // Bu kelime için eğim açısını hesapla
                       let dx = (item.topRight && item.topLeft) ? (item.topRight[0] - item.topLeft[0]) : 0;
                       let dy = (item.topRight && item.topLeft) ? (item.topRight[1] - item.topLeft[1]) : 0;
                       let itemSlope = Math.abs(dx) > 0.0001 ? dy / dx : medianSlope;
@@ -319,7 +314,7 @@ function Receipts() {
         } else {
           const fileUrl = URL.createObjectURL(processedFileForOCR);
           const Tesseract = (await import('tesseract.js')).default;
-          // Dynamically select language to prevent cross-language vocabulary interference (e.g. English dictionary matching "GO" instead of "80")
+          // Yanlış eşleşmeleri önlemek için dili dinamik seç
           const ocrLang = language === 'tr' ? 'tur' : 'eng';
           const worker = await Tesseract.createWorker(ocrLang, 1, {
             logger: m => {
@@ -330,7 +325,7 @@ function Receipts() {
           });
 
           await worker.setParameters({
-            tessedit_pageseg_mode: '6' // Force single block line-by-line reading to prevent column-splitting errors
+            tessedit_pageseg_mode: '6' // Sütun ayrılmasını önlemek için satır satır okumayı zorla
           });
 
           const result = await worker.recognize(
@@ -342,7 +337,7 @@ function Receipts() {
             }
           );
 
-          // Extract words from blocks hierarchy (required in Tesseract.js v5+)
+          // Blok hiyerarşisinden kelimeleri çıkar
           const words = [];
           if (result.data && result.data.blocks) {
             result.data.blocks.forEach(block => {
@@ -374,13 +369,12 @@ function Receipts() {
 
       const matchedItems = (extractedData.items || []).map(item => {
         const matchedName = findBestProductMatch(item.name, existingProductNames);
-        // Always clean the matched name — guards against dirty legacy names from Firestore
+        // Eşleşen ismi temizle
         return { ...item, name: trTitleCase(cleanItemName(matchedName)) };
       });
 
-      // 🤖 AI Enrichment: Use Gemini 2.5 Flash-Lite to detect brand, type, and size
-      // Uses Promise.race with an 8-second timeout — works correctly in all browsers
-      // and offline scenarios (navigator.onLine is unreliable in Firefox DevTools).
+      // AI ile marka, kategori ve boyut tespiti yap
+      // Zaman aşımı kontrolü (8 saniye)
       let enrichedItems = matchedItems;
       if (shouldAnalyzeWithLLM) {
         try {
@@ -394,10 +388,10 @@ function Receipts() {
         }
       }
 
-      // Apply User Learning Memory (fixes mistakes AI or OCR consistently make)
+      // Öğrenilmiş kullanıcı düzeltmelerini uygula
       enrichedItems = applyLearnedCorrections(enrichedItems);
 
-      // Fallback category for items that don't have a category assigned (either because LLM was skipped, timed out, failed, or didn't categorize it)
+      // Kategori atanamayan ürünler için varsayılan kategori
       const fallbackCategory = language === 'tr' ? 'Bilinmeyen' : 'Unknown';
       enrichedItems = enrichedItems.map(item => {
         const priceVal = parseFloat(item.price) || 0;
@@ -413,15 +407,15 @@ function Receipts() {
 
       return {
         userId: user.uid,
-        uploadPromise, // Son kaydetme sırasında beklemek üzere arka plan yükleme promise'ini kaydet
-        tempImageUrl: URL.createObjectURL(processedFileForSave), // Provide a local object URL for immediate display (colored image)
+        uploadPromise, // Yükleme işlemini kaydet
+        tempImageUrl: URL.createObjectURL(processedFileForSave), // Görüntüleme için yerel URL oluştur
         fileName: '',
         originalFileName: processedFileForSave.name,
         createdAt: Timestamp.now(),
         title: '',
         date: new Date().toLocaleDateString(),
         isManual: false,
-        originalItems: JSON.parse(JSON.stringify(enrichedItems)), // Deep copy for learning comparison
+        originalItems: JSON.parse(JSON.stringify(enrichedItems)), // Öğrenme kıyaslaması için kopyala
         items: enrichedItems,
         totalPrice: extractedData.total || 0,
         currency: extractedData.currency || currency?.code || 'USD',
@@ -432,7 +426,7 @@ function Receipts() {
     try {
       const results = [];
       for (let i = 0; i < filesToProcess.length; i++) {
-        // Sıralı işleme için durum metnini güncelle
+        // İşlem durumunu güncelle
         setStatusText(
           t('common.msg_analyzing_receipt')
             .replace('{{current}}', String(i + 1))
@@ -442,7 +436,7 @@ function Receipts() {
         const result = await processFile(filesToProcess[i]);
         results.push(result);
 
-        // Progress updates incrementally as each file finishes
+        // İlerlemeyi yansıt
         setUploadProgress(((i + 1) / filesToProcess.length) * 100);
       }
 
@@ -472,7 +466,7 @@ function Receipts() {
     setIsUploading(true);
     setStatusText(t('common.msg_preparing_image') || 'Preparing image...');
     try {
-      // Pre-resize image before showing in crop modal to drastically reduce memory usage
+      // Bellek kullanımını düşürmek için kırpma öncesi yeniden boyutlandır
       const resized = await resizeImage(file, 1000, 1300);
       setCropFile(resized);
       setCropImageUrl(URL.createObjectURL(resized));
@@ -508,7 +502,7 @@ function Receipts() {
 
       setCropQueue(remainingFiles);
 
-      // Defer crop modal opening by 700ms to yield the main thread to Android OS focus/resume event loop
+      // Android ana iş parçacığını rahatlatmak için modal açılışını geciktir
       setTimeout(() => {
         prepareAndShowCrop(firstFile);
       }, 700);
@@ -516,7 +510,7 @@ function Receipts() {
   }, [user, t, prepareAndShowCrop]);
 
   const handleCropConfirm = (croppedFile) => {
-    // Revoke previous URL to release memory
+    // Belleği temizle
     if (cropImageUrl) {
       URL.revokeObjectURL(cropImageUrl);
       setCropImageUrl('');
@@ -534,7 +528,7 @@ function Receipts() {
       setCropQueue(nextQueue);
       setCurrentCropIndex(prev => prev + 1);
 
-      // Defer next crop modal by 300ms to allow smooth modal transitions
+      // Geçiş yumuşaklığı için beklet
       setTimeout(() => {
         prepareAndShowCrop(nextFile);
       }, 300);
@@ -551,7 +545,7 @@ function Receipts() {
   };
 
   const handleCropCancel = () => {
-    // Revoke previous URL to release memory
+    // Belleği temizle
     if (cropImageUrl) {
       URL.revokeObjectURL(cropImageUrl);
       setCropImageUrl('');
@@ -606,7 +600,7 @@ function Receipts() {
     }
   };
 
-  // 🔥 OCR Hata yaparsa Manuel Forma Aktarma
+  // OCR hatalıysa manuel forma aktar
   const handleSendToManual = () => {
     const dataToPass = {
       fileName: verifyData.fileName || verifyData.originalFileName.split('.')[0],
@@ -618,7 +612,7 @@ function Receipts() {
 
 
 
-  // KAYDI ONAYLA VE VERİTABANINA YAZ
+  // Kaydı onayla ve kaydet
   const handleConfirmSave = async () => {
     if (isSavingDoc) return;
     if (!verifyData.fileName || !verifyData.fileName.trim()) {
@@ -631,7 +625,7 @@ function Receipts() {
       const itemsToSave = (verifyData.items || []).map((item, index) => {
         const cleanedName = item.name ? trTitleCase(cleanItemName(brandAutoCorrect(item.name))) : item.name;
 
-        // Detect user corrections for Learning Memory
+        // Kullanıcının yaptığı düzeltmeleri öğren
         const originalItem = verifyData.originalItems && verifyData.originalItems[index];
         if (originalItem) {
           if (originalItem.name !== item.name || originalItem.type !== item.type) {
@@ -645,7 +639,7 @@ function Receipts() {
           finalType = verifyData.currency === 'TRY' || language === 'tr' ? 'İndirim' : 'Discount';
         }
 
-        // Firebase'e kaydetmeden önce dahili izleme alanlarını kaldır
+        // Takip alanlarını temizleyip kaydet
         const finalItem = { ...item };
         delete finalItem._isLearned;
 
@@ -659,7 +653,7 @@ function Receipts() {
         };
       });
 
-      // 🔥 Helper: race a promise against a timeout
+      // Promise zaman aşımı yardımcısı
       const withTimeout = (promise, ms) => {
         let timer;
         return Promise.race([
@@ -668,7 +662,7 @@ function Receipts() {
         ]).finally(() => clearTimeout(timer));
       };
 
-      // 🔥 Try upload with timeout — if offline or slow, skip gracefully
+      // Zaman aşımlı yükleme denemesi, başarısızsa atla
       let uploadResult = { imageUrl: null, storagePath: null };
       if (verifyData.uploadPromise) {
         try {
@@ -679,7 +673,7 @@ function Receipts() {
         }
       }
 
-      // 🔥 Abort if user clicked Cancel or the modal changed while we were waiting!
+      // Beklerken modal kapandıysa iptal et
       if (activeVerifyRef.current !== verifyData) {
         console.warn("Save aborted because the modal was closed or changed.");
         setIsSavingDoc(false);
@@ -701,7 +695,7 @@ function Receipts() {
         storeNameCleaned: cleanStoreName(verifyData.fileName)
       };
 
-      // 🔥 Firestore write with timeout — offline persistence queues it locally
+      // Zaman aşımlı Firestore kaydı (çevrimdışıysa sıraya alır)
       let docId = null;
       try {
         const docRef = await withTimeout(addDoc(collection(db, "receipts"), newReceiptData), 6000);
@@ -720,7 +714,7 @@ function Receipts() {
         URL.revokeObjectURL(verifyData.tempImageUrl);
       }
 
-      // Gerçek zamanlı görünmesi için yerel fişler dizisine ekle
+      // Anında görünmesi için yerel listeye ekle
       setAllReceipts(prev => [{ id: docId, ...newReceiptData }, ...prev]);
 
       moveToNextOrClose(processedScans);
@@ -733,7 +727,7 @@ function Receipts() {
     }
   };
 
-  // 🔥 Clean up an orphaned Firebase Storage file when a scan is discarded
+  // İptal edilen taramaların dosyalarını temizle
   const cleanupOrphanedUpload = async (scan) => {
     if (!scan?.uploadPromise) return;
     try {
@@ -857,16 +851,16 @@ function Receipts() {
 }
 
 /**
- * Groups Tesseract words into lines based on their spatial alignment.
- * Uses a similar slope-based projection and proximity clustering as the ML Kit path.
+ * Tesseract kelimelerini uzamsal hizalamalarına göre satırlara gruplar.
+ * ML Kit yoluna benzer eğim tabanlı izdüşüm ve yakınlık kümelemesi kullanır.
  * 
- * @param {Array} words - Array of Tesseract word objects
- * @returns {string} Grouped and reconstructed text
+ * @param {Array} words - Tesseract kelime objeleri dizisi
+ * @returns {string} Gruplanmış ve yeniden oluşturulmuş metin
  */
 const groupTesseractWordsIntoLines = (words) => {
   if (!words || words.length === 0) return "";
 
-  // Map Tesseract bbox to standard format: topLeft, topRight, bottomLeft, bottomRight
+  // Tesseract sınır kutularını (bbox) standart formata çevir
   const detections = words.map(w => {
     const { x0, y0, x1, y1 } = w.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 };
     return {
@@ -890,7 +884,7 @@ const groupTesseractWordsIntoLines = (words) => {
     return Math.abs(bl[1] - tl[1]);
   };
 
-  // Detect Y-axis orientation (usually not flipped in Tesseract, but safe to check)
+  // Y ekseni yönünü algıla
   let isYFlipped = false;
   for (let det of detections) {
     if (det.topLeft && det.bottomLeft && typeof det.topLeft[1] === 'number' && typeof det.bottomLeft[1] === 'number') {
@@ -915,7 +909,7 @@ const groupTesseractWordsIntoLines = (words) => {
 
   if (Math.abs(medianSlope) < 0.05) medianSlope = 0;
 
-  // Sort top-to-bottom
+  // Yukarıdan aşağıya sırala
   detections.sort((a, b) => {
     let cA = getCenter(a);
     let cB = getCenter(b);
@@ -961,7 +955,7 @@ const groupTesseractWordsIntoLines = (words) => {
     }
   });
 
-  // Sort left-to-right within each line and join with triple spaces
+  // Her satır içinde soldan sağa sırala ve boşluklarla birleştir
   return lineGroups.map(group => {
     group.items.sort((a, b) => getCenter(a).x - getCenter(b).x);
     return group.items.map(i => i.text).join('   ');

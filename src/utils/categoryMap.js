@@ -133,9 +133,9 @@ const colorPool = [
 ];
 
 /**
- * Generates a stable, hash-based color code from any given string (e.g., store or brand name).
- * @param {string} str - The input string
- * @returns {string} HEX color code
+ * Verilen herhangi bir metin için (örn: mağaza veya marka adı) kararlı, hash tabanlı bir renk kodu üretir.
+ * @param {string} str - Girdi metni
+ * @returns {string} HEX renk kodu
  */
 export const getStringColor = (str) => {
   if (!str) return '#94a3b8';
@@ -301,21 +301,21 @@ export const categoryTranslationMap = {
 };
 
 /**
- * Normalizes and localizes any category name based on target language.
- * Always resolves Alcohol & Tobacco and Alkol & Tütün to the same category.
+ * Herhangi bir kategori ismini hedef dile göre normalleştirir ve yerelleştirir.
+ * Alcohol & Tobacco ve Alkol & Tütün varyantlarını daima aynı kategoriye çözümler.
  */
 export const localizeCategory = (categoryName, lang = 'en') => {
   if (!categoryName) return lang === 'tr' ? 'Diğer' : 'Other';
 
   const trimmed = categoryName.trim();
 
-  // Special Check for Alcohol & Tobacco variants
+  // Alkol ve Tütün varyantları için özel kontrol
   const isAlcoholTobacco = /^(alcohol\s*&\s*tobacco|alkol\s*&\s*tütün|alkol|tütün|alcohol|tobacco)$/i.test(trimmed);
   if (isAlcoholTobacco) {
     return lang === 'tr' ? 'Alkol & Tütün' : 'Alcohol & Tobacco';
   }
 
-  // Tam eşleşip eşleşmediğini kontrol et
+  // Tam eşleşme kontrolü
   if (lang === 'tr') {
     if (suggestedCategoriesTR.includes(trimmed)) {
       return trimmed;
@@ -332,7 +332,7 @@ export const localizeCategory = (categoryName, lang = 'en') => {
     }
   }
 
-  // Case-insensitive lookup
+  // Büyük/küçük harf duyarsız arama
   const lower = trimmed.toLowerCase();
   for (const [tr, en] of Object.entries(categoryTranslationMap)) {
     if (tr.toLowerCase() === lower) {
@@ -343,6 +343,6 @@ export const localizeCategory = (categoryName, lang = 'en') => {
     }
   }
 
-  // Fallback to title case
+  // Orijinal haline dön
   return trimmed;
 };
